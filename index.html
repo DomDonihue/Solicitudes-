@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Solicitudes — Dirección de Obras Doñihue</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a3a6b'/><text y='22' x='4' font-size='20'>🏛️</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login-page" style="display:none;">
+  <div class="login-left">
+    <img src="img/escudo.png" alt="Escudo Doñihue"
+         onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Escudo_de_Do%C3%B1ihue.svg/200px-Escudo_de_Do%C3%B1ihue.svg.png'">
+    <h1>Municipalidad de</h1>
+    <h2>DOÑIHUE</h2>
+    <hr>
+    <div class="dep">🏛️ Dirección de Obras</div>
+  </div>
+  <div class="login-right">
+    <div class="login-card">
+      <h3>Acceso al Sistema</h3>
+      <div class="login-field">
+        <label>Usuario</label>
+        <div class="field-display">
+          <i>👤</i>
+          <span id="login-nombre">Cargando...</span>
+        </div>
+      </div>
+      <div class="login-field">
+        <label>Correo institucional</label>
+        <div class="field-display">
+          <i>✉️</i>
+          <span id="login-correo">-</span>
+        </div>
+      </div>
+      <div class="login-subtitle">Portal de Gestión DOM</div>
+      <button class="btn-login" id="btn-login">
+        <span>➤</span> Ingresar con cuenta institucional
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app" style="display:none;flex-direction:column;min-height:100vh;">
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-logo">
+      <img src="img/escudo.png" alt="Escudo" style="height:36px;"
+           onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Escudo_de_Do%C3%B1ihue.svg/200px-Escudo_de_Do%C3%B1ihue.svg.png'">
+      <div class="topbar-org">
+        <div class="org-name">Dirección de Obras · Municipalidad de Doñihue</div>
+        <div class="dep-name">GESTIÓN DE SOLICITUDES</div>
+      </div>
+    </div>
+    <div class="topbar-title"></div>
+    <div class="topbar-user">
+      <div class="user-name">
+        <div id="topbar-nombre">—</div>
+        <div class="user-role" id="topbar-rol">—</div>
+      </div>
+      <button class="btn-logout" id="btn-logout-app" title="Cerrar sesión">⎋</button>
+    </div>
+  </header>
+
+  <!-- Tabs -->
+  <nav class="tabs-bar" id="tabs-bar"></nav>
+
+  <!-- Views -->
+  <main style="flex:1;overflow:hidden;">
+
+    <!-- SECRETARIA / INGRESO -->
+    <div id="view-solicitudes" class="view">
+      <div class="sec-layout">
+        <!-- Lista solicitudes -->
+        <div class="panel" style="display:flex;flex-direction:column;">
+          <div class="panel-header">📋 Solicitudes Ingresadas</div>
+          <div class="panel-body" id="lista-solicitudes" style="padding:8px;"></div>
+          <div id="paginacion-solicitudes" class="paginacion"></div>
+        </div>
+        <!-- Filtros + Stats -->
+        <div class="panel" style="display:flex;flex-direction:column;overflow-y:auto;">
+          <div class="panel-header">🔍 Filtros y Estadísticas</div>
+          <div id="panel-filtros" style="flex:1;overflow-y:auto;"></div>
+        </div>
+        <!-- Nueva solicitud -->
+        <div class="panel" style="display:flex;flex-direction:column;overflow-y:auto;">
+          <div class="panel-header">➕ Nueva Solicitud</div>
+          <div id="panel-nueva" style="flex:1;overflow-y:auto;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIRECTOR GESTION -->
+    <div id="view-gestion" class="view">
+      <div class="dir-layout">
+        <!-- Sidebar estados -->
+        <div class="panel" style="display:flex;flex-direction:column;">
+          <div class="panel-header">📊 Estados</div>
+          <div id="dir-sidebar" style="flex:1;overflow-y:auto;"></div>
+        </div>
+        <!-- Lista + PDF -->
+        <div style="display:flex;flex-direction:column;gap:20px;overflow:hidden;">
+          <div class="panel" style="height:45%;display:flex;flex-direction:column;">
+            <div class="panel-header">📋 Solicitudes</div>
+            <div id="dir-lista" style="flex:1;overflow:hidden;display:flex;flex-direction:column;"></div>
+          </div>
+          <div class="panel" style="flex:1;display:flex;flex-direction:column;">
+            <div class="panel-header">📄 Documento</div>
+            <div id="dir-pdf" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;">
+              <div class="pdf-placeholder"><span style="font-size:60px">📄</span><p>Selecciona una solicitud</p></div>
+            </div>
+          </div>
+        </div>
+        <!-- Detalle + Acciones -->
+        <div class="panel" id="dir-detalle" style="display:flex;flex-direction:column;overflow-y:auto;">
+          <div style="text-align:center;color:#9ca3af;padding:40px;">Selecciona una solicitud</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UNIDAD -->
+    <div id="view-unidad" class="view">
+      <div class="uni-layout">
+        <!-- Lista con filtros integrados -->
+        <div class="panel" style="display:flex;flex-direction:column;overflow:hidden;">
+          <div class="panel-header" id="uni-titulo">🏢 Mis Solicitudes</div>
+          <div id="uni-lista" style="flex:1;overflow:hidden;display:flex;flex-direction:column;"></div>
+        </div>
+        <!-- Detalle + acciones -->
+        <div class="panel" id="uni-detalle" style="display:flex;flex-direction:column;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;flex-direction:column;gap:16px;">
+            <span style="font-size:60px">📋</span>
+            <p>Selecciona una solicitud</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRAFICOS -->
+    <div id="view-graficos" class="view" style="overflow-y:auto;height:calc(100vh - 120px);"></div>
+
+  </main>
+</div>
+
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="graph.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

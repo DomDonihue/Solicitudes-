@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir \"C:\\\\Users\\\\DOM\\\\OneDrive - Ilustre Municipalidad de Doñihue\\\\Escritorio\\\\Sistema Solicitudes\\\\.claude\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where python *)",
+      "Bash(where python3 *)",
+      "Bash(where node *)"
+    ]
+  }
+}
