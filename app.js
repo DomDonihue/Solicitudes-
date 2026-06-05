@@ -1500,21 +1500,53 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
 
     panel.innerHTML = "";
     if (isPdf) {
-      // Usar <object> + fallback <embed> para mejor compatibilidad con blob URLs
+      // Renderizar con PDF.js dentro del sistema
       const wrap = document.createElement("div");
-      wrap.style.cssText = "flex:1;min-height:0;width:100%;display:flex;flex-direction:column;";
-      wrap.innerHTML = `
-        <object data="${blobUrl}" type="application/pdf"
-          style="flex:1;width:100%;min-height:0;border:none;border-radius:8px;">
-          <embed src="${blobUrl}" type="application/pdf"
-            style="flex:1;width:100%;min-height:400px;border:none;border-radius:8px;">
-          <div style="padding:20px;text-align:center;color:#666;">
-            <p>Tu navegador no puede mostrar PDFs inline.</p>
-            <a href="${blobUrl}" download="${nombre}"
-              style="color:var(--azul);font-weight:600;font-size:14px;">⬇ Descargar PDF</a>
-          </div>
-        </object>`;
+      wrap.style.cssText = "flex:1;overflow-y:auto;background:#525659;border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:0;";
+      wrap.innerHTML = `<div style="color:white;font-size:13px;opacity:0.7;">⏳ Renderizando PDF...</div>`;
       panel.appendChild(wrap);
+      if (thumbBar) panel.appendChild(thumbBar);
+
+      // Configurar PDF.js worker
+      if (typeof pdfjsLib !== "undefined") {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        try {
+          const loadingTask = pdfjsLib.getDocument(blobUrl);
+          const pdf = await loadingTask.promise;
+          wrap.innerHTML = ""; // limpiar spinner
+
+          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const containerWidth = wrap.clientWidth - 24;
+            const viewport = page.getViewport({ scale: 1 });
+            const scale = containerWidth / viewport.width;
+            const scaledViewport = page.getViewport({ scale });
+
+            const canvas = document.createElement("canvas");
+            canvas.width = scaledViewport.width;
+            canvas.height = scaledViewport.height;
+            canvas.style.cssText = "width:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);";
+
+            const ctx = canvas.getContext("2d");
+            await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+            wrap.appendChild(canvas);
+
+            // Separador entre páginas
+            if (pageNum < pdf.numPages) {
+              const sep = document.createElement("div");
+              sep.style.cssText = "width:100%;text-align:center;color:rgba(255,255,255,0.4);font-size:11px;padding:2px 0;";
+              sep.textContent = `— Página ${pageNum} de ${pdf.numPages} —`;
+              wrap.appendChild(sep);
+            }
+          }
+        } catch (pdfErr) {
+          wrap.innerHTML = `<div style="color:#fca5a5;text-align:center;padding:20px;">
+            <p>Error al renderizar PDF</p><small>${pdfErr.message}</small></div>`;
+        }
+      } else {
+        wrap.innerHTML = `<div style="color:#fca5a5;padding:20px;text-align:center;">PDF.js no disponible</div>`;
+      }
     } else if (/\.(jpg|jpeg|png|gif)$/i.test(nombre)) {
       const wrap = document.createElement("div");
       wrap.style.cssText = "flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#525659;border-radius:8px;min-height:0;";
