@@ -1480,17 +1480,23 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
       blobUrl = await getAttachmentBlobUrl(downloadUrl, serverRelativeUrl);
     }
 
-    // Actualizar header con link de descarga
+    // Actualizar header con botones
     if (header) {
       header.innerHTML = `
         📄 <span style="font-weight:700;">${nroSolicitud}</span>
         <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;">— ${nombre}</span>
-        <a href="${blobUrl}" download="${nombre}"
-          style="margin-left:auto;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);
-                 color:white;padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;">
-          ⬇ Descargar
-        </a>`;
-    }
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <a href="${blobUrl}" download="${nombre}"
+            style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);
+                   color:white;padding:4px 10px;border-radius:6px;font-size:12px;text-decoration:none;">
+            ⬇ Bajar
+          </a>
+          <a href="${downloadUrl}" target="_blank"
+            style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);
+                   color:white;padding:4px 10px;border-radius:6px;font-size:12px;text-decoration:none;">
+            ↗ Abrir
+          </a>
+        </div>`;
 
     panel.innerHTML = "";
     if (isPdf) {
@@ -1533,10 +1539,16 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
 
   } catch (e) {
     panel.innerHTML = `
-      <div class="pdf-visor-empty">
-        <span>⚠️</span>
-        <p style="color:#ef4444;">Error al cargar el documento</p>
-        <small style="color:#9ca3af;">${e.message}</small>
+      <div class="pdf-visor-empty" style="gap:16px;">
+        <span>📄</span>
+        <p style="color:#374151;font-weight:600;">${nombre}</p>
+        <p style="color:#9ca3af;font-size:12px;">No se puede mostrar el documento aquí,<br>pero puedes abrirlo en SharePoint:</p>
+        <a href="${downloadUrl}" target="_blank"
+          style="background:var(--azul);color:white;padding:10px 24px;border-radius:8px;
+                 font-size:14px;font-weight:600;text-decoration:none;">
+          ↗ Abrir documento en SharePoint
+        </a>
+        <small style="color:#d1d5db;font-size:11px;">${e.message}</small>
       </div>`;
   }
 }

@@ -120,17 +120,33 @@ async function getAttachmentBlobUrl(downloadUrl, serverRelativeUrl) {
 
   const token = await getSharePointToken();
 
-  // Usar endpoint REST /_api/web/getfilebyserverrelativeurl(...)/$value
-  // que tiene CORS habilitado correctamente
+  // Extraer path relativo sin el dominio
   const relUrl = serverRelativeUrl ||
-    downloadUrl.replace(CONFIG.sharePointSite, ""); // /sites/DOM/Lists/.../file.pdf
+    downloadUrl.replace("https://mdonihue.sharepoint.com", "");
 
-  const apiUrl = `${SP_BASE}/web/getfilebyserverrelativeurl('${encodeURIComponent(relUrl)}')/$value`;
+  // IMPORTANTE: NO usar encodeURIComponent — SharePoint necesita el path sin codificar
+  // Solo escapar comillas simples si las hay
+  const safeRelUrl = relUrl.replace(/'/g, "''");
+  const apiUrl = `${SP_BASE}/web/getfilebyserverrelativeurl('${safeRelUrl}')/$value`;
 
   const res = await fetch(apiUrl, {
-    headers: { Authorization: `Bearer ${token}`, Accept: "*/*" }
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/octet-stream, */*"
+    }
   });
-  if (!res.ok) throw new Error(`Error ${res.status} al descargar: ${relUrl}`);
+
+  if (!res.ok) {
+    // Intentar con la URL directa como fallback
+    const res2 = await fetch(downloadUrl, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res2.ok) throw new Error(`No se pudo descargar el archivo (${res.status})`);
+    const blob2 = await res2.blob();
+    const blobUrl2 = URL.createObjectURL(blob2);
+    _blobCache[cacheKey] = blobUrl2;
+    return blobUrl2;
+  }
 
   const blob = await res.blob();
   const blobUrl = URL.createObjectURL(blob);
