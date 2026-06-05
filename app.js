@@ -545,23 +545,50 @@ async function renderDirector() {
 function renderDirSidebar() {
   const counts = {};
   state.solicitudes.forEach(s => { counts[s.Estado] = (counts[s.Estado]||0)+1; });
-  const estados = [
-    { e:"Todos",     icon:"📊", color:"#1a3a6b" },
-    { e:"Devuelta",  icon:"↩️", color:"#b91c1c", urgente:true },
-    { e:"Ingresada", icon:"📥", color:"#1d4ed8" },
-    { e:"Respondida",icon:"✅", color:"#15803d" },
-    { e:"Derivada",  icon:"📤", color:"#b45309" },
-    { e:"En Proceso",icon:"⚙️", color:"#0e7490" },
-    { e:"Cerrada",   icon:"🔒", color:"#6b7280" }
+
+  const stats = [
+    { e:"Ingresada",  icon:"📥", bg:"#dbeafe", tc:"#1d4ed8" },
+    { e:"Derivada",   icon:"📤", bg:"#fef3c7", tc:"#b45309" },
+    { e:"En Proceso", icon:"⚙️", bg:"#cffafe", tc:"#0e7490" },
+    { e:"Respondida", icon:"✅", bg:"#dcfce7", tc:"#15803d" },
+    { e:"Devuelta",   icon:"↩️", bg:"#fee2e2", tc:"#b91c1c" },
+    { e:"Cerrada",    icon:"🔒", bg:"#f3f4f6", tc:"#4b5563" }
   ];
+
   const sidebar = document.getElementById("dir-sidebar");
-  sidebar.innerHTML = estados.map(({e,icon,urgente}) => `
-    <button class="dir-estado-btn ${state.filtroEstado===e?'activo':''} ${urgente&&(counts[e]||0)>0?'urgente':''}"
-      onclick="filtrarDirector('${e}')">
-      <span class="est-icon">${icon}</span>
-      <span class="est-label">${e}</span>
-      <span class="est-count">${e==='Todos'?state.solicitudes.length:(counts[e]||0)}</span>
-    </button>`).join("");
+  sidebar.innerHTML = `
+    <!-- Botón Todos -->
+    <button onclick="filtrarDirector('Todos')"
+      style="width:100%;margin-bottom:8px;padding:8px 12px;border-radius:8px;border:1.5px solid ${state.filtroEstado==='Todos'?'var(--azul)':'var(--borde)'};
+             background:${state.filtroEstado==='Todos'?'var(--azul)':'white'};color:${state.filtroEstado==='Todos'?'white':'var(--texto)'};
+             font-size:12px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+      <span>📊 Todas las solicitudes</span>
+      <span style="background:${state.filtroEstado==='Todos'?'rgba(255,255,255,0.25)':'var(--gris-bg)'};padding:2px 8px;border-radius:10px;font-weight:700;">
+        ${state.solicitudes.length}
+      </span>
+    </button>
+
+    <!-- Grid 2x3 de estados -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+      ${stats.map(({e,icon,bg,tc}) => {
+        const cnt = counts[e]||0;
+        const activo = state.filtroEstado === e;
+        const urgente = e==="Devuelta" && cnt>0;
+        return `
+        <div onclick="filtrarDirector('${e}')"
+          style="background:${activo?tc:bg};border-radius:10px;padding:10px 8px;text-align:center;cursor:pointer;
+                 border:2px solid ${activo?tc:urgente?'#fca5a5':'transparent'};
+                 transition:all 0.18s;box-shadow:${activo?'0 2px 8px rgba(0,0,0,0.15)':'none'};"
+          onmouseenter="this.style.transform='translateY(-2px)'"
+          onmouseleave="this.style.transform=''">
+          <div style="font-size:16px;margin-bottom:3px;">${icon}</div>
+          <div style="font-size:20px;font-weight:800;color:${activo?'white':tc};line-height:1;">${cnt}</div>
+          <div style="font-size:10px;color:${activo?'rgba(255,255,255,0.85)':tc};margin-top:2px;font-weight:500;">${e}</div>
+          ${urgente&&!activo?`<div style="font-size:9px;color:#b91c1c;font-weight:700;">⚠️ urgente</div>`:''}
+        </div>`;
+      }).join("")}
+    </div>
+    <div style="text-align:center;font-size:11px;color:#9ca3af;margin-top:8px;">Total: ${state.solicitudes.length}</div>`;
 }
 
 function filtrarDirector(estado) {
