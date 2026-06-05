@@ -243,41 +243,69 @@ function renderFormNueva() {
   const cont = document.getElementById("panel-nueva");
   cont.innerHTML = `
     <div class="form-nueva">
-      <div class="form-row">
-        <div class="form-group">
-          <label>* Nro Solicitud</label>
-          <input type="text" id="nueva-nro" placeholder="Ej: 15-156">
+
+      <!-- Sección datos -->
+      <div style="background:#f0f4ff;border-radius:10px;padding:14px;margin-bottom:4px;">
+        <div style="font-size:12px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">📋 Datos de la Solicitud</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>* Nro Solicitud</label>
+            <input type="text" id="nueva-nro" placeholder="Ej: 16-157" style="font-weight:600;">
+          </div>
+          <div class="form-group">
+            <label>* Fecha Recepción</label>
+            <input type="date" id="nueva-fecha" value="${new Date().toISOString().split('T')[0]}">
+          </div>
         </div>
         <div class="form-group">
-          <label>* Fecha Recepción</label>
-          <input type="date" id="nueva-fecha" value="${new Date().toISOString().split('T')[0]}">
+          <label>* Nombre Solicitante</label>
+          <input type="text" id="nueva-solicitante" placeholder="Nombre completo del solicitante">
+        </div>
+        <div class="form-group">
+          <label>* Dirección</label>
+          <input type="text" id="nueva-dir" placeholder="Calle, número, villa/sector">
+        </div>
+        <div class="form-group">
+          <label>Descripción de la solicitud</label>
+          <textarea id="nueva-solicitud" rows="3" placeholder="Resumen del motivo de la solicitud..."></textarea>
         </div>
       </div>
-      <div class="form-group">
-        <label>* Solicitante</label>
-        <input type="text" id="nueva-solicitante" placeholder="Nombre completo">
-      </div>
-      <div class="form-group">
-        <label>* Dirección</label>
-        <input type="text" id="nueva-dir" placeholder="Dirección del inmueble">
-      </div>
-      <div class="form-group">
-        <label>Solicitud (descripción)</label>
-        <textarea id="nueva-solicitud" placeholder="Descripción de la solicitud..."></textarea>
-      </div>
-      <div class="form-group">
-        <label>Adjuntos</label>
-        <div class="upload-area" onclick="document.getElementById('nueva-files').click()" id="drop-area">
-          📎 Haz clic para adjuntar PDF o imágenes
+
+      <!-- Sección adjunto -->
+      <div style="background:#fff8f0;border-radius:10px;padding:14px;border:1.5px dashed #f59e0b;">
+        <div style="font-size:12px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">📎 Documento Adjunto</div>
+        <div id="drop-area" class="upload-area"
+          onclick="document.getElementById('nueva-files').click()"
+          ondragover="event.preventDefault();this.style.background='#fef3c7'"
+          ondragleave="this.style.background=''"
+          ondrop="event.preventDefault();handleFiles(event.dataTransfer.files)">
+          <div style="font-size:36px;margin-bottom:8px;">📄</div>
+          <div style="font-weight:600;margin-bottom:4px;">Arrastra el PDF aquí</div>
+          <div style="font-size:12px;color:#9ca3af;">o haz clic para seleccionar — PDF, JPG, PNG</div>
         </div>
         <input type="file" id="nueva-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFiles(this.files)">
-        <div class="file-list" id="file-list"></div>
+        <div id="file-list" class="file-list"></div>
+        <div id="pdf-preview" style="margin-top:10px;"></div>
       </div>
-      <div class="btn-row">
-        <button class="btn-primary" onclick="guardarSolicitud()">💾 Guardar</button>
-        <button class="btn-danger" onclick="limpiarFormNueva()">🗑 Limpiar</button>
+
+      <!-- Botones -->
+      <div class="btn-row" style="margin-top:4px;">
+        <button class="btn-primary" onclick="guardarSolicitud()" style="flex:2;">
+          💾 Guardar Solicitud
+        </button>
+        <button onclick="limpiarFormNueva()" style="flex:1;padding:12px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:14px;">
+          🗑 Limpiar
+        </button>
       </div>
     </div>`;
+
+  // Drag & drop visual en toda la zona
+  const dropArea = document.getElementById("drop-area");
+  if (dropArea) {
+    dropArea.addEventListener("dragover", e => { e.preventDefault(); dropArea.style.background = "#fef3c7"; });
+    dropArea.addEventListener("dragleave", () => { dropArea.style.background = ""; });
+    dropArea.addEventListener("drop", e => { e.preventDefault(); dropArea.style.background = ""; handleFiles(e.dataTransfer.files); });
+  }
 }
 
 function handleFiles(files) {
@@ -288,13 +316,46 @@ function handleFiles(files) {
 function updateFileList() {
   const list = document.getElementById("file-list");
   const area = document.getElementById("drop-area");
+  const preview = document.getElementById("pdf-preview");
   if (!list) return;
-  list.innerHTML = state.adjuntosNueva.map((f, i) => `
-    <div class="file-item">
-      <span>${f.name} (${(f.size/1024).toFixed(0)}KB)</span>
-      <button onclick="removeFile(${i})">✕</button>
-    </div>`).join("");
-  if (area) area.className = `upload-area ${state.adjuntosNueva.length > 0 ? 'has-file' : ''}`;
+
+  list.innerHTML = state.adjuntosNueva.map((f, i) => {
+    const isPdf = f.name.toLowerCase().endsWith('.pdf');
+    const isImg = /\.(jpg|jpeg|png)$/i.test(f.name);
+    const icon = isPdf ? '📄' : isImg ? '🖼️' : '📎';
+    return `
+    <div class="file-item" style="border-left:3px solid ${isPdf?'#ef4444':isImg?'#3b82f6':'#6b7280'};">
+      <span>${icon} <strong>${f.name}</strong> <span style="color:#9ca3af">(${(f.size/1024).toFixed(0)} KB)</span></span>
+      <button onclick="removeFile(${i})" title="Quitar">✕</button>
+    </div>`;
+  }).join("");
+
+  // Preview del primer PDF
+  if (preview) {
+    const pdf = state.adjuntosNueva.find(f => f.name.toLowerCase().endsWith('.pdf'));
+    if (pdf) {
+      const url = URL.createObjectURL(pdf);
+      preview.innerHTML = `
+        <div style="font-size:12px;color:#b45309;font-weight:600;margin-bottom:6px;">Vista previa del documento:</div>
+        <iframe src="${url}" style="width:100%;height:280px;border:1px solid var(--borde);border-radius:8px;"></iframe>`;
+    } else {
+      const img = state.adjuntosNueva.find(f => /\.(jpg|jpeg|png)$/i.test(f.name));
+      if (img) {
+        const url = URL.createObjectURL(img);
+        preview.innerHTML = `
+          <div style="font-size:12px;color:#b45309;font-weight:600;margin-bottom:6px;">Vista previa:</div>
+          <img src="${url}" style="width:100%;border-radius:8px;border:1px solid var(--borde);max-height:280px;object-fit:contain;">`;
+      } else {
+        preview.innerHTML = "";
+      }
+    }
+  }
+
+  if (area) {
+    area.style.display = state.adjuntosNueva.length > 0 ? "none" : "flex";
+    area.style.flexDirection = "column";
+    area.style.alignItems = "center";
+  }
 }
 
 function removeFile(idx) {
