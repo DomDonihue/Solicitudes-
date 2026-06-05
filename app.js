@@ -1193,139 +1193,239 @@ async function exportarExcel() {
 // ===== HELPERS =====
 function seleccionarSolicitud(id) {
   const sol = state.solicitudes.find(s => s.id === id);
+  if (!sol) return;
+
+  // Si ya estaba seleccionada, deseleccionar y volver al form nuevo
+  if (state.solicitudSeleccionada?.id === id) {
+    state.solicitudSeleccionada = null;
+    renderListaSolicitudes();
+    renderFormNueva();
+    return;
+  }
+
   state.solicitudSeleccionada = sol;
   renderListaSolicitudes();
-  // Cargar en formulario para ver/editar
-  if (sol) cargarSolicitudEnFormulario(sol);
+  cargarSolicitudEnFormulario(sol);
 }
 
 function cargarSolicitudEnFormulario(sol) {
+  // ── Header dinámico: modo edición vs solo lectura ──
+  const editable = sol.Estado === CONFIG.estados.INGRESADA;
   const header = document.getElementById("form-panel-header");
-  if (header) header.innerHTML = `
-    <span>📄 ${sol.NroSolicitud}</span>
-    <span class="estado-badge estado-${sol.Estado}" style="margin-left:8px;">${sol.Estado}</span>
-    <button onclick="renderFormNueva()" style="margin-left:auto;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px;">➕ Nueva</button>`;
-  if (header) Object.assign(header.style, { display:"flex", alignItems:"center", gap:"8px", background:"linear-gradient(90deg,#0f2547,#1a3a6b)" });
+  if (header) {
+    header.style.cssText = "display:flex;align-items:center;gap:10px;padding:12px 16px;";
+    header.style.background = editable
+      ? "linear-gradient(90deg,#14532d,#16a34a)"   // verde = editable
+      : "linear-gradient(90deg,#0f2547,#1a3a6b)";  // azul  = solo lectura
+    header.innerHTML = `
+      <span style="font-size:15px;">${editable ? '✏️' : '👁️'}</span>
+      <span style="font-weight:700;font-size:15px;">${editable ? 'Editando' : 'Viendo'} Solicitud</span>
+      <span style="font-size:18px;font-weight:800;letter-spacing:0.5px;">#${sol.NroSolicitud}</span>
+      <span class="estado-badge estado-${sol.Estado}" style="margin-left:4px;">${sol.Estado}</span>
+      <button onclick="limpiarSeleccion()" title="Cerrar y crear nueva"
+        style="margin-left:auto;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);
+               color:white;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">
+        ✕ Cerrar
+      </button>`;
+  }
+
+  // ── Banner de modo edición ──
+  const bannerHtml = editable
+    ? `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;
+                   display:flex;align-items:center;gap:10px;font-size:13px;color:#15803d;">
+         <span style="font-size:20px;">✏️</span>
+         <div>
+           <strong>Modo edición activo</strong><br>
+           <span style="font-size:12px;">Puedes modificar los datos y guardar los cambios.</span>
+         </div>
+       </div>`
+    : `<div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;
+                   display:flex;align-items:center;gap:10px;font-size:13px;color:#64748b;">
+         <span style="font-size:20px;">👁️</span>
+         <div>
+           <strong>Solicitud en estado "${sol.Estado}"</strong> — solo lectura<br>
+           <span style="font-size:12px;">Los datos no pueden modificarse en este estado.</span>
+         </div>
+       </div>`;
 
   const cont = document.getElementById("panel-nueva");
-  const soloLectura = sol.Estado !== CONFIG.estados.INGRESADA;
   cont.innerHTML = `
     <div class="form-nueva">
 
-      <!-- Datos -->
+      ${bannerHtml}
+
+      <!-- ── Datos ── -->
       <div class="form-section">
         <div class="form-section-header">📋 Datos de la Solicitud</div>
         <div class="form-section-body">
           <div class="form-row">
             <div class="form-group">
               <label>Nro Solicitud</label>
-              <input type="text" id="nueva-nro" value="${sol.NroSolicitud||''}" ${soloLectura?'readonly':''}>
+              <input type="text" id="nueva-nro" value="${sol.NroSolicitud||''}" ${editable?'':'readonly'}>
             </div>
             <div class="form-group">
               <label>Fecha Recepción</label>
-              <input type="date" id="nueva-fecha" value="${sol.FechaRecepcion?.split('T')[0]||''}" ${soloLectura?'readonly':''}>
+              <input type="date" id="nueva-fecha" value="${sol.FechaRecepcion?.split('T')[0]||''}" ${editable?'':'readonly'}>
             </div>
           </div>
           <div class="form-group">
             <label>Nombre Solicitante</label>
-            <input type="text" id="nueva-solicitante" value="${sol.Solicitante||''}" ${soloLectura?'readonly':''}>
+            <input type="text" id="nueva-solicitante" value="${sol.Solicitante||''}" ${editable?'':'readonly'}>
           </div>
           <div class="form-group">
             <label>Dirección</label>
-            <input type="text" id="nueva-dir" value="${sol.Direccion||''}" ${soloLectura?'readonly':''}>
+            <input type="text" id="nueva-dir" value="${sol.Direccion||''}" ${editable?'':'readonly'}>
           </div>
           <div class="form-group">
             <label>Descripción de la solicitud</label>
-            <textarea id="nueva-solicitud" rows="3" ${soloLectura?'readonly':''}>${sol.Solicitud||''}</textarea>
+            <textarea id="nueva-solicitud" rows="3" ${editable?'':'readonly'}>${sol.Solicitud||''}</textarea>
           </div>
-          ${sol.UnidadDerivada?`<div class="form-group"><label>Unidad Derivada</label><input type="text" value="${sol.UnidadDerivada}" readonly style="color:#b45309;font-weight:700;"></div>`:''}
-          ${sol.MotivoDevolucion?`<div class="form-group"><label>↩️ Motivo Devolución</label><textarea rows="2" readonly style="color:#b91c1c;background:#fff5f5;">${sol.MotivoDevolucion}</textarea></div>`:''}
+          ${sol.UnidadDerivada?`
+          <div class="form-group">
+            <label>📤 Unidad Derivada</label>
+            <input type="text" value="${sol.UnidadDerivada}" readonly style="color:#b45309;font-weight:700;">
+          </div>`:''}
+          ${sol.MotivoDevolucion?`
+          <div class="form-group">
+            <label>↩️ Motivo de Devolución</label>
+            <textarea rows="2" readonly style="color:#b91c1c;background:#fff5f5;border-color:#fca5a5;">${sol.MotivoDevolucion}</textarea>
+          </div>`:''}
         </div>
       </div>
 
-      <!-- Adjuntos -->
+      <!-- ── Adjuntos ── -->
       <div class="form-section">
         <div class="form-section-header naranja">📎 Documentos Adjuntos</div>
         <div class="form-section-body">
-          <div id="adjuntos-existentes"><div style="text-align:center;color:#9ca3af;padding:16px;">Cargando adjuntos...</div></div>
-          ${!soloLectura?`
-          <div id="drop-area" class="upload-area" style="margin-top:10px;" onclick="document.getElementById('nueva-files').click()">
-            <div style="font-size:28px;">📄</div><div style="font-size:13px;font-weight:600;">Agregar más documentos</div>
+          <div id="adjuntos-existentes">
+            <div style="text-align:center;color:#9ca3af;padding:16px;font-size:13px;">⏳ Cargando adjuntos...</div>
           </div>
-          <input type="file" id="nueva-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFiles(this.files)">
-          <div id="file-list" class="file-list"></div>`:''}
+          ${editable?`
+          <div style="margin-top:12px;border-top:1px solid var(--borde);padding-top:12px;">
+            <div style="font-size:12px;color:#b45309;font-weight:600;margin-bottom:8px;">➕ Agregar nuevos documentos</div>
+            <div id="drop-area" class="upload-area" onclick="document.getElementById('nueva-files').click()"
+              ondragover="event.preventDefault()" ondrop="event.preventDefault();handleFiles(event.dataTransfer.files)">
+              <div style="font-size:28px;">📄</div>
+              <div style="font-size:13px;font-weight:600;">Arrastra o haz clic para subir</div>
+            </div>
+            <input type="file" id="nueva-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFiles(this.files)">
+            <div id="file-list" class="file-list"></div>
+          </div>`:''}
         </div>
       </div>
 
-      <!-- Historial -->
+      <!-- ── Historial ── -->
       <div class="form-section">
-        <div class="form-section-header verde">🕐 Historial de la Solicitud</div>
-        <div class="form-section-body" id="historial-inline" style="max-height:220px;overflow-y:auto;">
-          <div style="text-align:center;color:#9ca3af;padding:16px;">Cargando historial...</div>
+        <div class="form-section-header verde">🕐 Historial de Movimientos</div>
+        <div class="form-section-body" id="historial-inline" style="max-height:240px;overflow-y:auto;padding:8px 16px;">
+          <div style="text-align:center;color:#9ca3af;padding:16px;font-size:13px;">⏳ Cargando historial...</div>
         </div>
       </div>
 
-      <!-- Acciones -->
-      ${!soloLectura?`
-      <div style="display:flex;justify-content:center;gap:12px;padding:4px 0 8px;">
-        <button class="btn-primary" onclick="guardarEdicionSolicitud('${sol.id}')" style="width:220px;padding:13px;">💾 Guardar Cambios</button>
-        <button onclick="renderFormNueva()" style="padding:10px 20px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#666;">✕ Cancelar</button>
+      <!-- ── Botones ── -->
+      ${editable?`
+      <div style="display:flex;justify-content:center;gap:12px;padding:8px 0 12px;">
+        <button class="btn-primary" onclick="guardarEdicionSolicitud('${sol.id}')"
+          style="width:220px;padding:13px;font-size:15px;">
+          💾 Guardar Cambios
+        </button>
+        <button onclick="limpiarSeleccion()"
+          style="padding:12px 22px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#666;">
+          ✕ Cancelar
+        </button>
       </div>` : `
-      <div style="display:flex;justify-content:center;padding:8px 0;">
-        <button onclick="renderFormNueva()" style="padding:10px 24px;border:1.5px solid var(--azul);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:var(--azul);font-weight:600;">➕ Ingresar nueva solicitud</button>
+      <div style="display:flex;justify-content:center;padding:12px 0;">
+        <button onclick="limpiarSeleccion()"
+          style="padding:11px 28px;border:1.5px solid var(--azul);border-radius:8px;background:white;
+                 cursor:pointer;font-size:13px;color:var(--azul);font-weight:600;">
+          ➕ Ingresar nueva solicitud
+        </button>
       </div>`}
     </div>`;
 
-  // Cargar adjuntos existentes
+  // ── Cargar adjuntos ──
   getListItemAttachments(CONFIG.lists.solicitudes, sol.id).then(atts => {
-    const cont2 = document.getElementById("adjuntos-existentes");
-    if (!cont2) return;
-    if (atts.length === 0) {
-      cont2.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;">Sin documentos adjuntos</p>`;
+    const c = document.getElementById("adjuntos-existentes");
+    if (!c) return;
+    if (!atts.length) {
+      c.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;padding:8px;">Sin documentos adjuntos</p>`;
       return;
     }
     const pdfs = atts.filter(a => a.name?.toLowerCase().endsWith('.pdf'));
     const imgs = atts.filter(a => /\.(jpg|jpeg|png)$/i.test(a.name));
-    cont2.innerHTML = `
+    c.innerHTML = `
       ${pdfs.map(p=>`
-        <div style="margin-bottom:8px;">
-          <div style="font-size:12px;color:#666;margin-bottom:4px;">📄 ${p.name}</div>
-          <iframe src="${p.downloadUrl}" style="width:100%;height:300px;border:1px solid var(--borde);border-radius:8px;"></iframe>
+        <div style="margin-bottom:10px;">
+          <div style="font-size:12px;color:#666;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+            📄 <strong>${p.name}</strong>
+            <a href="${p.downloadUrl}" target="_blank" style="margin-left:auto;font-size:11px;color:var(--azul);">Abrir ↗</a>
+          </div>
+          <iframe src="${p.downloadUrl}" style="width:100%;height:320px;border:1px solid var(--borde);border-radius:8px;"></iframe>
         </div>`).join('')}
       ${imgs.map(i=>`
-        <div style="margin-bottom:8px;">
+        <div style="margin-bottom:10px;">
           <div style="font-size:12px;color:#666;margin-bottom:4px;">🖼️ ${i.name}</div>
-          <img src="${i.downloadUrl}" style="width:100%;border-radius:8px;border:1px solid var(--borde);" onclick="window.open('${i.downloadUrl}','_blank')">
+          <img src="${i.downloadUrl}" style="width:100%;border-radius:8px;border:1px solid var(--borde);cursor:zoom-in;"
+            onclick="window.open('${i.downloadUrl}','_blank')">
         </div>`).join('')}`;
   }).catch(() => {
     const c = document.getElementById("adjuntos-existentes");
-    if (c) c.innerHTML = `<p style="color:#9ca3af;font-size:13px;">No se pudieron cargar los adjuntos</p>`;
+    if (c) c.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;">No se pudieron cargar los adjuntos</p>`;
   });
 
-  // Cargar historial inline
+  // ── Cargar historial ──
   getHistorialBySolicitud(sol.NroSolicitud).then(hist => {
     const hc = document.getElementById("historial-inline");
     if (!hc) return;
     hist.sort((a,b) => new Date(b.FechaAccion) - new Date(a.FechaAccion));
-    if (hist.length === 0) {
+    if (!hist.length) {
       hc.innerHTML = `<p style="text-align:center;color:#9ca3af;font-size:13px;padding:12px;">Sin historial registrado</p>`;
       return;
     }
-    const colorAccion = a => a?.includes('deriv')?'#f59e0b':a?.includes('respond')?'#22c55e':a?.includes('devuel')?'#ef4444':a?.includes('cerr')?'#6b7280':'#3b82f6';
-    hc.innerHTML = hist.map(h => `
-      <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
-        <div style="width:10px;height:10px;border-radius:50%;background:${colorAccion(h.Accion?.toLowerCase())};margin-top:4px;flex-shrink:0;"></div>
-        <div style="flex:1;">
-          <div style="font-size:13px;font-weight:600;color:#222;">${h.Accion}</div>
-          <div style="font-size:12px;color:#888;">${formatFechaHora(h.FechaAccion)} · ${h.UsuarioAccion||''} ${h.Unidad?'· '+h.Unidad:''}</div>
-          ${h.Observaciones?`<div style="font-size:12px;color:#555;margin-top:2px;font-style:italic;">"${h.Observaciones}"</div>`:''}
-          ${h.EstadoAnterior?`<div style="font-size:11px;color:#aaa;margin-top:2px;">${h.EstadoAnterior} → ${h.EstadoNuevo}</div>`:''}
+    const dotColor = a => {
+      a = a?.toLowerCase()||'';
+      if (a.includes('deriv'))   return '#f59e0b';
+      if (a.includes('respond')) return '#22c55e';
+      if (a.includes('devuel'))  return '#ef4444';
+      if (a.includes('cerr'))    return '#6b7280';
+      return '#3b82f6';
+    };
+    hc.innerHTML = hist.map((h,i) => `
+      <div style="display:flex;gap:12px;padding:10px 0;${i<hist.length-1?'border-bottom:1px solid #f3f4f6':''}">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <div style="width:12px;height:12px;border-radius:50%;background:${dotColor(h.Accion)};flex-shrink:0;margin-top:2px;"></div>
+          ${i<hist.length-1?`<div style="width:2px;flex:1;background:#f0f0f0;margin-top:2px;"></div>`:''}
+        </div>
+        <div style="flex:1;padding-bottom:4px;">
+          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">${h.Accion}</div>
+          <div style="font-size:11px;color:#888;margin-top:1px;">
+            📅 ${formatFechaHora(h.FechaAccion)}
+            ${h.UsuarioAccion?`· 👤 ${h.UsuarioAccion}`:''}
+            ${h.Unidad?`· 🏢 ${h.Unidad}`:''}
+          </div>
+          ${h.EstadoAnterior?`<div style="font-size:11px;color:#aaa;margin-top:2px;">
+            <span class="estado-badge estado-${h.EstadoAnterior}" style="font-size:10px;">${h.EstadoAnterior}</span>
+            → <span class="estado-badge estado-${h.EstadoNuevo}" style="font-size:10px;">${h.EstadoNuevo}</span>
+          </div>`:''}
+          ${h.Observaciones?`<div style="font-size:12px;color:#4b5563;margin-top:4px;padding:6px 8px;background:#f9fafb;border-left:3px solid ${dotColor(h.Accion)};border-radius:0 4px 4px 0;">"${h.Observaciones}"</div>`:''}
         </div>
       </div>`).join('');
   }).catch(() => {
     const hc = document.getElementById("historial-inline");
     if (hc) hc.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;">No se pudo cargar el historial</p>`;
   });
+}
+
+function limpiarSeleccion() {
+  state.solicitudSeleccionada = null;
+  state.adjuntosNueva = [];
+  renderListaSolicitudes();
+  renderFormNueva();
+  const header = document.getElementById("form-panel-header");
+  if (header) {
+    header.textContent = "➕ Nueva Solicitud";
+    header.style.cssText = "";
+  }
 }
 
 async function guardarEdicionSolicitud(solId) {
