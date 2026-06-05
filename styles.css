@@ -613,9 +613,9 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 /* ===== DIRECTOR ===== */
 .dir-layout {
   display: grid;
-  grid-template-columns: 280px 1fr 380px;
-  gap: 14px;
-  padding: 14px 18px;
+  grid-template-columns: 220px 1fr 360px;
+  gap: 12px;
+  padding: 12px 16px;
   height: calc(100vh - 120px);
 }
 
@@ -623,31 +623,31 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 .dir-estado-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
   border: 1.5px solid var(--borde);
   background: white;
   cursor: pointer;
-  margin-bottom: 6px;
-  transition: all 0.18s;
+  margin-bottom: 4px;
+  transition: all 0.15s;
   width: 100%;
   text-align: left;
 }
 .dir-estado-btn:hover { border-color: var(--azul-claro); background: #f0f4ff; transform: translateX(2px); }
 .dir-estado-btn.activo { background: var(--azul); border-color: var(--azul); color: white; }
-.dir-estado-btn .est-icon { font-size: 18px; width: 28px; text-align: center; flex-shrink: 0; }
-.dir-estado-btn .est-label { flex: 1; font-size: 13px; font-weight: 500; }
+.dir-estado-btn .est-icon { font-size: 14px; width: 20px; text-align: center; flex-shrink: 0; }
+.dir-estado-btn .est-label { flex: 1; font-size: 12px; font-weight: 500; }
 .dir-estado-btn .est-count {
-  min-width: 28px; height: 22px;
-  border-radius: 11px;
+  min-width: 24px; height: 20px;
+  border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700;
+  font-size: 11px; font-weight: 700;
 }
 .dir-estado-btn:not(.activo) .est-count { background: var(--gris-bg); color: var(--texto); }
 .dir-estado-btn.activo .est-count { background: rgba(255,255,255,0.25); color: white; }
 .dir-estado-btn.urgente { border-color: #fca5a5 !important; background: #fff5f5 !important; }
-.dir-estado-btn.urgente .est-label { color: #b91c1c; }
+.dir-estado-btn.urgente .est-label { color: #b91c1c; font-weight: 700; }
 
 /* Acciones Director */
 .accion-panel {

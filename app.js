@@ -938,15 +938,25 @@ async function cargarHistorialDir(nroSolicitud) {
     hist.sort((a,b)=>new Date(b.FechaAccion)-new Date(a.FechaAccion));
     if (!hist.length) { hc.innerHTML=`<p style="text-align:center;color:#9ca3af;font-size:12px;">Sin historial</p>`; return; }
     const dot = a=>{a=(a||"").toLowerCase();return a.includes('deriv')?'#f59e0b':a.includes('respond')?'#22c55e':a.includes('devuel')?'#ef4444':a.includes('cerr')?'#6b7280':'#3b82f6';};
-    hc.innerHTML = hist.map(h=>`
+    hc.innerHTML = hist.map(h=>{
+      // SharePoint puede devolver campos con nombre interno distinto
+      const accion = h.Accion || h.Title || h.title || "—";
+      const usuario = h.UsuarioAccion || h.UsuarioAccion0 || "";
+      const unidad  = h.Unidad || "";
+      const obs     = h.Observaciones || "";
+      const fecha   = h.FechaAccion || h.Modified || "";
+      const estAnt  = h.EstadoAnterior || "";
+      const estNuevo= h.EstadoNuevo || "";
+      return `
       <div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #f3f4f6;">
-        <div style="width:8px;height:8px;border-radius:50%;background:${dot(h.Accion)};margin-top:4px;flex-shrink:0;"></div>
+        <div style="width:8px;height:8px;border-radius:50%;background:${dot(accion)};margin-top:4px;flex-shrink:0;"></div>
         <div style="flex:1;">
-          <div style="font-size:12px;font-weight:600;">${h.Accion}</div>
-          <div style="font-size:11px;color:#888;">${formatFechaHora(h.FechaAccion)} · ${h.UsuarioAccion||""} ${h.Unidad?'· '+h.Unidad:""}</div>
-          ${h.Observaciones?`<div style="font-size:11px;color:#555;font-style:italic;">"${h.Observaciones}"</div>`:""}
+          <div style="font-size:12px;font-weight:600;color:#1a1a1a;">${accion}</div>
+          <div style="font-size:11px;color:#888;">${formatFechaHora(fecha)}${usuario?' · '+usuario:''}${unidad?' · '+unidad:''}</div>
+          ${estAnt?`<div style="font-size:10px;color:#aaa;">${estAnt} → ${estNuevo}</div>`:""}
+          ${obs?`<div style="font-size:11px;color:#555;font-style:italic;">"${obs}"</div>`:""}
         </div>
-      </div>`).join("");
+      </div>`;}).join("");
   } catch(e) {
     hc.innerHTML=`<p style="color:#9ca3af;font-size:12px;text-align:center;">Error al cargar historial</p>`;
   }
@@ -1659,26 +1669,34 @@ function cargarSolicitudEnFormulario(sol) {
       if (a.includes('cerr'))    return '#6b7280';
       return '#3b82f6';
     };
-    hc.innerHTML = hist.map((h,i) => `
+    hc.innerHTML = hist.map((h,i) => {
+      const accion  = h.Accion||h.Title||h.title||"—";
+      const usuario = h.UsuarioAccion||"";
+      const unidad  = h.Unidad||"";
+      const obs     = h.Observaciones||"";
+      const fecha   = h.FechaAccion||h.Modified||"";
+      const estAnt  = h.EstadoAnterior||"";
+      const estNuevo= h.EstadoNuevo||"";
+      return `
       <div style="display:flex;gap:12px;padding:10px 0;${i<hist.length-1?'border-bottom:1px solid #f3f4f6':''}">
         <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-          <div style="width:12px;height:12px;border-radius:50%;background:${dotColor(h.Accion)};flex-shrink:0;margin-top:2px;"></div>
+          <div style="width:12px;height:12px;border-radius:50%;background:${dotColor(accion)};flex-shrink:0;margin-top:2px;"></div>
           ${i<hist.length-1?`<div style="width:2px;flex:1;background:#f0f0f0;margin-top:2px;"></div>`:''}
         </div>
         <div style="flex:1;padding-bottom:4px;">
-          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">${h.Accion}</div>
+          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">${accion}</div>
           <div style="font-size:11px;color:#888;margin-top:1px;">
-            📅 ${formatFechaHora(h.FechaAccion)}
-            ${h.UsuarioAccion?`· 👤 ${h.UsuarioAccion}`:''}
-            ${h.Unidad?`· 🏢 ${h.Unidad}`:''}
+            📅 ${formatFechaHora(fecha)}
+            ${usuario?`· 👤 ${usuario}`:''}
+            ${unidad?`· 🏢 ${unidad}`:''}
           </div>
-          ${h.EstadoAnterior?`<div style="font-size:11px;color:#aaa;margin-top:2px;">
-            <span class="estado-badge estado-${h.EstadoAnterior}" style="font-size:10px;">${h.EstadoAnterior}</span>
-            → <span class="estado-badge estado-${h.EstadoNuevo}" style="font-size:10px;">${h.EstadoNuevo}</span>
+          ${estAnt?`<div style="font-size:11px;color:#aaa;margin-top:2px;">
+            <span class="estado-badge estado-${estAnt}" style="font-size:10px;">${estAnt}</span>
+            → <span class="estado-badge estado-${estNuevo}" style="font-size:10px;">${estNuevo}</span>
           </div>`:''}
-          ${h.Observaciones?`<div style="font-size:12px;color:#4b5563;margin-top:4px;padding:6px 8px;background:#f9fafb;border-left:3px solid ${dotColor(h.Accion)};border-radius:0 4px 4px 0;">"${h.Observaciones}"</div>`:''}
+          ${obs?`<div style="font-size:12px;color:#4b5563;margin-top:4px;padding:6px 8px;background:#f9fafb;border-left:3px solid ${dotColor(accion)};border-radius:0 4px 4px 0;">"${obs}"</div>`:''}
         </div>
-      </div>`).join('');
+      </div>`;}).join('');
   }).catch(() => {
     const hc = document.getElementById("historial-inline");
     if (hc) hc.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;">No se pudo cargar el historial</p>`;

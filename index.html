@@ -160,26 +160,25 @@
       <div class="dir-layout">
 
         <!-- COL 1: Sidebar estados + lista -->
-        <div style="display:flex;flex-direction:column;gap:12px;overflow:hidden;">
-          <!-- Resumen de estados -->
+        <div style="display:flex;flex-direction:column;gap:10px;overflow:hidden;">
+          <!-- Estados compactos -->
           <div class="panel" style="flex-shrink:0;">
-            <div class="panel-header" style="background:linear-gradient(90deg,#0f2547,#1a3a6b);color:white;">
-              📊 Panel del Director
+            <div class="panel-header" style="background:linear-gradient(90deg,#0f2547,#1a3a6b);color:white;padding:10px 14px;font-size:13px;">
+              🏛️ Panel Director
             </div>
-            <div id="dir-sidebar" style="padding:12px;"></div>
+            <div id="dir-sidebar" style="padding:8px;"></div>
           </div>
-          <!-- Lista solicitudes -->
+          <!-- Búsqueda + Lista -->
           <div class="panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
-            <div class="panel-header">
-              📋 Solicitudes
-              <span id="dir-lista-count" style="font-size:12px;font-weight:400;color:#888;margin-left:6px;"></span>
+            <div style="padding:6px 8px;border-bottom:1px solid var(--borde);">
+              <input type="text" id="dir-buscar" placeholder="🔍 Buscar..."
+                style="width:100%;padding:7px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12px;">
             </div>
-            <div style="padding:8px;border-bottom:1px solid var(--borde);">
-              <input type="text" id="dir-buscar" placeholder="🔍 Buscar por nro, nombre, dirección..."
-                style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;">
+            <div style="padding:4px 8px;font-size:11px;color:#888;font-weight:600;letter-spacing:0.3px;border-bottom:1px solid var(--borde);">
+              SOLICITUDES <span id="dir-lista-count"></span>
             </div>
-            <div style="flex:1;overflow-y:auto;padding:8px;" id="dir-lista-cards"></div>
-            <div id="dir-paginacion" class="paginacion"></div>
+            <div style="flex:1;overflow-y:auto;padding:6px;" id="dir-lista-cards"></div>
+            <div id="dir-paginacion" class="paginacion" style="padding:8px 10px;font-size:12px;"></div>
           </div>
         </div>
 
