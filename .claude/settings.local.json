@@ -5,7 +5,10 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(where python *)",
       "Bash(where python3 *)",
-      "Bash(where node *)"
+      "Bash(where node *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
