@@ -1376,7 +1376,8 @@ function cargarSolicitudEnFormulario(sol) {
     // Si hay varios adjuntos, mostrar miniaturas abajo
     if (atts.length > 1) {
       const thumbBar = document.createElement("div");
-      thumbBar.style.cssText = "display:flex;gap:6px;padding:6px 0;flex-shrink:0;overflow-x:auto;";
+      thumbBar.className = "thumb-bar";
+      thumbBar.style.cssText = "display:flex;gap:6px;padding:8px 0 2px;flex-shrink:0;overflow-x:auto;border-top:1px solid var(--borde);margin-top:6px;";
       atts.forEach(a => {
         const isPdf = a.name?.toLowerCase().endsWith('.pdf');
         const isImg = /\.(jpg|jpeg|png)$/i.test(a.name||'');
@@ -1388,11 +1389,11 @@ function cargarSolicitudEnFormulario(sol) {
           ? `<img src="${a.downloadUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`
           : '📎';
         thumb.title = a.name;
-        thumb.onclick = () => {
-          document.querySelectorAll(".thumb-active").forEach(t => t.classList.remove("thumb-active"));
+        thumb.onclick = async () => {
+          document.querySelectorAll(".thumb-active").forEach(t => { t.classList.remove("thumb-active"); t.style.borderColor = "var(--borde)"; });
           thumb.style.borderColor = "var(--azul)";
           thumb.classList.add("thumb-active");
-          mostrarEnVisor(a.downloadUrl, a.name, isPdf, sol.NroSolicitud);
+          await mostrarEnVisor(a.downloadUrl, a.name, isPdf, sol.NroSolicitud);
         };
         thumbBar.appendChild(thumb);
       });
@@ -1447,35 +1448,87 @@ function cargarSolicitudEnFormulario(sol) {
   });
 }
 
-function mostrarEnVisor(url, nombre, isPdf, nroSolicitud) {
+async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud) {
   const panel = document.getElementById("pdf-visor-contenido");
   const header = document.getElementById("pdf-panel-header");
   if (!panel) return;
 
-  if (header) header.innerHTML = `📄 ${nroSolicitud} — <span style="font-weight:400;font-size:12px;opacity:0.85;">${nombre}</span>
-    <a href="${url}" target="_blank" style="margin-left:auto;font-size:12px;color:white;opacity:0.8;text-decoration:none;">Abrir ↗</a>`;
-  if (header) header.style.display = "flex";
+  // Header del visor
+  if (header) {
+    header.style.display = "flex";
+    header.innerHTML = `
+      📄 <span style="font-weight:700;">${nroSolicitud}</span>
+      <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;">— ${nombre}</span>
+      <span id="visor-loader" style="margin-left:auto;font-size:12px;opacity:0.7;">⏳ Cargando...</span>`;
+  }
 
-  // Mantener miniaturas si existen
-  const thumbBar = panel.querySelector("div[style*='overflow-x']");
+  // Mantener barra de miniaturas si existe
+  const thumbBar = panel.querySelector(".thumb-bar");
 
-  if (isPdf) {
-    panel.innerHTML = `<iframe src="${url}" class="pdf-frame" style="flex:1;min-height:0;"></iframe>`;
-  } else if (/\.(jpg|jpeg|png|gif)$/i.test(nombre)) {
-    panel.innerHTML = `
-      <div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#525659;border-radius:8px;">
-        <img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;"
-          onclick="window.open('${url}','_blank')" title="Clic para abrir en pantalla completa">
-      </div>`;
-  } else {
+  // Mostrar spinner mientras carga
+  const spinnerEl = document.createElement("div");
+  spinnerEl.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#9ca3af;";
+  spinnerEl.innerHTML = `<div class="spinner"></div><p style="font-size:13px;">Cargando documento...</p>`;
+  panel.innerHTML = "";
+  panel.appendChild(spinnerEl);
+  if (thumbBar) panel.appendChild(thumbBar);
+
+  try {
+    // Si es una blob URL local (nueva solicitud) la usamos directo
+    // Si es URL de SharePoint, descargamos con autenticación
+    let blobUrl = downloadUrl;
+    if (downloadUrl.startsWith("https://") && !downloadUrl.startsWith("blob:")) {
+      blobUrl = await getAttachmentBlobUrl(downloadUrl);
+    }
+
+    // Actualizar header con link de descarga
+    if (header) {
+      header.innerHTML = `
+        📄 <span style="font-weight:700;">${nroSolicitud}</span>
+        <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;">— ${nombre}</span>
+        <a href="${blobUrl}" download="${nombre}"
+          style="margin-left:auto;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);
+                 color:white;padding:4px 12px;border-radius:6px;font-size:12px;text-decoration:none;">
+          ⬇ Descargar
+        </a>`;
+    }
+
+    panel.innerHTML = "";
+    if (isPdf) {
+      const iframe = document.createElement("iframe");
+      iframe.src = blobUrl;
+      iframe.style.cssText = "flex:1;min-height:0;width:100%;border:none;border-radius:8px;";
+      panel.appendChild(iframe);
+    } else if (/\.(jpg|jpeg|png|gif)$/i.test(nombre)) {
+      const wrap = document.createElement("div");
+      wrap.style.cssText = "flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#525659;border-radius:8px;min-height:0;";
+      const img = document.createElement("img");
+      img.src = blobUrl;
+      img.style.cssText = "max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;cursor:zoom-in;";
+      img.title = "Clic para abrir";
+      img.onclick = () => window.open(blobUrl, "_blank");
+      wrap.appendChild(img);
+      panel.appendChild(wrap);
+    } else {
+      panel.innerHTML = `
+        <div class="pdf-visor-empty">
+          <span>📎</span><p>${nombre}</p>
+          <a href="${blobUrl}" download="${nombre}"
+            style="color:var(--azul);font-size:13px;font-weight:600;padding:8px 20px;border:1.5px solid var(--azul);border-radius:8px;">
+            ⬇ Descargar archivo
+          </a>
+        </div>`;
+    }
+    if (thumbBar) panel.appendChild(thumbBar);
+
+  } catch (e) {
     panel.innerHTML = `
       <div class="pdf-visor-empty">
-        <span>📎</span>
-        <p>${nombre}</p>
-        <a href="${url}" target="_blank" style="color:var(--azul);font-size:13px;font-weight:600;">Descargar archivo</a>
+        <span>⚠️</span>
+        <p style="color:#ef4444;">Error al cargar el documento</p>
+        <small style="color:#9ca3af;">${e.message}</small>
       </div>`;
   }
-  if (thumbBar) panel.appendChild(thumbBar);
 }
 
 function limpiarSeleccion() {

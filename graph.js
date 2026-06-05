@@ -111,6 +111,21 @@ async function getListItemAttachments(listName, itemId) {
   }
 }
 
+// Descarga un adjunto con autenticación y retorna una blob URL para mostrar en iframe/img
+const _blobCache = {};
+async function getAttachmentBlobUrl(downloadUrl) {
+  if (_blobCache[downloadUrl]) return _blobCache[downloadUrl];
+  const token = await getSharePointToken();
+  const res = await fetch(downloadUrl, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error(`Error descargando adjunto: ${res.status}`);
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  _blobCache[downloadUrl] = blobUrl;
+  return blobUrl;
+}
+
 async function uploadAttachment(listName, itemId, file) {
   const token = await getSharePointToken();
   const url = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles/add(FileName='${encodeURIComponent(file.name)}')`;
