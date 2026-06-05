@@ -1343,34 +1343,69 @@ function cargarSolicitudEnFormulario(sol) {
       </div>`}
     </div>`;
 
-  // ── Cargar adjuntos ──
+  // ── Cargar adjuntos → panel derecho (visor) + lista en formulario ──
+  const pdfPanel = document.getElementById("pdf-visor-contenido");
+  const pdfHeader = document.getElementById("pdf-panel-header");
+  if (pdfPanel) pdfPanel.innerHTML = `<div style="text-align:center;color:#9ca3af;padding:30px;font-size:13px;">⏳ Cargando documento...</div>`;
+
   getListItemAttachments(CONFIG.lists.solicitudes, sol.id).then(atts => {
+    // Lista compacta en formulario
     const c = document.getElementById("adjuntos-existentes");
-    if (!c) return;
+    if (c) {
+      if (!atts.length) {
+        c.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;padding:8px;">Sin documentos adjuntos</p>`;
+      } else {
+        c.innerHTML = atts.map(a => {
+          const isPdf = a.name?.toLowerCase().endsWith('.pdf');
+          const isImg = /\.(jpg|jpeg|png)$/i.test(a.name||'');
+          return `<div class="file-item" style="cursor:pointer;border-left:3px solid ${isPdf?'#ef4444':isImg?'#3b82f6':'#6b7280'};"
+            onclick="mostrarEnVisor('${a.downloadUrl}','${a.name}',${isPdf},'${sol.NroSolicitud}')">
+            <span>${isPdf?'📄':isImg?'🖼️':'📎'} <strong>${a.name}</strong></span>
+            <span style="font-size:11px;color:var(--azul);">Ver ↗</span>
+          </div>`;
+        }).join('');
+      }
+    }
+
+    // Visor derecho: mostrar primer PDF o imagen
+    if (!pdfPanel) return;
     if (!atts.length) {
-      c.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;padding:8px;">Sin documentos adjuntos</p>`;
+      pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>📭</span><p>Esta solicitud no tiene documentos adjuntos</p></div>`;
+      if (pdfHeader) pdfHeader.textContent = "📄 Sin adjuntos";
       return;
     }
-    const pdfs = atts.filter(a => a.name?.toLowerCase().endsWith('.pdf'));
-    const imgs = atts.filter(a => /\.(jpg|jpeg|png)$/i.test(a.name));
-    c.innerHTML = `
-      ${pdfs.map(p=>`
-        <div style="margin-bottom:10px;">
-          <div style="font-size:12px;color:#666;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
-            📄 <strong>${p.name}</strong>
-            <a href="${p.downloadUrl}" target="_blank" style="margin-left:auto;font-size:11px;color:var(--azul);">Abrir ↗</a>
-          </div>
-          <iframe src="${p.downloadUrl}" style="width:100%;height:320px;border:1px solid var(--borde);border-radius:8px;"></iframe>
-        </div>`).join('')}
-      ${imgs.map(i=>`
-        <div style="margin-bottom:10px;">
-          <div style="font-size:12px;color:#666;margin-bottom:4px;">🖼️ ${i.name}</div>
-          <img src="${i.downloadUrl}" style="width:100%;border-radius:8px;border:1px solid var(--borde);cursor:zoom-in;"
-            onclick="window.open('${i.downloadUrl}','_blank')">
-        </div>`).join('')}`;
+    const first = atts.find(a => a.name?.toLowerCase().endsWith('.pdf')) || atts[0];
+    mostrarEnVisor(first.downloadUrl, first.name, first.name?.toLowerCase().endsWith('.pdf'), sol.NroSolicitud);
+
+    // Si hay varios adjuntos, mostrar miniaturas abajo
+    if (atts.length > 1) {
+      const thumbBar = document.createElement("div");
+      thumbBar.style.cssText = "display:flex;gap:6px;padding:6px 0;flex-shrink:0;overflow-x:auto;";
+      atts.forEach(a => {
+        const isPdf = a.name?.toLowerCase().endsWith('.pdf');
+        const isImg = /\.(jpg|jpeg|png)$/i.test(a.name||'');
+        const thumb = document.createElement("div");
+        thumb.style.cssText = `min-width:60px;height:60px;border-radius:8px;border:2px solid var(--borde);
+          cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;
+          font-size:20px;background:#f8fafc;flex-shrink:0;transition:border-color 0.2s;`;
+        thumb.innerHTML = isPdf ? '📄' : isImg
+          ? `<img src="${a.downloadUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`
+          : '📎';
+        thumb.title = a.name;
+        thumb.onclick = () => {
+          document.querySelectorAll(".thumb-active").forEach(t => t.classList.remove("thumb-active"));
+          thumb.style.borderColor = "var(--azul)";
+          thumb.classList.add("thumb-active");
+          mostrarEnVisor(a.downloadUrl, a.name, isPdf, sol.NroSolicitud);
+        };
+        thumbBar.appendChild(thumb);
+      });
+      pdfPanel.appendChild(thumbBar);
+    }
   }).catch(() => {
     const c = document.getElementById("adjuntos-existentes");
     if (c) c.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;">No se pudieron cargar los adjuntos</p>`;
+    if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>⚠️</span><p>Error al cargar el documento</p></div>`;
   });
 
   // ── Cargar historial ──
@@ -1416,16 +1451,49 @@ function cargarSolicitudEnFormulario(sol) {
   });
 }
 
+function mostrarEnVisor(url, nombre, isPdf, nroSolicitud) {
+  const panel = document.getElementById("pdf-visor-contenido");
+  const header = document.getElementById("pdf-panel-header");
+  if (!panel) return;
+
+  if (header) header.innerHTML = `📄 ${nroSolicitud} — <span style="font-weight:400;font-size:12px;opacity:0.85;">${nombre}</span>
+    <a href="${url}" target="_blank" style="margin-left:auto;font-size:12px;color:white;opacity:0.8;text-decoration:none;">Abrir ↗</a>`;
+  if (header) header.style.display = "flex";
+
+  // Mantener miniaturas si existen
+  const thumbBar = panel.querySelector("div[style*='overflow-x']");
+
+  if (isPdf) {
+    panel.innerHTML = `<iframe src="${url}" class="pdf-frame" style="flex:1;min-height:0;"></iframe>`;
+  } else if (/\.(jpg|jpeg|png|gif)$/i.test(nombre)) {
+    panel.innerHTML = `
+      <div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#525659;border-radius:8px;">
+        <img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;"
+          onclick="window.open('${url}','_blank')" title="Clic para abrir en pantalla completa">
+      </div>`;
+  } else {
+    panel.innerHTML = `
+      <div class="pdf-visor-empty">
+        <span>📎</span>
+        <p>${nombre}</p>
+        <a href="${url}" target="_blank" style="color:var(--azul);font-size:13px;font-weight:600;">Descargar archivo</a>
+      </div>`;
+  }
+  if (thumbBar) panel.appendChild(thumbBar);
+}
+
 function limpiarSeleccion() {
   state.solicitudSeleccionada = null;
   state.adjuntosNueva = [];
   renderListaSolicitudes();
   renderFormNueva();
   const header = document.getElementById("form-panel-header");
-  if (header) {
-    header.textContent = "➕ Nueva Solicitud";
-    header.style.cssText = "";
-  }
+  if (header) { header.textContent = "➕ Nueva Solicitud"; header.style.cssText = ""; }
+  // Limpiar visor
+  const pdfPanel = document.getElementById("pdf-visor-contenido");
+  if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>📄</span><p>Selecciona una solicitud para ver el documento adjunto</p></div>`;
+  const pdfHeader = document.getElementById("pdf-panel-header");
+  if (pdfHeader) { pdfHeader.textContent = "📄 Documento"; pdfHeader.style.display = ""; }
 }
 
 async function guardarEdicionSolicitud(solId) {
