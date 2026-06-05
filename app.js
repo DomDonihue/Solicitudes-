@@ -1209,18 +1209,17 @@ function cargarSolicitudEnFormulario(sol) {
   const editable = sol.Estado === CONFIG.estados.INGRESADA;
   const header = document.getElementById("form-panel-header");
   if (header) {
-    header.style.cssText = "display:flex;align-items:center;gap:10px;padding:12px 16px;";
-    header.style.background = editable
-      ? "linear-gradient(90deg,#14532d,#16a34a)"   // verde = editable
-      : "linear-gradient(90deg,#0f2547,#1a3a6b)";  // azul  = solo lectura
+    header.style.cssText = `display:flex;align-items:center;gap:10px;padding:12px 16px;color:white;
+      background:${editable ? 'linear-gradient(90deg,#166534,#15803d)' : 'linear-gradient(90deg,#0f2547,#1a3a6b)'};`;
     header.innerHTML = `
-      <span style="font-size:15px;">${editable ? '✏️' : '👁️'}</span>
-      <span style="font-weight:700;font-size:15px;">${editable ? 'Editando' : 'Viendo'} Solicitud</span>
-      <span style="font-size:18px;font-weight:800;letter-spacing:0.5px;">#${sol.NroSolicitud}</span>
-      <span class="estado-badge estado-${sol.Estado}" style="margin-left:4px;">${sol.Estado}</span>
-      <button onclick="limpiarSeleccion()" title="Cerrar y crear nueva"
-        style="margin-left:auto;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);
-               color:white;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">
+      <span style="font-size:16px;">${editable ? '✏️' : '👁️'}</span>
+      <span style="font-weight:600;font-size:13px;opacity:0.9;">${editable ? 'Editando' : 'Viendo'}</span>
+      <span style="font-weight:800;font-size:16px;letter-spacing:0.5px;color:white;">Solicitud #${sol.NroSolicitud}</span>
+      <span style="background:rgba(255,255,255,0.2);color:white;font-size:11px;font-weight:700;
+            padding:3px 10px;border-radius:12px;letter-spacing:0.3px;">${sol.Estado}</span>
+      <button onclick="limpiarSeleccion()" title="Cerrar"
+        style="margin-left:auto;background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);
+               color:white;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">
         ✕ Cerrar
       </button>`;
   }
@@ -1495,10 +1494,21 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud) {
 
     panel.innerHTML = "";
     if (isPdf) {
-      const iframe = document.createElement("iframe");
-      iframe.src = blobUrl;
-      iframe.style.cssText = "flex:1;min-height:0;width:100%;border:none;border-radius:8px;";
-      panel.appendChild(iframe);
+      // Usar <object> + fallback <embed> para mejor compatibilidad con blob URLs
+      const wrap = document.createElement("div");
+      wrap.style.cssText = "flex:1;min-height:0;width:100%;display:flex;flex-direction:column;";
+      wrap.innerHTML = `
+        <object data="${blobUrl}" type="application/pdf"
+          style="flex:1;width:100%;min-height:0;border:none;border-radius:8px;">
+          <embed src="${blobUrl}" type="application/pdf"
+            style="flex:1;width:100%;min-height:400px;border:none;border-radius:8px;">
+          <div style="padding:20px;text-align:center;color:#666;">
+            <p>Tu navegador no puede mostrar PDFs inline.</p>
+            <a href="${blobUrl}" download="${nombre}"
+              style="color:var(--azul);font-weight:600;font-size:14px;">⬇ Descargar PDF</a>
+          </div>
+        </object>`;
+      panel.appendChild(wrap);
     } else if (/\.(jpg|jpeg|png|gif)$/i.test(nombre)) {
       const wrap = document.createElement("div");
       wrap.style.cssText = "flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#525659;border-radius:8px;min-height:0;";
