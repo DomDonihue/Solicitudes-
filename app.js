@@ -713,9 +713,10 @@ function renderDetalleDirector(sol) {
     return;
   }
 
-  const esDerivable = sol.Estado === CONFIG.estados.INGRESADA || sol.Estado === CONFIG.estados.DEVUELTA;
-  const esCerrable  = sol.Estado === CONFIG.estados.RESPONDIDA;
-  const esDevuelta  = sol.Estado === CONFIG.estados.DEVUELTA;
+  const esDerivable   = sol.Estado === CONFIG.estados.INGRESADA || sol.Estado === CONFIG.estados.DEVUELTA;
+  const esCerrable    = sol.Estado === CONFIG.estados.RESPONDIDA;
+  const tieneEvidencia= sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.CERRADA;
+  const esDevuelta    = sol.Estado === CONFIG.estados.DEVUELTA;
 
   if (header) {
     header.style.cssText = `background:${esDerivable?'linear-gradient(90deg,#1e3a5f,#1a3a6b)':esCerrable?'linear-gradient(90deg,#14532d,#15803d)':'linear-gradient(90deg,#374151,#6b7280)'};color:white;display:flex;align-items:center;gap:8px;`;
@@ -769,20 +770,21 @@ function renderDetalleDirector(sol) {
       </div>
     </div>` : ""}
 
-    ${esCerrable ? `
-    <!-- Respuesta de la unidad -->
+    ${tieneEvidencia ? `
+    <!-- Evidencia de la unidad (Respondida o Cerrada) -->
     <div class="accion-panel">
-      <div class="accion-header" style="background:#eff6ff;color:#1d4ed8;border-bottom:1px solid #bfdbfe;">
-        🏢 Respuesta de la Unidad
+      <div class="accion-header" style="background:linear-gradient(90deg,#1e3a5f,#2563a8);color:white;border-bottom:none;">
+        🏢 Solución ejecutada por la Unidad
       </div>
-      <div class="accion-body" id="dir-evidencia-panel">
-        <div style="text-align:center;color:#9ca3af;font-size:12px;padding:10px;">
+      <div class="accion-body" id="dir-evidencia-panel" style="padding:0;">
+        <div style="text-align:center;color:#9ca3af;font-size:12px;padding:16px;">
           <div class="spinner" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>
-          Cargando respuesta...
+          Cargando evidencia...
         </div>
       </div>
-    </div>
+    </div>` : ""}
 
+    ${esCerrable ? `
     <!-- Panel cerrar -->
     <div class="accion-panel">
       <div class="accion-header cerrar">✅ Cerrar Solicitud</div>
@@ -792,6 +794,16 @@ function renderDetalleDirector(sol) {
         <button class="btn-success" onclick="cerrarSolicitud('${sol.id}')" style="width:100%;padding:12px;">
           🔒 Cerrar Solicitud Formalmente
         </button>
+      </div>
+    </div>` : ""}
+
+    ${sol.Estado === CONFIG.estados.CERRADA ? `
+    <!-- Indicador de cierre -->
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">🔒</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#15803d;">Solicitud Cerrada Formalmente</div>
+        <div style="font-size:11px;color:#16a34a;">Caso completado y archivado en el sistema</div>
       </div>
     </div>` : ""}
 
@@ -810,123 +822,140 @@ function renderDetalleDirector(sol) {
   // Cargar historial automáticamente
   cargarHistorialDir(sol.NroSolicitud);
 
-  // Cargar evidencia si está Respondida
-  if (esCerrable) cargarEvidenciaDir(sol);
+  // Cargar evidencia si está Respondida o Cerrada
+  if (tieneEvidencia) cargarEvidenciaDir(sol);
 }
 
 async function cargarEvidenciaDir(sol) {
   const panel = document.getElementById("dir-evidencia-panel");
   if (!panel) return;
-
   try {
     const evidencias = await getEvidenciasBySolicitud(sol.NroSolicitud);
-
     if (!evidencias.length) {
-      panel.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;">Sin evidencia registrada por la unidad.</p>`;
+      panel.innerHTML = `
+        <div style="text-align:center;padding:20px;color:#9ca3af;">
+          <div style="font-size:32px;margin-bottom:8px;">📭</div>
+          <p style="font-size:13px;">Sin evidencia registrada por la unidad</p>
+        </div>`;
       return;
     }
-
-    // Renderizar cada evidencia con su texto e imágenes
     panel.innerHTML = "";
     for (const ev of evidencias) {
       const evWrap = document.createElement("div");
-      evWrap.style.cssText = "border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:12px;";
-
-      // Encabezado de la evidencia
+      evWrap.style.cssText = "border-bottom:2px solid #e2e8f0;padding-bottom:14px;margin-bottom:14px;";
       evWrap.innerHTML = `
-        <div style="background:#f8fafc;padding:10px 14px;border-bottom:1px solid #e2e8f0;">
-          <div style="font-size:13px;font-weight:700;color:#1a3a6b;">🏢 ${ev.Unidad||""}</div>
-          <div style="font-size:11px;color:#888;margin-top:2px;">
-            👤 ${ev.Responsable||""} &nbsp;·&nbsp; 📅 ${formatFecha(ev.FechaCarga)}
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--azul);color:white;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">🏢</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#1a3a6b;">${ev.Unidad||"Unidad"}</div>
+            <div style="font-size:11px;color:#888;">👤 ${ev.Responsable||""} &nbsp;·&nbsp; 📅 ${formatFecha(ev.FechaCarga)}</div>
           </div>
         </div>
-        <div style="padding:12px 14px;">
-          <p style="font-size:13px;color:#374151;line-height:1.6;margin:0;">${ev.DescripcionEvidencia||"Sin descripción."}</p>
+        <div style="padding:12px 14px 8px;">
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">📝 Descripción de la solución</div>
+          <div style="font-size:13px;color:#374151;line-height:1.7;background:#f9fafb;border-left:3px solid var(--azul);padding:10px 12px;border-radius:0 8px 8px 0;">${ev.DescripcionEvidencia||"Sin descripción."}</div>
         </div>
-        <div id="ev-imgs-${ev.id}" style="padding:0 14px 12px;"></div>`;
-
+        <div id="ev-media-${ev.id}" style="padding:0 14px 4px;"></div>`;
       panel.appendChild(evWrap);
 
-      // Cargar adjuntos de la evidencia
-      const imgCont = evWrap.querySelector(`#ev-imgs-${ev.id}`);
+      // Cargar adjuntos (imágenes y PDFs de la evidencia)
+      const mediaCont = evWrap.querySelector(`#ev-media-${ev.id}`);
       getListItemAttachments(CONFIG.lists.evidencias, ev.id).then(async atts => {
-        if (!atts.length) return;
+        if (!atts.length) {
+          mediaCont.innerHTML = `<p style="font-size:12px;color:#d1d5db;margin:0;padding:4px 0;">Sin archivos adjuntos</p>`;
+          return;
+        }
+        mediaCont.innerHTML = `<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">📎 Archivos adjuntos (${atts.length})</div>`;
 
         const pdfs = atts.filter(a => a.name?.toLowerCase().endsWith('.pdf'));
         const imgs = atts.filter(a => /\.(jpg|jpeg|png|gif)$/i.test(a.name||''));
 
-        // PDFs — renderizar con PDF.js
+        // PDFs con PDF.js
         for (const pdf of pdfs) {
-          const pdfWrap = document.createElement("div");
-          pdfWrap.style.cssText = "margin-bottom:10px;";
-          pdfWrap.innerHTML = `<div style="font-size:11px;color:#888;margin-bottom:4px;">📄 ${pdf.name}</div>`;
-          imgCont.appendChild(pdfWrap);
+          const pdfBlock = document.createElement("div");
+          pdfBlock.style.cssText = "margin-bottom:10px;";
+          pdfBlock.innerHTML = `<div style="font-size:11px;color:#888;margin-bottom:4px;display:flex;align-items:center;gap:4px;">📄 <strong>${pdf.name}</strong></div>`;
+          mediaCont.appendChild(pdfBlock);
           try {
             const blobUrl = await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl);
             if (typeof pdfjsLib !== "undefined") {
-              pdfjsLib.GlobalWorkerOptions.workerSrc =
-                "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+              pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
               const pdfDoc = await pdfjsLib.getDocument(blobUrl).promise;
-              const canvasWrap = document.createElement("div");
-              canvasWrap.style.cssText = "background:#525659;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:4px;";
-              pdfWrap.appendChild(canvasWrap);
+              const wrap = document.createElement("div");
+              wrap.style.cssText = "background:#525659;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:4px;";
+              pdfBlock.appendChild(wrap);
               for (let p=1; p<=pdfDoc.numPages; p++) {
                 const page = await pdfDoc.getPage(p);
-                const w = (imgCont.clientWidth||280)-16;
+                const w = (mediaCont.clientWidth||300)-16;
                 const vp = page.getViewport({scale:1});
-                const svp = page.getViewport({scale: w/vp.width});
+                const svp = page.getViewport({scale:w/vp.width});
                 const canvas = document.createElement("canvas");
                 canvas.width=svp.width; canvas.height=svp.height;
                 canvas.style.cssText="width:100%;border-radius:4px;";
                 await page.render({canvasContext:canvas.getContext("2d"),viewport:svp}).promise;
-                canvasWrap.appendChild(canvas);
+                wrap.appendChild(canvas);
               }
             }
           } catch {}
         }
 
-        // Imágenes — grid de fotos
+        // Grid de imágenes (fotos de la ejecución)
         if (imgs.length) {
+          const gridLabel = document.createElement("div");
+          gridLabel.style.cssText = "font-size:11px;color:#888;margin-bottom:6px;display:flex;align-items:center;gap:4px;";
+          gridLabel.innerHTML = `📸 <strong>${imgs.length} foto${imgs.length>1?'s':''} de la ejecución</strong>`;
+          mediaCont.appendChild(gridLabel);
+
           const grid = document.createElement("div");
-          grid.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(imgs.length,2)},1fr);gap:6px;`;
-          imgCont.appendChild(grid);
+          grid.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(imgs.length,2)},1fr);gap:6px;margin-bottom:8px;`;
+          mediaCont.appendChild(grid);
 
           for (const img of imgs) {
-            const imgBox = document.createElement("div");
-            imgBox.style.cssText = "border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:#f3f4f6;border:1px solid var(--borde);cursor:zoom-in;";
-            imgBox.title = img.name;
-            grid.appendChild(imgBox);
-            try {
-              const blobUrl = await getAttachmentBlobUrl(img.downloadUrl, img.serverRelativeUrl);
+            const box = document.createElement("div");
+            box.style.cssText = "border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:#f3f4f6;border:2px solid var(--borde);cursor:zoom-in;transition:border-color 0.2s;position:relative;";
+            box.title = `Ver: ${img.name}`;
+            box.onmouseenter = () => box.style.borderColor = "var(--azul)";
+            box.onmouseleave = () => box.style.borderColor = "var(--borde)";
+            grid.appendChild(box);
+
+            // Placeholder mientras carga
+            box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#d1d5db;"><div class="spinner" style="width:20px;height:20px;border-width:2px;"></div></div>`;
+
+            getAttachmentBlobUrl(img.downloadUrl, img.serverRelativeUrl).then(blobUrl => {
               const imgEl = document.createElement("img");
               imgEl.src = blobUrl;
               imgEl.style.cssText = "width:100%;height:100%;object-fit:cover;";
-              imgEl.onclick = () => {
-                // Lightbox simple
-                const overlay = document.createElement("div");
-                overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;";
-                const big = document.createElement("img");
-                big.src = blobUrl;
-                big.style.cssText = "max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;";
-                const label = document.createElement("div");
-                label.style.cssText = "position:absolute;bottom:20px;color:white;font-size:13px;opacity:0.7;";
-                label.textContent = img.name;
-                overlay.appendChild(big);
-                overlay.appendChild(label);
-                overlay.onclick = () => overlay.remove();
-                document.body.appendChild(overlay);
-              };
-              imgBox.appendChild(imgEl);
-            } catch {
-              imgBox.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:12px;">⚠️</div>`;
-            }
+              imgEl.onclick = () => abrirLightbox(blobUrl, img.name);
+              box.innerHTML = "";
+              box.appendChild(imgEl);
+              // Badge zoom
+              const badge = document.createElement("div");
+              badge.style.cssText = "position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.5);color:white;border-radius:4px;padding:2px 6px;font-size:10px;";
+              badge.textContent = "🔍 ver";
+              box.appendChild(badge);
+            }).catch(() => {
+              box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#fca5a5;font-size:11px;">⚠️ Error</div>`;
+            });
           }
         }
-      }).catch(() => {});
+      }).catch(() => {
+        mediaCont.innerHTML = `<p style="font-size:12px;color:#fca5a5;">Error al cargar adjuntos</p>`;
+      });
     }
   } catch(e) {
-    if (panel) panel.innerHTML = `<p style="color:#9ca3af;font-size:12px;text-align:center;">No se pudo cargar la evidencia</p>`;
+    if (panel) panel.innerHTML = `<p style="color:#9ca3af;font-size:12px;text-align:center;padding:12px;">No se pudo cargar la evidencia</p>`;
   }
+}
+
+function abrirLightbox(blobUrl, nombre) {
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:zoom-out;";
+  overlay.innerHTML = `
+    <div style="position:absolute;top:16px;right:20px;color:white;font-size:24px;cursor:pointer;opacity:0.7;" onclick="this.closest('div').remove()">✕</div>
+    <img src="${blobUrl}" style="max-width:90vw;max-height:85vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+    <div style="margin-top:12px;color:rgba(255,255,255,0.6);font-size:13px;">${nombre}</div>`;
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
 }
 
 async function cargarHistorialDir(nroSolicitud) {
@@ -1136,30 +1165,71 @@ async function renderDetalleUnidad(sol) {
           </div>`).join("")}
       </div>` : ""}
 
-      <div class="acciones-panel" style="flex:1;">
-        <div class="section-title">Registrar acción</div>
-        <textarea id="uni-obs" rows="3" placeholder="Observaciones / descripción de la acción realizada..."></textarea>
-        <div class="form-group">
-          <label>Adjuntar evidencia (fotos/docs)</label>
-          <div class="upload-area" onclick="document.getElementById('uni-ev-files').click()">📎 Adjuntar evidencia</div>
-          <input type="file" id="uni-ev-files" multiple accept=".pdf,.jpg,.jpeg,.png">
+      <!-- Panel de acción -->
+      <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
+        <div class="form-section">
+          <div class="form-section-header" style="font-size:11px;">📝 Descripción de la Solución</div>
+          <div class="form-section-body">
+            <textarea id="uni-obs" rows="4"
+              placeholder="Describe detalladamente la acción realizada, visita, notificación o solución ejecutada..."
+              style="width:100%;padding:10px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+          </div>
         </div>
-        <div class="btn-row">
-          <button class="btn-success" onclick="responderSolicitud('${sol.id}')">✅ Responder</button>
-          <button class="btn-primary" style="background:var(--en-proceso)!important;" onclick="enProcesoSolicitud('${sol.id}')">⚙️ En Proceso</button>
+        <div class="form-section">
+          <div class="form-section-header naranja" style="font-size:11px;">📸 Evidencia Fotográfica / Documentos</div>
+          <div class="form-section-body">
+            <p style="font-size:12px;color:#888;margin-bottom:8px;">Adjunta fotos de la visita o documentos que corroboren la solución ejecutada.</p>
+            <div style="border:2px dashed #f59e0b;border-radius:10px;padding:16px;text-align:center;cursor:pointer;background:#fffbeb;"
+              onclick="document.getElementById('uni-ev-files').click()"
+              ondragover="event.preventDefault();this.style.background='#fef3c7'"
+              ondragleave="this.style.background='#fffbeb'"
+              ondrop="event.preventDefault();this.style.background='#fffbeb';handleEvFiles(event.dataTransfer.files)">
+              <div style="font-size:28px;">📷</div>
+              <div style="font-weight:600;font-size:13px;color:#b45309;">Arrastra fotos aquí</div>
+              <div style="font-size:11px;color:#9ca3af;margin-top:2px;">o haz clic — JPG, PNG, PDF</div>
+            </div>
+            <input type="file" id="uni-ev-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleEvFiles(this.files)" style="display:none;">
+            <div id="uni-ev-preview" style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;"></div>
+          </div>
         </div>
-        <div class="btn-row">
-          <button class="btn-warning" onclick="devolverSolicitudUnidad('${sol.id}')">↩️ Devolver</button>
-          ${puedeCerrar ? `<button class="btn-danger" onclick="cerrarSolicitudUnidad('${sol.id}')">🔒 Cerrar</button>` : ""}
+        <button class="btn-success" onclick="responderSolicitud('${sol.id}')" style="width:100%;padding:13px;font-size:14px;">✅ Responder — Registrar Solución</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button class="btn-primary" style="background:#0e7490;padding:10px;" onclick="enProcesoSolicitud('${sol.id}')">⚙️ En Proceso</button>
+          <button class="btn-warning" style="padding:10px;" onclick="devolverSolicitudUnidad('${sol.id}')">↩️ Devolver</button>
         </div>
-        <button class="btn-primary" style="background:#6b7280;" onclick="verHistorial('${sol.NroSolicitud}')">🕐 Historial</button>
+        <button onclick="verHistorial('${sol.NroSolicitud}')" style="width:100%;padding:9px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#6b7280;">🕐 Ver Historial</button>
       </div>
     </div>`;
 }
 
+// Archivos de evidencia de la unidad
+const _evFiles = [];
+function handleEvFiles(files) {
+  Array.from(files).forEach(f => _evFiles.push(f));
+  const preview = document.getElementById("uni-ev-preview");
+  if (!preview) return;
+  preview.innerHTML = "";
+  _evFiles.forEach((f, i) => {
+    const box = document.createElement("div");
+    box.style.cssText = "position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#f3f4f6;border:1.5px solid var(--borde);";
+    if (/\.(jpg|jpeg|png|gif)$/i.test(f.name)) {
+      const url = URL.createObjectURL(f);
+      box.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;">`;
+    } else {
+      box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:#666;padding:4px;text-align:center;">📄 ${f.name}</div>`;
+    }
+    const del = document.createElement("button");
+    del.style.cssText = "position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.5);color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;";
+    del.textContent = "✕";
+    del.onclick = () => { _evFiles.splice(i,1); handleEvFiles([]); };
+    box.appendChild(del);
+    preview.appendChild(box);
+  });
+}
+
 async function responderSolicitud(solId) {
   const obs = document.getElementById("uni-obs")?.value.trim();
-  const files = document.getElementById("uni-ev-files")?.files;
+  const files = _evFiles.length > 0 ? _evFiles : Array.from(document.getElementById("uni-ev-files")?.files||[]);
   if (!obs) { showToast("error", "Ingresa una observación"); return; }
 
   showLoading("Respondiendo...");
