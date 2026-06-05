@@ -77,22 +77,35 @@
     <!-- SECRETARIA / INGRESO -->
     <div id="view-solicitudes" class="view">
       <div class="sec-layout">
-        <!-- Lista solicitudes -->
-        <div class="panel" style="display:flex;flex-direction:column;">
-          <div class="panel-header">📋 Solicitudes Ingresadas</div>
-          <div class="panel-body" id="lista-solicitudes" style="padding:8px;"></div>
-          <div id="paginacion-solicitudes" class="paginacion"></div>
+
+        <!-- COL 1: Lista + filtros compactos -->
+        <div style="display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+          <!-- Filtros compactos -->
+          <div class="panel" style="flex-shrink:0;">
+            <div class="panel-header" style="cursor:pointer;" onclick="toggleFiltros()">
+              🔍 Filtros <span id="filtros-toggle" style="float:right;font-size:12px;color:#666;">▼ ver</span>
+            </div>
+            <div id="panel-filtros-compact" style="display:none;"></div>
+          </div>
+          <!-- Stats compactas -->
+          <div class="panel" style="flex-shrink:0;">
+            <div class="panel-header">📊 Estados</div>
+            <div id="panel-stats" style="padding:10px;"></div>
+          </div>
+          <!-- Lista solicitudes -->
+          <div class="panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+            <div class="panel-header">📋 Solicitudes <span id="sec-lista-count" style="font-size:12px;font-weight:400;color:#888;"></span></div>
+            <div style="flex:1;overflow-y:auto;padding:8px;" id="lista-solicitudes"></div>
+            <div id="paginacion-solicitudes" class="paginacion"></div>
+          </div>
         </div>
-        <!-- Filtros + Stats -->
-        <div class="panel" style="display:flex;flex-direction:column;overflow-y:auto;">
-          <div class="panel-header">🔍 Filtros y Estadísticas</div>
-          <div id="panel-filtros" style="flex:1;overflow-y:auto;"></div>
+
+        <!-- COL 2: Formulario grande -->
+        <div class="panel" style="display:flex;flex-direction:column;overflow:hidden;">
+          <div class="panel-header" id="form-panel-header">➕ Nueva Solicitud</div>
+          <div style="flex:1;overflow-y:auto;" id="panel-nueva"></div>
         </div>
-        <!-- Nueva solicitud -->
-        <div class="panel" style="display:flex;flex-direction:column;overflow-y:auto;">
-          <div class="panel-header">➕ Nueva Solicitud</div>
-          <div id="panel-nueva" style="flex:1;overflow-y:auto;"></div>
-        </div>
+
       </div>
     </div>
 

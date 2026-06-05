@@ -206,9 +206,9 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 /* ===== SECRETARIA ===== */
 .sec-layout {
   display: grid;
-  grid-template-columns: 300px 1fr 380px;
-  gap: 20px;
-  padding: 20px 24px;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+  padding: 16px 20px;
   height: calc(100vh - 120px);
 }
 .panel {

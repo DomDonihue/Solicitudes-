@@ -125,7 +125,8 @@ async function renderSecretaria() {
     state.solicitudes = await getSolicitudes();
     state.solicitudes.sort((a, b) => new Date(b.FechaRecepcion) - new Date(a.FechaRecepcion));
     renderListaSolicitudes();
-    renderFiltros();
+    renderFiltrosCompact();
+    renderStatsCompact();
     renderFormNueva();
     updateTabBadges();
   } catch (e) {
@@ -133,6 +134,74 @@ async function renderSecretaria() {
   } finally {
     hideLoading();
   }
+}
+
+function toggleFiltros() {
+  const panel = document.getElementById("panel-filtros-compact");
+  const toggle = document.getElementById("filtros-toggle");
+  if (panel.style.display === "none") {
+    panel.style.display = "block";
+    toggle.textContent = "▲ ocultar";
+    renderFiltrosCompact();
+  } else {
+    panel.style.display = "none";
+    toggle.textContent = "▼ ver";
+  }
+}
+
+function renderFiltrosCompact() {
+  const cont = document.getElementById("panel-filtros-compact");
+  if (!cont) return;
+  cont.innerHTML = `
+    <div style="padding:10px;display:flex;flex-direction:column;gap:8px;">
+      <input type="text" placeholder="🔍 Buscar..." value="${state.filtroBuscar}"
+        style="padding:8px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;"
+        oninput="state.filtroBuscar=this.value;state.pagina=1;renderListaSolicitudes();renderStatsCompact()">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <select style="padding:7px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;"
+          onchange="state.filtroEstado=this.value;state.pagina=1;renderListaSolicitudes();renderStatsCompact()">
+          ${["Todos","Ingresada","Derivada","En Proceso","Respondida","Devuelta","Cerrada"]
+            .map(e=>`<option ${state.filtroEstado===e?'selected':''}>${e}</option>`).join("")}
+        </select>
+        <select style="padding:7px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;"
+          onchange="state.filtroUnidad=this.value;state.pagina=1;renderListaSolicitudes()">
+          <option>Todas</option>
+          ${CONFIG.unidades.map(u=>`<option ${state.filtroUnidad===u?'selected':''}>${u}</option>`).join("")}
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <input type="date" value="${state.filtroDesde}" style="padding:7px;border:1.5px solid var(--borde);border-radius:8px;font-size:12px;"
+          onchange="state.filtroDesde=this.value;state.pagina=1;renderListaSolicitudes()">
+        <input type="date" value="${state.filtroHasta}" style="padding:7px;border:1.5px solid var(--borde);border-radius:8px;font-size:12px;"
+          onchange="state.filtroHasta=this.value;state.pagina=1;renderListaSolicitudes()">
+      </div>
+    </div>`;
+}
+
+function renderStatsCompact() {
+  const cont = document.getElementById("panel-stats");
+  if (!cont) return;
+  const counts = {};
+  getSolicitudesFiltradas().forEach(s => { counts[s.Estado] = (counts[s.Estado]||0)+1; });
+  const total = getSolicitudesFiltradas().length;
+  cont.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+      ${[
+        {e:"Ingresada",color:"#dbeafe",tc:"#1d4ed8",icon:"📥"},
+        {e:"Derivada",color:"#fef3c7",tc:"#b45309",icon:"📤"},
+        {e:"En Proceso",color:"#cffafe",tc:"#0e7490",icon:"⚙️"},
+        {e:"Respondida",color:"#dcfce7",tc:"#15803d",icon:"✅"},
+        {e:"Devuelta",color:"#fee2e2",tc:"#b91c1c",icon:"↩️"},
+        {e:"Cerrada",color:"#f3f4f6",tc:"#4b5563",icon:"🔒"}
+      ].map(({e,color,tc,icon})=>`
+        <div onclick="state.filtroEstado='${e}';state.pagina=1;renderListaSolicitudes();renderStatsCompact()"
+          style="background:${color};border-radius:8px;padding:8px;text-align:center;cursor:pointer;">
+          <div style="font-size:11px;">${icon}</div>
+          <div style="font-size:18px;font-weight:700;color:${tc};line-height:1.2;">${counts[e]||0}</div>
+          <div style="font-size:10px;color:${tc};">${e}</div>
+        </div>`).join("")}
+    </div>
+    <div style="text-align:center;font-size:12px;color:#9ca3af;margin-top:6px;">Total: ${total}</div>`;
 }
 
 function getSolicitudesFiltradas() {
@@ -170,12 +239,15 @@ function renderListaSolicitudes() {
         <div class="sol-card-dir">📍 ${s.Direccion || ""}</div>
       </div>`).join("");
 
+  const counter = document.getElementById("sec-lista-count");
+  if (counter) counter.textContent = `(${total})`;
+
   const pag = document.getElementById("paginacion-solicitudes");
   if (pag) {
     const totalPags = Math.ceil(total / state.pageSize);
     pag.innerHTML = `
       <button onclick="cambiarPagina(${state.pagina - 1})" ${state.pagina <= 1 ? 'disabled' : ''}>‹ Anterior</button>
-      <span>Página ${state.pagina} de ${Math.max(1, totalPags)} (${total})</span>
+      <span>${state.pagina}/${Math.max(1, totalPags)}</span>
       <button onclick="cambiarPagina(${state.pagina + 1})" ${state.pagina >= totalPags ? 'disabled' : ''}>Siguiente ›</button>`;
   }
 }
@@ -1113,8 +1185,127 @@ async function exportarExcel() {
 
 // ===== HELPERS =====
 function seleccionarSolicitud(id) {
-  state.solicitudSeleccionada = state.solicitudes.find(s => s.id === id);
+  const sol = state.solicitudes.find(s => s.id === id);
+  state.solicitudSeleccionada = sol;
   renderListaSolicitudes();
+  // Cargar en formulario para ver/editar
+  if (sol) cargarSolicitudEnFormulario(sol);
+}
+
+function cargarSolicitudEnFormulario(sol) {
+  const header = document.getElementById("form-panel-header");
+  if (header) header.innerHTML = `✏️ Solicitud <strong>${sol.NroSolicitud}</strong> — <span class="estado-badge estado-${sol.Estado}">${sol.Estado}</span> <button onclick="renderFormNueva()" style="float:right;background:none;border:none;cursor:pointer;font-size:13px;color:var(--azul);">➕ Nueva</button>`;
+
+  const cont = document.getElementById("panel-nueva");
+  const soloLectura = sol.Estado !== CONFIG.estados.INGRESADA;
+  cont.innerHTML = `
+    <div class="form-nueva">
+      <div style="background:#f0f4ff;border-radius:10px;padding:14px;margin-bottom:4px;">
+        <div style="font-size:12px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">📋 Datos de la Solicitud</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nro Solicitud</label>
+            <input type="text" id="nueva-nro" value="${sol.NroSolicitud||''}" ${soloLectura?'readonly style="background:#f3f4f6"':''}>
+          </div>
+          <div class="form-group">
+            <label>Fecha Recepción</label>
+            <input type="date" id="nueva-fecha" value="${sol.FechaRecepcion?.split('T')[0]||''}" ${soloLectura?'readonly style="background:#f3f4f6"':''}>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Nombre Solicitante</label>
+          <input type="text" id="nueva-solicitante" value="${sol.Solicitante||''}" ${soloLectura?'readonly style="background:#f3f4f6"':''}>
+        </div>
+        <div class="form-group">
+          <label>Dirección</label>
+          <input type="text" id="nueva-dir" value="${sol.Direccion||''}" ${soloLectura?'readonly style="background:#f3f4f6"':''}>
+        </div>
+        <div class="form-group">
+          <label>Descripción</label>
+          <textarea id="nueva-solicitud" rows="3" ${soloLectura?'readonly style="background:#f3f4f6"':''}>${sol.Solicitud||''}</textarea>
+        </div>
+        ${sol.UnidadDerivada ? `<div class="form-group"><label>Unidad Derivada</label><input type="text" value="${sol.UnidadDerivada}" readonly style="background:#f3f4f6;color:#b45309;font-weight:600;"></div>` : ''}
+        ${sol.MotivoDevolucion ? `<div class="form-group"><label>Motivo Devolución</label><textarea rows="2" readonly style="background:#fff0f0;color:#b91c1c;">${sol.MotivoDevolucion}</textarea></div>` : ''}
+      </div>
+
+      <!-- Adjuntos existentes -->
+      <div style="background:#fff8f0;border-radius:10px;padding:14px;border:1.5px dashed #f59e0b;">
+        <div style="font-size:12px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">📎 Documentos Adjuntos</div>
+        <div id="adjuntos-existentes">
+          <div style="text-align:center;color:#9ca3af;font-size:13px;">Cargando adjuntos...</div>
+        </div>
+        ${!soloLectura ? `
+        <div id="drop-area" class="upload-area" style="margin-top:10px;"
+          onclick="document.getElementById('nueva-files').click()"
+          ondragover="event.preventDefault()"
+          ondrop="event.preventDefault();handleFiles(event.dataTransfer.files)">
+          <div style="font-size:28px;">📄</div>
+          <div style="font-weight:600;font-size:13px;">Agregar más documentos</div>
+        </div>
+        <input type="file" id="nueva-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFiles(this.files)">
+        <div id="file-list" class="file-list"></div>
+        <div id="pdf-preview"></div>` : ''}
+      </div>
+
+      ${!soloLectura ? `
+      <div class="btn-row" style="margin-top:4px;">
+        <button class="btn-primary" onclick="guardarEdicionSolicitud('${sol.id}')" style="flex:2;">💾 Guardar Cambios</button>
+        <button onclick="renderFormNueva()" style="flex:1;padding:12px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:14px;">✕ Cancelar</button>
+      </div>` : `
+      <div style="padding:12px;background:#f8fafc;border-radius:10px;text-align:center;color:#9ca3af;font-size:13px;">
+        🔒 Solicitud en estado <strong>${sol.Estado}</strong> — solo lectura
+        <br><button onclick="renderFormNueva()" style="margin-top:8px;padding:8px 16px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:var(--azul);">➕ Ingresar nueva solicitud</button>
+      </div>`}
+    </div>`;
+
+  // Cargar adjuntos existentes
+  getListItemAttachments(CONFIG.lists.solicitudes, sol.id).then(atts => {
+    const cont2 = document.getElementById("adjuntos-existentes");
+    if (!cont2) return;
+    if (atts.length === 0) {
+      cont2.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;">Sin documentos adjuntos</p>`;
+      return;
+    }
+    const pdfs = atts.filter(a => a.name?.toLowerCase().endsWith('.pdf'));
+    const imgs = atts.filter(a => /\.(jpg|jpeg|png)$/i.test(a.name));
+    cont2.innerHTML = `
+      ${pdfs.map(p=>`
+        <div style="margin-bottom:8px;">
+          <div style="font-size:12px;color:#666;margin-bottom:4px;">📄 ${p.name}</div>
+          <iframe src="${p.downloadUrl}" style="width:100%;height:300px;border:1px solid var(--borde);border-radius:8px;"></iframe>
+        </div>`).join('')}
+      ${imgs.map(i=>`
+        <div style="margin-bottom:8px;">
+          <div style="font-size:12px;color:#666;margin-bottom:4px;">🖼️ ${i.name}</div>
+          <img src="${i.downloadUrl}" style="width:100%;border-radius:8px;border:1px solid var(--borde);" onclick="window.open('${i.downloadUrl}','_blank')">
+        </div>`).join('')}`;
+  }).catch(() => {
+    const c = document.getElementById("adjuntos-existentes");
+    if (c) c.innerHTML = `<p style="color:#9ca3af;font-size:13px;">No se pudieron cargar los adjuntos</p>`;
+  });
+}
+
+async function guardarEdicionSolicitud(solId) {
+  const nro  = document.getElementById("nueva-nro")?.value.trim();
+  const fecha = document.getElementById("nueva-fecha")?.value;
+  const sol2  = document.getElementById("nueva-solicitante")?.value.trim();
+  const dir   = document.getElementById("nueva-dir")?.value.trim();
+  const desc  = document.getElementById("nueva-solicitud")?.value.trim();
+  if (!nro||!fecha||!sol2||!dir) { showToast("error","Completa los campos obligatorios"); return; }
+  showLoading("Guardando cambios...");
+  try {
+    await actualizarSolicitud(solId, { NroSolicitud:nro, FechaRecepcion:fecha, Solicitante:sol2, Direccion:dir, Solicitud:desc });
+    if (state.adjuntosNueva.length > 0) {
+      for (const file of state.adjuntosNueva) {
+        await uploadAttachment(CONFIG.lists.solicitudes, solId, file).catch(console.error);
+      }
+      state.adjuntosNueva = [];
+    }
+    showToast("success", `✅ Solicitud ${nro} actualizada`);
+    await renderSecretaria();
+  } catch(e) {
+    showToast("error","Error: "+e.message);
+  } finally { hideLoading(); }
 }
 
 function formatFecha(iso) {
