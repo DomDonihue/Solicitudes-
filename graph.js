@@ -103,6 +103,7 @@ async function getListItemAttachments(listName, itemId) {
     const data = await spFetch(`${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles`);
     return (data.value || []).map(a => ({
       name: a.FileName,
+      serverRelativeUrl: a.ServerRelativeUrl,
       url: a.ServerRelativeUrl,
       downloadUrl: `${CONFIG.sharePointSite}${a.ServerRelativeUrl}`
     }));
@@ -111,18 +112,29 @@ async function getListItemAttachments(listName, itemId) {
   }
 }
 
-// Descarga un adjunto con autenticación y retorna una blob URL para mostrar en iframe/img
+// Descarga un adjunto vía REST API SharePoint y retorna blob URL
 const _blobCache = {};
-async function getAttachmentBlobUrl(downloadUrl) {
-  if (_blobCache[downloadUrl]) return _blobCache[downloadUrl];
+async function getAttachmentBlobUrl(downloadUrl, serverRelativeUrl) {
+  const cacheKey = serverRelativeUrl || downloadUrl;
+  if (_blobCache[cacheKey]) return _blobCache[cacheKey];
+
   const token = await getSharePointToken();
-  const res = await fetch(downloadUrl, {
-    headers: { Authorization: `Bearer ${token}` }
+
+  // Usar endpoint REST /_api/web/getfilebyserverrelativeurl(...)/$value
+  // que tiene CORS habilitado correctamente
+  const relUrl = serverRelativeUrl ||
+    downloadUrl.replace(CONFIG.sharePointSite, ""); // /sites/DOM/Lists/.../file.pdf
+
+  const apiUrl = `${SP_BASE}/web/getfilebyserverrelativeurl('${encodeURIComponent(relUrl)}')/$value`;
+
+  const res = await fetch(apiUrl, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "*/*" }
   });
-  if (!res.ok) throw new Error(`Error descargando adjunto: ${res.status}`);
+  if (!res.ok) throw new Error(`Error ${res.status} al descargar: ${relUrl}`);
+
   const blob = await res.blob();
   const blobUrl = URL.createObjectURL(blob);
-  _blobCache[downloadUrl] = blobUrl;
+  _blobCache[cacheKey] = blobUrl;
   return blobUrl;
 }
 

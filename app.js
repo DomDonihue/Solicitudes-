@@ -1354,7 +1354,7 @@ function cargarSolicitudEnFormulario(sol) {
           const isPdf = a.name?.toLowerCase().endsWith('.pdf');
           const isImg = /\.(jpg|jpeg|png)$/i.test(a.name||'');
           return `<div class="file-item" style="cursor:pointer;border-left:3px solid ${isPdf?'#ef4444':isImg?'#3b82f6':'#6b7280'};"
-            onclick="mostrarEnVisor('${a.downloadUrl}','${a.name}',${isPdf},'${sol.NroSolicitud}')">
+            onclick="mostrarEnVisor('${a.downloadUrl}','${a.name}',${isPdf},'${sol.NroSolicitud}','${a.serverRelativeUrl}')">
             <span>${isPdf?'📄':isImg?'🖼️':'📎'} <strong>${a.name}</strong></span>
             <span style="font-size:11px;color:var(--azul);">Ver ↗</span>
           </div>`;
@@ -1370,7 +1370,7 @@ function cargarSolicitudEnFormulario(sol) {
       return;
     }
     const first = atts.find(a => a.name?.toLowerCase().endsWith('.pdf')) || atts[0];
-    mostrarEnVisor(first.downloadUrl, first.name, first.name?.toLowerCase().endsWith('.pdf'), sol.NroSolicitud);
+    mostrarEnVisor(first.downloadUrl, first.name, first.name?.toLowerCase().endsWith('.pdf'), sol.NroSolicitud, first.serverRelativeUrl);
 
     // Si hay varios adjuntos, mostrar miniaturas abajo
     if (atts.length > 1) {
@@ -1392,7 +1392,7 @@ function cargarSolicitudEnFormulario(sol) {
           document.querySelectorAll(".thumb-active").forEach(t => { t.classList.remove("thumb-active"); t.style.borderColor = "var(--borde)"; });
           thumb.style.borderColor = "var(--azul)";
           thumb.classList.add("thumb-active");
-          await mostrarEnVisor(a.downloadUrl, a.name, isPdf, sol.NroSolicitud);
+          await mostrarEnVisor(a.downloadUrl, a.name, isPdf, sol.NroSolicitud, a.serverRelativeUrl);
         };
         thumbBar.appendChild(thumb);
       });
@@ -1447,7 +1447,7 @@ function cargarSolicitudEnFormulario(sol) {
   });
 }
 
-async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud) {
+async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRelativeUrl) {
   const panel = document.getElementById("pdf-visor-contenido");
   const header = document.getElementById("pdf-panel-header");
   if (!panel) return;
@@ -1473,11 +1473,11 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud) {
   if (thumbBar) panel.appendChild(thumbBar);
 
   try {
-    // Si es una blob URL local (nueva solicitud) la usamos directo
-    // Si es URL de SharePoint, descargamos con autenticación
+    // Si es blob URL local (nueva solicitud) la usamos directo
+    // Si es URL de SharePoint, descargamos vía REST API con autenticación
     let blobUrl = downloadUrl;
-    if (downloadUrl.startsWith("https://") && !downloadUrl.startsWith("blob:")) {
-      blobUrl = await getAttachmentBlobUrl(downloadUrl);
+    if (!downloadUrl.startsWith("blob:")) {
+      blobUrl = await getAttachmentBlobUrl(downloadUrl, serverRelativeUrl);
     }
 
     // Actualizar header con link de descarga
