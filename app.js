@@ -1497,6 +1497,7 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
             ↗ Abrir
           </a>
         </div>`;
+    }  // cierre if (header)
 
     panel.innerHTML = "";
     if (isPdf) {
