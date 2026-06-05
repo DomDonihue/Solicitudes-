@@ -770,11 +770,24 @@ function renderDetalleDirector(sol) {
     </div>` : ""}
 
     ${esCerrable ? `
+    <!-- Respuesta de la unidad -->
+    <div class="accion-panel">
+      <div class="accion-header" style="background:#eff6ff;color:#1d4ed8;border-bottom:1px solid #bfdbfe;">
+        🏢 Respuesta de la Unidad
+      </div>
+      <div class="accion-body" id="dir-evidencia-panel">
+        <div style="text-align:center;color:#9ca3af;font-size:12px;padding:10px;">
+          <div class="spinner" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>
+          Cargando respuesta...
+        </div>
+      </div>
+    </div>
+
     <!-- Panel cerrar -->
     <div class="accion-panel">
       <div class="accion-header cerrar">✅ Cerrar Solicitud</div>
       <div class="accion-body">
-        <p style="font-size:12px;color:#666;margin-bottom:10px;">La solicitud ha sido respondida. El Director puede cerrarla formalmente para dejar constancia en el sistema.</p>
+        <p style="font-size:12px;color:#666;margin-bottom:10px;">La solicitud ha sido respondida por la unidad. El Director puede cerrarla formalmente.</p>
         <textarea id="dir-cierre-obs" rows="2" placeholder="Observaciones de cierre (opcional)..."></textarea>
         <button class="btn-success" onclick="cerrarSolicitud('${sol.id}')" style="width:100%;padding:12px;">
           🔒 Cerrar Solicitud Formalmente
@@ -796,6 +809,124 @@ function renderDetalleDirector(sol) {
 
   // Cargar historial automáticamente
   cargarHistorialDir(sol.NroSolicitud);
+
+  // Cargar evidencia si está Respondida
+  if (esCerrable) cargarEvidenciaDir(sol);
+}
+
+async function cargarEvidenciaDir(sol) {
+  const panel = document.getElementById("dir-evidencia-panel");
+  if (!panel) return;
+
+  try {
+    const evidencias = await getEvidenciasBySolicitud(sol.NroSolicitud);
+
+    if (!evidencias.length) {
+      panel.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;">Sin evidencia registrada por la unidad.</p>`;
+      return;
+    }
+
+    // Renderizar cada evidencia con su texto e imágenes
+    panel.innerHTML = "";
+    for (const ev of evidencias) {
+      const evWrap = document.createElement("div");
+      evWrap.style.cssText = "border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:12px;";
+
+      // Encabezado de la evidencia
+      evWrap.innerHTML = `
+        <div style="background:#f8fafc;padding:10px 14px;border-bottom:1px solid #e2e8f0;">
+          <div style="font-size:13px;font-weight:700;color:#1a3a6b;">🏢 ${ev.Unidad||""}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px;">
+            👤 ${ev.Responsable||""} &nbsp;·&nbsp; 📅 ${formatFecha(ev.FechaCarga)}
+          </div>
+        </div>
+        <div style="padding:12px 14px;">
+          <p style="font-size:13px;color:#374151;line-height:1.6;margin:0;">${ev.DescripcionEvidencia||"Sin descripción."}</p>
+        </div>
+        <div id="ev-imgs-${ev.id}" style="padding:0 14px 12px;"></div>`;
+
+      panel.appendChild(evWrap);
+
+      // Cargar adjuntos de la evidencia
+      const imgCont = evWrap.querySelector(`#ev-imgs-${ev.id}`);
+      getListItemAttachments(CONFIG.lists.evidencias, ev.id).then(async atts => {
+        if (!atts.length) return;
+
+        const pdfs = atts.filter(a => a.name?.toLowerCase().endsWith('.pdf'));
+        const imgs = atts.filter(a => /\.(jpg|jpeg|png|gif)$/i.test(a.name||''));
+
+        // PDFs — renderizar con PDF.js
+        for (const pdf of pdfs) {
+          const pdfWrap = document.createElement("div");
+          pdfWrap.style.cssText = "margin-bottom:10px;";
+          pdfWrap.innerHTML = `<div style="font-size:11px;color:#888;margin-bottom:4px;">📄 ${pdf.name}</div>`;
+          imgCont.appendChild(pdfWrap);
+          try {
+            const blobUrl = await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl);
+            if (typeof pdfjsLib !== "undefined") {
+              pdfjsLib.GlobalWorkerOptions.workerSrc =
+                "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+              const pdfDoc = await pdfjsLib.getDocument(blobUrl).promise;
+              const canvasWrap = document.createElement("div");
+              canvasWrap.style.cssText = "background:#525659;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:4px;";
+              pdfWrap.appendChild(canvasWrap);
+              for (let p=1; p<=pdfDoc.numPages; p++) {
+                const page = await pdfDoc.getPage(p);
+                const w = (imgCont.clientWidth||280)-16;
+                const vp = page.getViewport({scale:1});
+                const svp = page.getViewport({scale: w/vp.width});
+                const canvas = document.createElement("canvas");
+                canvas.width=svp.width; canvas.height=svp.height;
+                canvas.style.cssText="width:100%;border-radius:4px;";
+                await page.render({canvasContext:canvas.getContext("2d"),viewport:svp}).promise;
+                canvasWrap.appendChild(canvas);
+              }
+            }
+          } catch {}
+        }
+
+        // Imágenes — grid de fotos
+        if (imgs.length) {
+          const grid = document.createElement("div");
+          grid.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(imgs.length,2)},1fr);gap:6px;`;
+          imgCont.appendChild(grid);
+
+          for (const img of imgs) {
+            const imgBox = document.createElement("div");
+            imgBox.style.cssText = "border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:#f3f4f6;border:1px solid var(--borde);cursor:zoom-in;";
+            imgBox.title = img.name;
+            grid.appendChild(imgBox);
+            try {
+              const blobUrl = await getAttachmentBlobUrl(img.downloadUrl, img.serverRelativeUrl);
+              const imgEl = document.createElement("img");
+              imgEl.src = blobUrl;
+              imgEl.style.cssText = "width:100%;height:100%;object-fit:cover;";
+              imgEl.onclick = () => {
+                // Lightbox simple
+                const overlay = document.createElement("div");
+                overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;";
+                const big = document.createElement("img");
+                big.src = blobUrl;
+                big.style.cssText = "max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;";
+                const label = document.createElement("div");
+                label.style.cssText = "position:absolute;bottom:20px;color:white;font-size:13px;opacity:0.7;";
+                label.textContent = img.name;
+                overlay.appendChild(big);
+                overlay.appendChild(label);
+                overlay.onclick = () => overlay.remove();
+                document.body.appendChild(overlay);
+              };
+              imgBox.appendChild(imgEl);
+            } catch {
+              imgBox.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:12px;">⚠️</div>`;
+            }
+          }
+        }
+      }).catch(() => {});
+    }
+  } catch(e) {
+    if (panel) panel.innerHTML = `<p style="color:#9ca3af;font-size:12px;text-align:center;">No se pudo cargar la evidencia</p>`;
+  }
 }
 
 async function cargarHistorialDir(nroSolicitud) {
