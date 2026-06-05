@@ -14,35 +14,67 @@
 
 <!-- ===== LOGIN ===== -->
 <div id="login-page" style="display:none;">
+
+  <!-- Panel institucional izquierdo -->
   <div class="login-left">
-    <img src="img/escudo.png" alt="Escudo Doñihue"
-         onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Escudo_de_Do%C3%B1ihue.svg/200px-Escudo_de_Do%C3%B1ihue.svg.png'">
-    <h1>Municipalidad de</h1>
-    <h2>DOÑIHUE</h2>
+    <div class="login-escudo-wrap">
+      <img src="img/escudo.png" alt="Escudo Municipalidad de Doñihue"
+           onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Escudo_de_Do%C3%B1ihue.svg/200px-Escudo_de_Do%C3%B1ihue.svg.png'">
+    </div>
+    <div class="muni-label">I. Municipalidad de</div>
+    <div class="muni-nombre">Doñihue</div>
+    <div class="muni-slogan">Tradición y Progreso</div>
     <hr>
-    <div class="dep">🏛️ Dirección de Obras</div>
+    <div class="dep-badge">🏛️ Dirección de Obras Municipales</div>
   </div>
+
+  <!-- Panel derecho — acceso -->
   <div class="login-right">
     <div class="login-card">
-      <h3>Acceso al Sistema</h3>
-      <div class="login-field">
-        <label>Usuario</label>
-        <div class="field-display">
-          <i>👤</i>
-          <span id="login-nombre">Cargando...</span>
-        </div>
+
+      <div class="login-card-header">
+        <h3>Acceso al Sistema</h3>
+        <p>Portal de Gestión de Solicitudes DOM</p>
       </div>
-      <div class="login-field">
-        <label>Correo institucional</label>
-        <div class="field-display">
-          <i>✉️</i>
-          <span id="login-correo">-</span>
-        </div>
+
+      <!-- Mensaje de error (oculto por defecto) -->
+      <div class="login-error" id="login-error" style="display:none;">
+        <span>⚠️</span>
+        <div id="login-error-msg">Usuario no autorizado.</div>
       </div>
-      <div class="login-subtitle">Portal de Gestión DOM</div>
+
+      <!-- Campos de usuario (se llenan tras autenticación) -->
+      <div id="login-user-info" style="display:none;">
+        <div class="login-field">
+          <label>Usuario autenticado</label>
+          <div class="field-display">
+            <i>👤</i>
+            <span id="login-nombre" style="font-weight:600;"></span>
+          </div>
+        </div>
+        <div class="login-field">
+          <label>Correo institucional</label>
+          <div class="field-display">
+            <i>✉️</i>
+            <span id="login-correo" style="color:#6b7280;"></span>
+          </div>
+        </div>
+        <div class="login-divider">cuenta verificada</div>
+      </div>
+
       <button class="btn-login" id="btn-login">
-        <span>➤</span> Ingresar con cuenta institucional
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M15 3h6v18h-6M10 17l5-5-5-5M15 12H3"/>
+        </svg>
+        Ingresar con cuenta institucional
       </button>
+
+      <div class="login-help">
+        Usa tu cuenta <strong>@mdonihue.cl</strong> de Office 365<br>
+        ¿Problemas para ingresar?
+        <a href="mailto:soporte@mdonihue.cl">Contacta a soporte TI</a>
+      </div>
+
     </div>
   </div>
 </div>

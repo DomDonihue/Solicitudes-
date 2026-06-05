@@ -29,8 +29,7 @@ async function initApp() {
     const perfil = await getUserByEmail(msUser.mail || msUser.userPrincipalName);
     if (!perfil) {
       hideLoading();
-      showToast("error", "⚠️ Tu usuario no tiene acceso al sistema. Contacta al administrador.");
-      showLoginPage(msUser);
+      showLoginPage(msUser, `El usuario ${msUser.mail || msUser.userPrincipalName} no tiene acceso al sistema. Contacta al administrador TI.`);
       return;
     }
     state.usuario = { ...perfil, displayName: msUser.displayName };
@@ -43,15 +42,30 @@ async function initApp() {
   }
 }
 
-function showLoginPage(msUser) {
+function showLoginPage(msUser, errorMsg) {
   document.getElementById("login-page").style.display = "flex";
   document.getElementById("app").style.display = "none";
-  if (msUser) {
+
+  // Mostrar error si viene
+  const errEl = document.getElementById("login-error");
+  const errMsg = document.getElementById("login-error-msg");
+  if (errorMsg && errEl && errMsg) {
+    errMsg.textContent = errorMsg;
+    errEl.style.display = "flex";
+  } else if (errEl) {
+    errEl.style.display = "none";
+  }
+
+  // Mostrar datos del usuario si ya autenticó
+  const userInfo = document.getElementById("login-user-info");
+  if (msUser && userInfo) {
     document.getElementById("login-nombre").textContent = msUser.displayName || "";
     document.getElementById("login-correo").textContent = msUser.mail || msUser.userPrincipalName || "";
+    userInfo.style.display = "block";
   }
+
   document.getElementById("btn-login").onclick = () => {
-    showLoading("Redirigiendo...");
+    showLoading("Redirigiendo a Microsoft...");
     login();
   };
 }
