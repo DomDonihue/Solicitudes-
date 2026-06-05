@@ -40,7 +40,8 @@ async function getListItems(listName, filter = "") {
     items = items.concat(data.value);
     url = data["odata.nextLink"] || null;
   }
-  return items;
+  // Normalizar: SharePoint devuelve Id (mayúscula), agregamos id minúscula para compatibilidad
+  return items.map(item => ({ id: String(item.Id || item.id || ""), ...item }));
 }
 
 async function createListItem(listName, fields) {
@@ -60,7 +61,8 @@ async function createListItem(listName, fields) {
     body
   });
   if (!res.ok) throw new Error(`Error creando item: ${await res.text()}`);
-  return res.json();
+  const data = await res.json();
+  return { id: String(data.Id || data.id || ""), ...data };
 }
 
 async function updateListItem(listName, itemId, fields) {

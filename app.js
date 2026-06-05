@@ -411,22 +411,18 @@ function updateFileList() {
 
   // Preview del primer PDF
   if (preview) {
-    const pdf = state.adjuntosNueva.find(f => f.name.toLowerCase().endsWith('.pdf'));
-    if (pdf) {
-      const url = URL.createObjectURL(pdf);
-      preview.innerHTML = `
-        <div style="font-size:12px;color:#b45309;font-weight:600;margin-bottom:6px;">Vista previa del documento:</div>
-        <iframe src="${url}" style="width:100%;height:280px;border:1px solid var(--borde);border-radius:8px;"></iframe>`;
+    // Mostrar en visor derecho (no inline en formulario)
+    const firstFile = state.adjuntosNueva[0];
+    if (firstFile) {
+      const url = URL.createObjectURL(firstFile);
+      const isPdf = firstFile.name.toLowerCase().endsWith('.pdf');
+      mostrarEnVisor(url, firstFile.name, isPdf, "Nueva");
+      preview.innerHTML = ""; // No mostrar inline
     } else {
-      const img = state.adjuntosNueva.find(f => /\.(jpg|jpeg|png)$/i.test(f.name));
-      if (img) {
-        const url = URL.createObjectURL(img);
-        preview.innerHTML = `
-          <div style="font-size:12px;color:#b45309;font-weight:600;margin-bottom:6px;">Vista previa:</div>
-          <img src="${url}" style="width:100%;border-radius:8px;border:1px solid var(--borde);max-height:280px;object-fit:contain;">`;
-      } else {
-        preview.innerHTML = "";
-      }
+      preview.innerHTML = "";
+      // Limpiar visor si no hay archivos
+      const pdfPanel = document.getElementById("pdf-visor-contenido");
+      if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>📄</span><p>Selecciona una solicitud para ver el documento adjunto</p></div>`;
     }
   }
 
