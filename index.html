@@ -158,28 +158,53 @@
     <!-- DIRECTOR GESTION -->
     <div id="view-gestion" class="view">
       <div class="dir-layout">
-        <!-- Sidebar estados -->
-        <div class="panel" style="display:flex;flex-direction:column;">
-          <div class="panel-header">📊 Estados</div>
-          <div id="dir-sidebar" style="flex:1;overflow-y:auto;"></div>
-        </div>
-        <!-- Lista + PDF -->
-        <div style="display:flex;flex-direction:column;gap:20px;overflow:hidden;">
-          <div class="panel" style="height:45%;display:flex;flex-direction:column;">
-            <div class="panel-header">📋 Solicitudes</div>
-            <div id="dir-lista" style="flex:1;overflow:hidden;display:flex;flex-direction:column;"></div>
+
+        <!-- COL 1: Sidebar estados + lista -->
+        <div style="display:flex;flex-direction:column;gap:12px;overflow:hidden;">
+          <!-- Resumen de estados -->
+          <div class="panel" style="flex-shrink:0;">
+            <div class="panel-header" style="background:linear-gradient(90deg,#0f2547,#1a3a6b);color:white;">
+              📊 Panel del Director
+            </div>
+            <div id="dir-sidebar" style="padding:12px;"></div>
           </div>
-          <div class="panel" style="flex:1;display:flex;flex-direction:column;">
-            <div class="panel-header">📄 Documento</div>
-            <div id="dir-pdf" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;">
-              <div class="pdf-placeholder"><span style="font-size:60px">📄</span><p>Selecciona una solicitud</p></div>
+          <!-- Lista solicitudes -->
+          <div class="panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+            <div class="panel-header">
+              📋 Solicitudes
+              <span id="dir-lista-count" style="font-size:12px;font-weight:400;color:#888;margin-left:6px;"></span>
+            </div>
+            <div style="padding:8px;border-bottom:1px solid var(--borde);">
+              <input type="text" id="dir-buscar" placeholder="🔍 Buscar por nro, nombre, dirección..."
+                style="width:100%;padding:8px 12px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;">
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:8px;" id="dir-lista-cards"></div>
+            <div id="dir-paginacion" class="paginacion"></div>
+          </div>
+        </div>
+
+        <!-- COL 2: Visor PDF -->
+        <div class="panel" style="display:flex;flex-direction:column;overflow:hidden;">
+          <div class="panel-header" id="dir-pdf-header">📄 Documento</div>
+          <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:10px;" id="dir-pdf">
+            <div class="pdf-visor-empty">
+              <span>📄</span>
+              <p>Selecciona una solicitud para ver el documento</p>
             </div>
           </div>
         </div>
-        <!-- Detalle + Acciones -->
-        <div class="panel" id="dir-detalle" style="display:flex;flex-direction:column;overflow-y:auto;">
-          <div style="text-align:center;color:#9ca3af;padding:40px;">Selecciona una solicitud</div>
+
+        <!-- COL 3: Detalle + Acciones del Director -->
+        <div class="panel" style="display:flex;flex-direction:column;overflow:hidden;">
+          <div class="panel-header" id="dir-detalle-header">📋 Detalle</div>
+          <div style="flex:1;overflow-y:auto;" id="dir-detalle">
+            <div class="pdf-visor-empty" style="height:100%;">
+              <span>🏛️</span>
+              <p style="text-align:center;">Selecciona una solicitud<br>para gestionar</p>
+            </div>
+          </div>
         </div>
+
       </div>
     </div>
 

@@ -525,8 +525,15 @@ async function renderDirector() {
   showLoading("Cargando solicitudes...");
   try {
     state.solicitudes = await getSolicitudes();
-    state.solicitudes.sort((a, b) => new Date(b.FechaRecepcion) - new Date(a.FechaRecepcion));
-    renderSidebarEstados();
+    // Orden: Devuelta (urgente) > Ingresada > Respondida > Derivada > En Proceso > Cerrada
+    const prioridad = { "Devuelta":0,"Ingresada":1,"Respondida":2,"Derivada":3,"En Proceso":4,"Cerrada":5 };
+    state.solicitudes.sort((a,b) => {
+      const pa = prioridad[a.Estado]??9, pb = prioridad[b.Estado]??9;
+      if (pa !== pb) return pa - pb;
+      return new Date(b.FechaRecepcion) - new Date(a.FechaRecepcion);
+    });
+    renderDirSidebar();
+    renderDirLista();
     updateTabBadges();
   } catch (e) {
     showToast("error", "Error: " + e.message);
@@ -535,239 +542,325 @@ async function renderDirector() {
   }
 }
 
-function renderSidebarEstados() {
+function renderDirSidebar() {
   const counts = {};
-  state.solicitudes.forEach(s => { counts[s.Estado] = (counts[s.Estado] || 0) + 1; });
-
+  state.solicitudes.forEach(s => { counts[s.Estado] = (counts[s.Estado]||0)+1; });
+  const estados = [
+    { e:"Todos",     icon:"📊", color:"#1a3a6b" },
+    { e:"Devuelta",  icon:"↩️", color:"#b91c1c", urgente:true },
+    { e:"Ingresada", icon:"📥", color:"#1d4ed8" },
+    { e:"Respondida",icon:"✅", color:"#15803d" },
+    { e:"Derivada",  icon:"📤", color:"#b45309" },
+    { e:"En Proceso",icon:"⚙️", color:"#0e7490" },
+    { e:"Cerrada",   icon:"🔒", color:"#6b7280" }
+  ];
   const sidebar = document.getElementById("dir-sidebar");
-  sidebar.innerHTML = `
-    <div class="sidebar-estados">
-      ${["Todos","Ingresada","Derivada","En Proceso","Respondida","Devuelta","Cerrada"].map(e => `
-        <button class="sidebar-btn ${state.filtroEstado === e ? 'active' : ''}" onclick="filtrarDirector('${e}')">
-          <span>${e}</span>
-          <span class="cnt">${e === "Todos" ? state.solicitudes.length : (counts[e]||0)}</span>
-        </button>`).join("")}
-    </div>`;
-
-  renderListaDirector();
+  sidebar.innerHTML = estados.map(({e,icon,urgente}) => `
+    <button class="dir-estado-btn ${state.filtroEstado===e?'activo':''} ${urgente&&(counts[e]||0)>0?'urgente':''}"
+      onclick="filtrarDirector('${e}')">
+      <span class="est-icon">${icon}</span>
+      <span class="est-label">${e}</span>
+      <span class="est-count">${e==='Todos'?state.solicitudes.length:(counts[e]||0)}</span>
+    </button>`).join("");
 }
 
 function filtrarDirector(estado) {
   state.filtroEstado = estado;
   state.pagina = 1;
   state.solicitudSeleccionada = null;
-  renderSidebarEstados();
-  renderDetalleDirector(null);
-  renderPDFViewer(null);
+  state.filtroBuscar = "";
+  renderDirSidebar();
+  renderDirLista();
+  // Limpiar visor y detalle
+  const pdf = document.getElementById("dir-pdf");
+  if (pdf) pdf.innerHTML = `<div class="pdf-visor-empty"><span>📄</span><p>Selecciona una solicitud</p></div>`;
+  const det = document.getElementById("dir-detalle");
+  if (det) det.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>🏛️</span><p style="text-align:center;">Selecciona una solicitud<br>para gestionar</p></div>`;
 }
 
-function renderListaDirector() {
-  const filtradas = state.solicitudes.filter(s =>
-    state.filtroEstado === "Todos" || s.Estado === state.filtroEstado
-  );
-  const inicio = (state.pagina - 1) * state.pageSize;
-  const pagina = filtradas.slice(inicio, inicio + state.pageSize);
-  const totalPags = Math.ceil(filtradas.length / state.pageSize);
-
-  const cont = document.getElementById("dir-lista");
-  cont.innerHTML = `
-    <div style="padding:12px 12px 0;">
-      <input type="text" placeholder="🔍 Buscar solicitud..." style="width:100%;padding:10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px;"
-        oninput="state.filtroBuscar=this.value;state.pagina=1;renderListaDirector()">
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:12px;">
-      ${pagina.length === 0 ? '<p style="text-align:center;color:#9ca3af;padding:40px">Sin solicitudes</p>' :
-        pagina.map(s => `
-          <div class="sol-card ${state.solicitudSeleccionada?.id === s.id ? 'selected' : ''}" onclick="seleccionarSolicitudDirector('${s.id}')">
-            <div class="sol-card-top">
-              <span class="sol-nro">${s.NroSolicitud}</span>
-              <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
-            </div>
-            <div class="sol-card-name">${s.Solicitante}</div>
-            <div class="sol-card-dir">📍 ${s.Direccion || ""}</div>
-            ${s.UnidadDerivada ? `<div style="font-size:12px;color:#888;margin-top:2px;">→ ${s.UnidadDerivada}</div>` : ""}
-          </div>`).join("")}
-    </div>
-    <div class="paginacion">
-      <button onclick="cambiarPaginaDir(${state.pagina-1})" ${state.pagina<=1?'disabled':''}>‹</button>
-      <span>${state.pagina}/${Math.max(1,totalPags)} (${filtradas.length})</span>
-      <button onclick="cambiarPaginaDir(${state.pagina+1})" ${state.pagina>=totalPags?'disabled':''}>›</button>
-    </div>`;
+function getDirFiltradas() {
+  return state.solicitudes.filter(s => {
+    if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
+    if (state.filtroBuscar) {
+      const q = state.filtroBuscar.toLowerCase();
+      return s.NroSolicitud?.toLowerCase().includes(q) ||
+             s.Solicitante?.toLowerCase().includes(q) ||
+             s.Direccion?.toLowerCase().includes(q);
+    }
+    return true;
+  });
 }
 
-function cambiarPaginaDir(p) {
-  state.pagina = p;
-  renderListaDirector();
+function renderDirLista() {
+  const filtradas = getDirFiltradas();
+  const total = filtradas.length;
+  const inicio = (state.pagina-1)*state.pageSize;
+  const pagina = filtradas.slice(inicio, inicio+state.pageSize);
+  const totalPags = Math.ceil(total/state.pageSize);
+
+  const count = document.getElementById("dir-lista-count");
+  if (count) count.textContent = `(${total})`;
+
+  // Actualizar input de búsqueda sin re-renderizar
+  const buscarInput = document.getElementById("dir-buscar");
+  if (buscarInput) buscarInput.oninput = e => {
+    state.filtroBuscar = e.target.value;
+    state.pagina = 1;
+    renderDirLista();
+  };
+
+  const cont = document.getElementById("dir-lista-cards");
+  if (!cont) return;
+
+  if (pagina.length === 0) {
+    cont.innerHTML = `<div style="text-align:center;color:#9ca3af;padding:40px;font-size:13px;">Sin solicitudes en este estado</div>`;
+  } else {
+    cont.innerHTML = pagina.map(s => {
+      const esUrgente = s.Estado === CONFIG.estados.DEVUELTA;
+      const esAccion  = s.Estado === CONFIG.estados.INGRESADA || s.Estado === CONFIG.estados.DEVUELTA || s.Estado === CONFIG.estados.RESPONDIDA;
+      return `
+        <div class="sol-card ${state.solicitudSeleccionada?.id===s.id?'selected':''}"
+          style="border-left-color:${esUrgente?'#ef4444':esAccion?'var(--azul)':'var(--borde)'};"
+          onclick="seleccionarSolicitudDirector('${s.id}')">
+          <div class="sol-card-top">
+            <span class="sol-nro">${s.NroSolicitud}</span>
+            <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
+          </div>
+          <div class="sol-card-name">${s.Solicitante}</div>
+          <div class="sol-card-dir">📍 ${s.Direccion||""}</div>
+          ${s.UnidadDerivada?`<div style="font-size:11px;color:#888;margin-top:3px;">🏢 ${s.UnidadDerivada}</div>`:""}
+          ${esUrgente?`<div style="font-size:11px;color:#b91c1c;margin-top:3px;font-weight:600;">⚠️ Requiere re-derivación</div>`:""}
+        </div>`;
+    }).join("");
+  }
+
+  const pag = document.getElementById("dir-paginacion");
+  if (pag) pag.innerHTML = `
+    <button onclick="cambiarPaginaDir(${state.pagina-1})" ${state.pagina<=1?'disabled':''}>‹</button>
+    <span>${state.pagina}/${Math.max(1,totalPags)} (${total})</span>
+    <button onclick="cambiarPaginaDir(${state.pagina+1})" ${state.pagina>=totalPags?'disabled':''}>›</button>`;
 }
+
+function cambiarPaginaDir(p) { state.pagina=p; renderDirLista(); }
 
 async function seleccionarSolicitudDirector(id) {
-  state.solicitudSeleccionada = state.solicitudes.find(s => s.id === id);
-  renderListaDirector();
-  renderPDFViewer(state.solicitudSeleccionada);
-  renderDetalleDirector(state.solicitudSeleccionada);
-}
-
-async function renderPDFViewer(sol) {
-  const cont = document.getElementById("dir-pdf");
-  if (!sol) {
-    cont.innerHTML = `<div class="pdf-placeholder"><span style="font-size:60px">📄</span><p>Selecciona una solicitud para ver el documento</p></div>`;
-    return;
+  const sol = state.solicitudes.find(s => s.id === id);
+  if (!sol) return;
+  state.solicitudSeleccionada = sol;
+  renderDirLista();
+  renderDetalleDirector(sol);
+  // Cargar PDF con PDF.js en panel central
+  const pdfPanel = document.getElementById("dir-pdf");
+  const pdfHeader = document.getElementById("dir-pdf-header");
+  if (pdfPanel) {
+    pdfPanel.innerHTML = `<div style="text-align:center;color:#9ca3af;padding:30px;"><div class="spinner" style="margin:0 auto 12px;"></div><p>Cargando documento...</p></div>`;
   }
-  cont.innerHTML = `<div style="text-align:center;padding:20px;color:#666">Cargando adjuntos...</div>`;
   try {
-    const attachments = await getListItemAttachments(CONFIG.lists.solicitudes, sol.id);
-    if (attachments.length === 0) {
-      cont.innerHTML = `<div class="pdf-placeholder"><span style="font-size:60px">📎</span><p>Sin documentos adjuntos</p></div>`;
+    const atts = await getListItemAttachments(CONFIG.lists.solicitudes, sol.id);
+    if (!atts.length) {
+      if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>📭</span><p>Sin documentos adjuntos</p></div>`;
       return;
     }
-    const pdfs = attachments.filter(a => a.name?.toLowerCase().endsWith('.pdf'));
-    const imgs = attachments.filter(a => /\.(jpg|jpeg|png|gif)$/i.test(a.name));
-    const token = await getToken();
-
-    cont.innerHTML = `
-      ${pdfs.length > 0 ? `
-        <div style="height:60%;min-height:300px;margin-bottom:12px;">
-          <iframe src="${pdfs[0]['@microsoft.graph.downloadUrl']}" style="width:100%;height:100%;border:none;border-radius:8px;"></iframe>
-        </div>` : ""}
-      ${imgs.length > 0 ? `
-        <div class="attachments-grid">
-          ${imgs.map(img => `
-            <div class="attach-thumb" onclick="window.open('${img['@microsoft.graph.downloadUrl']}','_blank')">
-              <img src="${img['@microsoft.graph.downloadUrl']}" alt="${img.name}">
-            </div>`).join("")}
-        </div>` : ""}
-      ${pdfs.length === 0 && imgs.length === 0 ? `<div class="pdf-placeholder"><span>📎</span><p>${attachments.map(a=>a.name).join(', ')}</p></div>` : ""}`;
-  } catch (e) {
-    cont.innerHTML = `<div class="pdf-placeholder"><span>⚠️</span><p>Error al cargar adjuntos</p></div>`;
+    const first = atts.find(a=>a.name?.toLowerCase().endsWith('.pdf'))||atts[0];
+    // Reusar mostrarEnVisor pero apuntando al panel del director
+    const tempPanel = document.getElementById("pdf-visor-contenido");
+    // Temporalmente redirigir al panel del director
+    if (pdfHeader) pdfHeader.textContent = `📄 ${sol.NroSolicitud} — ${first.name}`;
+    const blobUrl = await getAttachmentBlobUrl(first.downloadUrl, first.serverRelativeUrl);
+    if (pdfPanel) {
+      pdfPanel.innerHTML = "";
+      if (first.name?.toLowerCase().endsWith('.pdf') && typeof pdfjsLib !== "undefined") {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        const wrap = document.createElement("div");
+        wrap.style.cssText = "flex:1;overflow-y:auto;background:#525659;border-radius:8px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:0;";
+        pdfPanel.appendChild(wrap);
+        const pdf = await pdfjsLib.getDocument(blobUrl).promise;
+        for (let p=1; p<=pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const w = (wrap.clientWidth||350)-20;
+          const vp = page.getViewport({scale:1});
+          const scale = w/vp.width;
+          const svp = page.getViewport({scale});
+          const canvas = document.createElement("canvas");
+          canvas.width=svp.width; canvas.height=svp.height;
+          canvas.style.cssText="width:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);";
+          await page.render({canvasContext:canvas.getContext("2d"),viewport:svp}).promise;
+          wrap.appendChild(canvas);
+          if (p<pdf.numPages) {
+            const sep=document.createElement("div");
+            sep.style.cssText="color:rgba(255,255,255,0.35);font-size:11px;";
+            sep.textContent=`— ${p} / ${pdf.numPages} —`;
+            wrap.appendChild(sep);
+          }
+        }
+      } else {
+        const img = document.createElement("img");
+        img.src = blobUrl;
+        img.style.cssText="width:100%;border-radius:8px;";
+        pdfPanel.appendChild(img);
+      }
+    }
+  } catch(e) {
+    if (pdfPanel) pdfPanel.innerHTML=`<div class="pdf-visor-empty"><span>⚠️</span><p style="color:#ef4444;font-size:13px;">No se pudo cargar el documento</p></div>`;
   }
 }
 
 function renderDetalleDirector(sol) {
   const cont = document.getElementById("dir-detalle");
-  if (!sol) { cont.innerHTML = `<div style="text-align:center;color:#9ca3af;padding:40px;">Selecciona una solicitud</div>`; return; }
+  const header = document.getElementById("dir-detalle-header");
+  if (!sol) {
+    if (cont) cont.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>🏛️</span><p>Selecciona una solicitud</p></div>`;
+    return;
+  }
 
-  // Director puede derivar si está Ingresada o Devuelta (para re-derivar)
   const esDerivable = sol.Estado === CONFIG.estados.INGRESADA || sol.Estado === CONFIG.estados.DEVUELTA;
-  // Solo Director cierra, solo cuando está Respondida
-  const esCerrable = sol.Estado === CONFIG.estados.RESPONDIDA && state.usuario.Rol === CONFIG.roles.DIRECTOR;
+  const esCerrable  = sol.Estado === CONFIG.estados.RESPONDIDA;
+  const esDevuelta  = sol.Estado === CONFIG.estados.DEVUELTA;
 
-  cont.innerHTML = `
-    <div class="panel-header" style="background:#f8fafc;">📋 Detalle Solicitud</div>
-    <div style="flex:1;overflow-y:auto;">
-      <div class="detalle-fields">
-        <div class="detalle-row">
-          <div class="detalle-label">🔢 Nro</div>
-          <div class="detalle-value"><strong>${sol.NroSolicitud}</strong></div>
+  if (header) {
+    header.style.cssText = `background:${esDerivable?'linear-gradient(90deg,#1e3a5f,#1a3a6b)':esCerrable?'linear-gradient(90deg,#14532d,#15803d)':'linear-gradient(90deg,#374151,#6b7280)'};color:white;display:flex;align-items:center;gap:8px;`;
+    header.innerHTML = `
+      <span>${esDerivable?'📤':esCerrable?'✅':'📋'}</span>
+      <span style="font-weight:700;">${sol.NroSolicitud}</span>
+      <span class="estado-badge estado-${sol.Estado}" style="font-size:11px;">${sol.Estado}</span>`;
+  }
+
+  cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;padding:14px;overflow-y:auto;">
+
+    <!-- Datos solicitud -->
+    <div class="form-section">
+      <div class="form-section-header" style="font-size:11px;">📋 Datos de la Solicitud</div>
+      <div class="form-section-body" style="padding:10px 14px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:8px;">
+          <div><span style="color:#888;font-size:11px;display:block;">Nro Solicitud</span><strong>${sol.NroSolicitud}</strong></div>
+          <div><span style="color:#888;font-size:11px;display:block;">Fecha</span>${formatFecha(sol.FechaRecepcion)}</div>
         </div>
-        <div class="detalle-row">
-          <div class="detalle-label">📅 Fecha</div>
-          <div class="detalle-value">${formatFecha(sol.FechaRecepcion)}</div>
-        </div>
-        <div class="detalle-row">
-          <div class="detalle-label">👤 Solicitante</div>
-          <div class="detalle-value">${sol.Solicitante}</div>
-        </div>
-        <div class="detalle-row">
-          <div class="detalle-label">📍 Dirección</div>
-          <div class="detalle-value">${sol.Direccion || "-"}</div>
-        </div>
-        <div class="detalle-row">
-          <div class="detalle-label">📝 Solicitud</div>
-          <div class="detalle-value">${sol.Solicitud || "-"}</div>
-        </div>
-        <div class="detalle-row">
-          <div class="detalle-label">🏷 Estado</div>
-          <div class="detalle-value"><span class="estado-badge estado-${sol.Estado}">${sol.Estado}</span></div>
-        </div>
-        ${sol.UnidadDerivada ? `<div class="detalle-row">
-          <div class="detalle-label">🏢 Unidad</div>
-          <div class="detalle-value">${sol.UnidadDerivada}</div>
-        </div>` : ""}
-        ${sol.MotivoDevolucion ? `<div class="detalle-row">
-          <div class="detalle-label">↩️ Devolución</div>
-          <div class="detalle-value" style="color:#b91c1c">${sol.MotivoDevolucion}</div>
-        </div>` : ""}
+        <div style="font-size:13px;margin-bottom:6px;"><span style="color:#888;font-size:11px;display:block;">Solicitante</span>${sol.Solicitante}</div>
+        <div style="font-size:13px;margin-bottom:6px;"><span style="color:#888;font-size:11px;display:block;">Dirección</span>${sol.Direccion||"-"}</div>
+        <div style="font-size:13px;"><span style="color:#888;font-size:11px;display:block;">Solicitud</span>${sol.Solicitud||"-"}</div>
+        ${sol.UnidadDerivada?`<div style="margin-top:8px;padding:6px 10px;background:#fef3c7;border-radius:6px;font-size:12px;color:#b45309;">🏢 Derivada a: <strong>${sol.UnidadDerivada}</strong></div>`:""}
       </div>
+    </div>
 
-      ${esDerivable ? `
-        <div class="acciones-panel">
-          <div class="section-title">Derivar Solicitud</div>
-          <select id="dir-unidad-derivar">
-            <option value="">— Seleccionar unidad —</option>
-            ${CONFIG.unidades.map(u => `<option>${u}</option>`).join("")}
-          </select>
-          <textarea id="dir-accion-obs" rows="2" placeholder="Observaciones / instrucciones para la unidad..."></textarea>
-          <button class="btn-primary" onclick="derivarSolicitud('${sol.id}')">📤 Derivar</button>
-        </div>` : ""}
-
-      ${esCerrable ? `
-        <div class="acciones-panel">
-          <div class="section-title">Cerrar Solicitud</div>
-          <textarea id="dir-cierre-obs" rows="2" placeholder="Observaciones de cierre..."></textarea>
-          <button class="btn-success" onclick="cerrarSolicitud('${sol.id}')">🔒 Cerrar Solicitud</button>
-        </div>` : ""}
-
-      <div style="padding:12px;">
-        <button class="btn-primary" style="background:#6b7280;width:100%;" onclick="verHistorial('${sol.NroSolicitud}')">🕐 Ver Historial</button>
+    ${esDevuelta ? `
+    <!-- Motivo devolución -->
+    <div class="accion-panel">
+      <div class="accion-header devuelta">↩️ Motivo de Devolución</div>
+      <div class="accion-body" style="background:#fff5f5;">
+        <p style="font-size:13px;color:#b91c1c;margin:0;">${sol.MotivoDevolucion||"Sin motivo registrado"}</p>
       </div>
-    </div>`;
+    </div>` : ""}
+
+    ${esDerivable ? `
+    <!-- Panel derivar -->
+    <div class="accion-panel">
+      <div class="accion-header derivar">📤 ${esDevuelta?"Re-derivar":"Derivar"} Solicitud</div>
+      <div class="accion-body">
+        <label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Unidad de destino</label>
+        <select id="dir-unidad-derivar">
+          <option value="">— Seleccionar unidad —</option>
+          ${CONFIG.unidades.map(u=>`<option ${sol.UnidadDerivada===u?'selected':''}>${u}</option>`).join("")}
+        </select>
+        <label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Instrucciones / Acciones</label>
+        <textarea id="dir-accion-obs" rows="3" placeholder="Instrucciones específicas para la unidad..."></textarea>
+        <button class="btn-primary" onclick="derivarSolicitud('${sol.id}')" style="width:100%;padding:12px;">
+          📤 ${esDevuelta?"Re-derivar Solicitud":"Derivar Solicitud"}
+        </button>
+      </div>
+    </div>` : ""}
+
+    ${esCerrable ? `
+    <!-- Panel cerrar -->
+    <div class="accion-panel">
+      <div class="accion-header cerrar">✅ Cerrar Solicitud</div>
+      <div class="accion-body">
+        <p style="font-size:12px;color:#666;margin-bottom:10px;">La solicitud ha sido respondida. El Director puede cerrarla formalmente para dejar constancia en el sistema.</p>
+        <textarea id="dir-cierre-obs" rows="2" placeholder="Observaciones de cierre (opcional)..."></textarea>
+        <button class="btn-success" onclick="cerrarSolicitud('${sol.id}')" style="width:100%;padding:12px;">
+          🔒 Cerrar Solicitud Formalmente
+        </button>
+      </div>
+    </div>` : ""}
+
+    <!-- Historial -->
+    <div class="form-section">
+      <div class="form-section-header verde" style="font-size:11px;cursor:pointer;" onclick="cargarHistorialDir('${sol.NroSolicitud}')">
+        🕐 Historial de Movimientos <span style="float:right;font-weight:400;">ver ▼</span>
+      </div>
+      <div class="form-section-body" id="dir-historial" style="max-height:200px;overflow-y:auto;padding:8px;">
+        <div style="text-align:center;color:#9ca3af;font-size:12px;padding:10px;">Clic en "ver" para cargar</div>
+      </div>
+    </div>
+
+  </div>`;
+
+  // Cargar historial automáticamente
+  cargarHistorialDir(sol.NroSolicitud);
+}
+
+async function cargarHistorialDir(nroSolicitud) {
+  const hc = document.getElementById("dir-historial");
+  if (!hc) return;
+  hc.innerHTML = `<div style="text-align:center;color:#9ca3af;font-size:12px;padding:10px;"><div class="spinner" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>Cargando...</div>`;
+  try {
+    const hist = await getHistorialBySolicitud(nroSolicitud);
+    hist.sort((a,b)=>new Date(b.FechaAccion)-new Date(a.FechaAccion));
+    if (!hist.length) { hc.innerHTML=`<p style="text-align:center;color:#9ca3af;font-size:12px;">Sin historial</p>`; return; }
+    const dot = a=>{a=(a||"").toLowerCase();return a.includes('deriv')?'#f59e0b':a.includes('respond')?'#22c55e':a.includes('devuel')?'#ef4444':a.includes('cerr')?'#6b7280':'#3b82f6';};
+    hc.innerHTML = hist.map(h=>`
+      <div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #f3f4f6;">
+        <div style="width:8px;height:8px;border-radius:50%;background:${dot(h.Accion)};margin-top:4px;flex-shrink:0;"></div>
+        <div style="flex:1;">
+          <div style="font-size:12px;font-weight:600;">${h.Accion}</div>
+          <div style="font-size:11px;color:#888;">${formatFechaHora(h.FechaAccion)} · ${h.UsuarioAccion||""} ${h.Unidad?'· '+h.Unidad:""}</div>
+          ${h.Observaciones?`<div style="font-size:11px;color:#555;font-style:italic;">"${h.Observaciones}"</div>`:""}
+        </div>
+      </div>`).join("");
+  } catch(e) {
+    hc.innerHTML=`<p style="color:#9ca3af;font-size:12px;text-align:center;">Error al cargar historial</p>`;
+  }
 }
 
 async function derivarSolicitud(solId) {
   const unidad = document.getElementById("dir-unidad-derivar")?.value;
-  const obs = document.getElementById("dir-accion-obs")?.value.trim();
-  if (!unidad) { showToast("error", "Selecciona una unidad"); return; }
-
+  const obs    = document.getElementById("dir-accion-obs")?.value.trim();
+  if (!unidad) { showToast("error","Selecciona una unidad de destino"); return; }
   showLoading("Derivando solicitud...");
   try {
-    const sol = state.solicitudes.find(s => s.id === solId);
-    await actualizarSolicitud(solId, { Estado: CONFIG.estados.DERIVADA, UnidadDerivada: unidad });
+    const sol = state.solicitudes.find(s=>s.id===solId);
+    const esRederivar = sol.Estado === CONFIG.estados.DEVUELTA;
+    await actualizarSolicitud(solId, { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad });
     await registrarHistorial({
-      NroSolicitud: sol.NroSolicitud,
-      Accion: "Derivada a unidad",
-      EstadoAnterior: sol.Estado,
-      EstadoNuevo: CONFIG.estados.DERIVADA,
-      UsuarioAccion: state.usuario.NombreCompleto,
-      RolUsuario: state.usuario.Rol,
-      Unidad: unidad,
-      FechaAccion: new Date().toISOString(),
-      Observaciones: obs
+      NroSolicitud:sol.NroSolicitud,
+      Accion: esRederivar ? "Re-derivada a unidad" : "Derivada a unidad",
+      EstadoAnterior:sol.Estado, EstadoNuevo:CONFIG.estados.DERIVADA,
+      UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
+      Unidad:unidad, FechaAccion:new Date().toISOString(), Observaciones:obs
     });
-    await notificarUnidad({ ...sol, Estado: CONFIG.estados.DERIVADA }, unidad).catch(console.error);
-    showToast("success", `✅ Derivada a ${unidad}`);
+    await notificarUnidad({...sol,Estado:CONFIG.estados.DERIVADA},unidad).catch(console.error);
+    showToast("success",`✅ Derivada a ${unidad}`);
     await renderDirector();
-    renderSidebarEstados();
-  } catch (e) {
-    showToast("error", "Error: " + e.message);
-  } finally {
-    hideLoading();
-  }
+  } catch(e) { showToast("error","Error: "+e.message); }
+  finally { hideLoading(); }
 }
 
 async function cerrarSolicitud(solId) {
   const obs = document.getElementById("dir-cierre-obs")?.value.trim();
+  if (!confirm("¿Confirmas el cierre formal de esta solicitud?")) return;
   showLoading("Cerrando solicitud...");
   try {
-    const sol = state.solicitudes.find(s => s.id === solId);
-    await actualizarSolicitud(solId, { Estado: CONFIG.estados.CERRADA });
+    const sol = state.solicitudes.find(s=>s.id===solId);
+    await actualizarSolicitud(solId, { Estado:CONFIG.estados.CERRADA });
     await registrarHistorial({
-      NroSolicitud: sol.NroSolicitud,
-      Accion: "Solicitud cerrada",
-      EstadoAnterior: sol.Estado,
-      EstadoNuevo: CONFIG.estados.CERRADA,
-      UsuarioAccion: state.usuario.NombreCompleto,
-      RolUsuario: state.usuario.Rol,
-      Unidad: state.usuario.Unidad,
-      FechaAccion: new Date().toISOString(),
-      Observaciones: obs
+      NroSolicitud:sol.NroSolicitud, Accion:"Solicitud cerrada formalmente",
+      EstadoAnterior:sol.Estado, EstadoNuevo:CONFIG.estados.CERRADA,
+      UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
+      Unidad:state.usuario.Unidad, FechaAccion:new Date().toISOString(), Observaciones:obs
     });
-    showToast("success", "🔒 Solicitud cerrada");
+    showToast("success","🔒 Solicitud cerrada formalmente");
     await renderDirector();
-  } catch (e) {
-    showToast("error", "Error: " + e.message);
-  } finally {
-    hideLoading();
-  }
+  } catch(e) { showToast("error","Error: "+e.message); }
+  finally { hideLoading(); }
 }
 
 // ===== UNIDAD VIEW =====
