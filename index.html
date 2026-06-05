@@ -51,8 +51,9 @@
   <!-- Topbar -->
   <header class="topbar">
     <div class="topbar-logo">
-      <img src="img/escudo.png" alt="Escudo" style="height:36px;"
+      <img src="img/escudo.png" alt="Escudo" style="height:48px;"
            onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Escudo_de_Do%C3%B1ihue.svg/200px-Escudo_de_Do%C3%B1ihue.svg.png'">
+      <div class="topbar-divider"></div>
       <div class="topbar-org">
         <div class="org-name">Dirección de Obras · Municipalidad de Doñihue</div>
         <div class="dep-name">GESTIÓN DE SOLICITUDES</div>
@@ -60,12 +61,13 @@
     </div>
     <div class="topbar-title"></div>
     <div class="topbar-user">
-      <div class="user-name">
-        <div id="topbar-nombre">—</div>
+      <div class="user-avatar" id="topbar-avatar">?</div>
+      <div class="user-info">
+        <div class="user-name" id="topbar-nombre">—</div>
         <div class="user-role" id="topbar-rol">—</div>
       </div>
-      <button class="btn-logout" id="btn-logout-app" title="Cerrar sesión">⎋</button>
     </div>
+    <button class="btn-logout" id="btn-logout-app" title="Cerrar sesión">⏻</button>
   </header>
 
   <!-- Tabs -->

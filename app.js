@@ -62,8 +62,11 @@ function showApp() {
   app.style.display = "flex";
 
   const u = state.usuario;
-  document.getElementById("topbar-nombre").textContent = u.NombreCompleto || u.displayName;
+  const nombre = u.NombreCompleto || u.displayName || "";
+  document.getElementById("topbar-nombre").textContent = nombre;
   document.getElementById("topbar-rol").textContent = `${u.Rol}${u.Unidad ? ' — ' + u.Unidad : ''}`;
+  const av = document.getElementById("topbar-avatar");
+  if (av) av.textContent = nombre.charAt(0).toUpperCase();
   document.getElementById("btn-logout-app").onclick = logout;
 
   buildTabs();
@@ -317,8 +320,9 @@ function renderFormNueva() {
     <div class="form-nueva">
 
       <!-- Sección datos -->
-      <div style="background:#f0f4ff;border-radius:10px;padding:14px;margin-bottom:4px;">
-        <div style="font-size:12px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">📋 Datos de la Solicitud</div>
+      <div class="form-section">
+        <div class="form-section-header">📋 Datos de la Solicitud</div>
+        <div class="form-section-body">
         <div class="form-row">
           <div class="form-group">
             <label>* Nro Solicitud</label>
@@ -341,11 +345,13 @@ function renderFormNueva() {
           <label>Descripción de la solicitud</label>
           <textarea id="nueva-solicitud" rows="3" placeholder="Resumen del motivo de la solicitud..."></textarea>
         </div>
-      </div>
+        </div><!-- /form-section-body -->
+      </div><!-- /form-section -->
 
       <!-- Sección adjunto -->
-      <div style="background:#fff8f0;border-radius:10px;padding:14px;border:1.5px dashed #f59e0b;">
-        <div style="font-size:12px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">📎 Documento Adjunto</div>
+      <div class="form-section">
+        <div class="form-section-header naranja">📎 Documento Adjunto</div>
+        <div class="form-section-body">
         <div id="drop-area" class="upload-area"
           onclick="document.getElementById('nueva-files').click()"
           ondragover="event.preventDefault();this.style.background='#fef3c7'"
@@ -358,14 +364,15 @@ function renderFormNueva() {
         <input type="file" id="nueva-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFiles(this.files)">
         <div id="file-list" class="file-list"></div>
         <div id="pdf-preview" style="margin-top:10px;"></div>
+        </div>
       </div>
 
-      <!-- Botones -->
-      <div class="btn-row" style="margin-top:4px;">
-        <button class="btn-primary" onclick="guardarSolicitud()" style="flex:2;">
+      <!-- Botones centrados -->
+      <div style="display:flex;justify-content:center;gap:12px;padding:4px 0 8px;">
+        <button class="btn-primary" onclick="guardarSolicitud()" style="width:220px;padding:13px;">
           💾 Guardar Solicitud
         </button>
-        <button onclick="limpiarFormNueva()" style="flex:1;padding:12px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:14px;">
+        <button onclick="limpiarFormNueva()" style="padding:10px 20px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#666;">
           🗑 Limpiar
         </button>
       </div>
@@ -1194,67 +1201,78 @@ function seleccionarSolicitud(id) {
 
 function cargarSolicitudEnFormulario(sol) {
   const header = document.getElementById("form-panel-header");
-  if (header) header.innerHTML = `✏️ Solicitud <strong>${sol.NroSolicitud}</strong> — <span class="estado-badge estado-${sol.Estado}">${sol.Estado}</span> <button onclick="renderFormNueva()" style="float:right;background:none;border:none;cursor:pointer;font-size:13px;color:var(--azul);">➕ Nueva</button>`;
+  if (header) header.innerHTML = `
+    <span>📄 ${sol.NroSolicitud}</span>
+    <span class="estado-badge estado-${sol.Estado}" style="margin-left:8px;">${sol.Estado}</span>
+    <button onclick="renderFormNueva()" style="margin-left:auto;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px;">➕ Nueva</button>`;
+  if (header) Object.assign(header.style, { display:"flex", alignItems:"center", gap:"8px", background:"linear-gradient(90deg,#0f2547,#1a3a6b)" });
 
   const cont = document.getElementById("panel-nueva");
   const soloLectura = sol.Estado !== CONFIG.estados.INGRESADA;
   cont.innerHTML = `
     <div class="form-nueva">
-      <div style="background:#f0f4ff;border-radius:10px;padding:14px;margin-bottom:4px;">
-        <div style="font-size:12px;font-weight:700;color:var(--azul);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">📋 Datos de la Solicitud</div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Nro Solicitud</label>
-            <input type="text" id="nueva-nro" value="${sol.NroSolicitud||''}" ${soloLectura?'readonly style="background:#f3f4f6"':''}>
+
+      <!-- Datos -->
+      <div class="form-section">
+        <div class="form-section-header">📋 Datos de la Solicitud</div>
+        <div class="form-section-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nro Solicitud</label>
+              <input type="text" id="nueva-nro" value="${sol.NroSolicitud||''}" ${soloLectura?'readonly':''}>
+            </div>
+            <div class="form-group">
+              <label>Fecha Recepción</label>
+              <input type="date" id="nueva-fecha" value="${sol.FechaRecepcion?.split('T')[0]||''}" ${soloLectura?'readonly':''}>
+            </div>
           </div>
           <div class="form-group">
-            <label>Fecha Recepción</label>
-            <input type="date" id="nueva-fecha" value="${sol.FechaRecepcion?.split('T')[0]||''}" ${soloLectura?'readonly style="background:#f3f4f6"':''}>
+            <label>Nombre Solicitante</label>
+            <input type="text" id="nueva-solicitante" value="${sol.Solicitante||''}" ${soloLectura?'readonly':''}>
           </div>
+          <div class="form-group">
+            <label>Dirección</label>
+            <input type="text" id="nueva-dir" value="${sol.Direccion||''}" ${soloLectura?'readonly':''}>
+          </div>
+          <div class="form-group">
+            <label>Descripción de la solicitud</label>
+            <textarea id="nueva-solicitud" rows="3" ${soloLectura?'readonly':''}>${sol.Solicitud||''}</textarea>
+          </div>
+          ${sol.UnidadDerivada?`<div class="form-group"><label>Unidad Derivada</label><input type="text" value="${sol.UnidadDerivada}" readonly style="color:#b45309;font-weight:700;"></div>`:''}
+          ${sol.MotivoDevolucion?`<div class="form-group"><label>↩️ Motivo Devolución</label><textarea rows="2" readonly style="color:#b91c1c;background:#fff5f5;">${sol.MotivoDevolucion}</textarea></div>`:''}
         </div>
-        <div class="form-group">
-          <label>Nombre Solicitante</label>
-          <input type="text" id="nueva-solicitante" value="${sol.Solicitante||''}" ${soloLectura?'readonly style="background:#f3f4f6"':''}>
-        </div>
-        <div class="form-group">
-          <label>Dirección</label>
-          <input type="text" id="nueva-dir" value="${sol.Direccion||''}" ${soloLectura?'readonly style="background:#f3f4f6"':''}>
-        </div>
-        <div class="form-group">
-          <label>Descripción</label>
-          <textarea id="nueva-solicitud" rows="3" ${soloLectura?'readonly style="background:#f3f4f6"':''}>${sol.Solicitud||''}</textarea>
-        </div>
-        ${sol.UnidadDerivada ? `<div class="form-group"><label>Unidad Derivada</label><input type="text" value="${sol.UnidadDerivada}" readonly style="background:#f3f4f6;color:#b45309;font-weight:600;"></div>` : ''}
-        ${sol.MotivoDevolucion ? `<div class="form-group"><label>Motivo Devolución</label><textarea rows="2" readonly style="background:#fff0f0;color:#b91c1c;">${sol.MotivoDevolucion}</textarea></div>` : ''}
       </div>
 
-      <!-- Adjuntos existentes -->
-      <div style="background:#fff8f0;border-radius:10px;padding:14px;border:1.5px dashed #f59e0b;">
-        <div style="font-size:12px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">📎 Documentos Adjuntos</div>
-        <div id="adjuntos-existentes">
-          <div style="text-align:center;color:#9ca3af;font-size:13px;">Cargando adjuntos...</div>
+      <!-- Adjuntos -->
+      <div class="form-section">
+        <div class="form-section-header naranja">📎 Documentos Adjuntos</div>
+        <div class="form-section-body">
+          <div id="adjuntos-existentes"><div style="text-align:center;color:#9ca3af;padding:16px;">Cargando adjuntos...</div></div>
+          ${!soloLectura?`
+          <div id="drop-area" class="upload-area" style="margin-top:10px;" onclick="document.getElementById('nueva-files').click()">
+            <div style="font-size:28px;">📄</div><div style="font-size:13px;font-weight:600;">Agregar más documentos</div>
+          </div>
+          <input type="file" id="nueva-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFiles(this.files)">
+          <div id="file-list" class="file-list"></div>`:''}
         </div>
-        ${!soloLectura ? `
-        <div id="drop-area" class="upload-area" style="margin-top:10px;"
-          onclick="document.getElementById('nueva-files').click()"
-          ondragover="event.preventDefault()"
-          ondrop="event.preventDefault();handleFiles(event.dataTransfer.files)">
-          <div style="font-size:28px;">📄</div>
-          <div style="font-weight:600;font-size:13px;">Agregar más documentos</div>
-        </div>
-        <input type="file" id="nueva-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFiles(this.files)">
-        <div id="file-list" class="file-list"></div>
-        <div id="pdf-preview"></div>` : ''}
       </div>
 
-      ${!soloLectura ? `
-      <div class="btn-row" style="margin-top:4px;">
-        <button class="btn-primary" onclick="guardarEdicionSolicitud('${sol.id}')" style="flex:2;">💾 Guardar Cambios</button>
-        <button onclick="renderFormNueva()" style="flex:1;padding:12px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:14px;">✕ Cancelar</button>
+      <!-- Historial -->
+      <div class="form-section">
+        <div class="form-section-header verde">🕐 Historial de la Solicitud</div>
+        <div class="form-section-body" id="historial-inline" style="max-height:220px;overflow-y:auto;">
+          <div style="text-align:center;color:#9ca3af;padding:16px;">Cargando historial...</div>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      ${!soloLectura?`
+      <div style="display:flex;justify-content:center;gap:12px;padding:4px 0 8px;">
+        <button class="btn-primary" onclick="guardarEdicionSolicitud('${sol.id}')" style="width:220px;padding:13px;">💾 Guardar Cambios</button>
+        <button onclick="renderFormNueva()" style="padding:10px 20px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#666;">✕ Cancelar</button>
       </div>` : `
-      <div style="padding:12px;background:#f8fafc;border-radius:10px;text-align:center;color:#9ca3af;font-size:13px;">
-        🔒 Solicitud en estado <strong>${sol.Estado}</strong> — solo lectura
-        <br><button onclick="renderFormNueva()" style="margin-top:8px;padding:8px 16px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:var(--azul);">➕ Ingresar nueva solicitud</button>
+      <div style="display:flex;justify-content:center;padding:8px 0;">
+        <button onclick="renderFormNueva()" style="padding:10px 24px;border:1.5px solid var(--azul);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:var(--azul);font-weight:600;">➕ Ingresar nueva solicitud</button>
       </div>`}
     </div>`;
 
@@ -1282,6 +1300,31 @@ function cargarSolicitudEnFormulario(sol) {
   }).catch(() => {
     const c = document.getElementById("adjuntos-existentes");
     if (c) c.innerHTML = `<p style="color:#9ca3af;font-size:13px;">No se pudieron cargar los adjuntos</p>`;
+  });
+
+  // Cargar historial inline
+  getHistorialBySolicitud(sol.NroSolicitud).then(hist => {
+    const hc = document.getElementById("historial-inline");
+    if (!hc) return;
+    hist.sort((a,b) => new Date(b.FechaAccion) - new Date(a.FechaAccion));
+    if (hist.length === 0) {
+      hc.innerHTML = `<p style="text-align:center;color:#9ca3af;font-size:13px;padding:12px;">Sin historial registrado</p>`;
+      return;
+    }
+    const colorAccion = a => a?.includes('deriv')?'#f59e0b':a?.includes('respond')?'#22c55e':a?.includes('devuel')?'#ef4444':a?.includes('cerr')?'#6b7280':'#3b82f6';
+    hc.innerHTML = hist.map(h => `
+      <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
+        <div style="width:10px;height:10px;border-radius:50%;background:${colorAccion(h.Accion?.toLowerCase())};margin-top:4px;flex-shrink:0;"></div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:#222;">${h.Accion}</div>
+          <div style="font-size:12px;color:#888;">${formatFechaHora(h.FechaAccion)} · ${h.UsuarioAccion||''} ${h.Unidad?'· '+h.Unidad:''}</div>
+          ${h.Observaciones?`<div style="font-size:12px;color:#555;margin-top:2px;font-style:italic;">"${h.Observaciones}"</div>`:''}
+          ${h.EstadoAnterior?`<div style="font-size:11px;color:#aaa;margin-top:2px;">${h.EstadoAnterior} → ${h.EstadoNuevo}</div>`:''}
+        </div>
+      </div>`).join('');
+  }).catch(() => {
+    const hc = document.getElementById("historial-inline");
+    if (hc) hc.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;">No se pudo cargar el historial</p>`;
   });
 }
 

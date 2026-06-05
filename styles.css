@@ -129,39 +129,55 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 /* ===== APP SHELL ===== */
 #app { display: none; min-height: 100vh; flex-direction: column; }
 .topbar {
-  background: var(--azul);
+  background: linear-gradient(90deg, #0f2547 0%, #1a3a6b 60%, #1e4080 100%);
   color: white;
-  padding: 0 24px;
-  height: 64px;
+  padding: 0 28px;
+  height: 72px;
   display: flex;
   align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  gap: 20px;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.25);
   position: sticky;
   top: 0;
   z-index: 100;
 }
-.topbar-logo { display: flex; align-items: center; gap: 12px; }
-.topbar-logo img { height: 40px; }
-.topbar-org { line-height: 1.3; }
-.topbar-org .org-name { font-size: 12px; opacity: 0.8; }
-.topbar-org .dep-name { font-size: 15px; font-weight: 600; }
-.topbar-title { flex: 1; text-align: center; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
-.topbar-user { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-.topbar-user .user-name { text-align: right; line-height: 1.3; }
-.topbar-user .user-role { font-size: 12px; opacity: 0.8; }
-.btn-logout {
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: white;
+.topbar-logo { display: flex; align-items: center; gap: 14px; }
+.topbar-logo img { height: 48px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
+.topbar-logo .topbar-divider { width: 1px; height: 40px; background: rgba(255,255,255,0.2); }
+.topbar-org { line-height: 1.4; }
+.topbar-org .org-name { font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; }
+.topbar-org .dep-name { font-size: 17px; font-weight: 700; letter-spacing: 0.3px; }
+.topbar-title { flex: 1; text-align: center; font-size: 18px; font-weight: 600; letter-spacing: 1px; opacity: 0.9; text-transform: uppercase; }
+.topbar-user {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
   padding: 8px 14px;
+}
+.topbar-user .user-avatar {
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+}
+.topbar-user .user-info { line-height: 1.3; }
+.topbar-user .user-name { font-size: 14px; font-weight: 600; }
+.topbar-user .user-role { font-size: 11px; opacity: 0.75; }
+.btn-logout {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  padding: 8px 10px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 20px;
+  font-size: 18px;
   transition: background 0.2s;
   display: flex; align-items: center;
+  margin-left: 4px;
 }
-.btn-logout:hover { background: rgba(255,255,255,0.25); }
+.btn-logout:hover { background: rgba(255,255,255,0.22); }
 
 /* ===== TABS ===== */
 .tabs-bar {
@@ -238,15 +254,17 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
   padding: 12px 14px;
   margin-bottom: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.18s;
   position: relative;
+  border-left: 4px solid var(--borde);
+  background: white;
 }
-.sol-card:hover { border-color: var(--azul-claro); box-shadow: var(--sombra); }
-.sol-card.selected { border-color: var(--azul); background: #f0f4ff; }
-.sol-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
-.sol-nro { font-weight: 700; color: var(--azul); font-size: 14px; }
-.sol-card-name { font-size: 14px; font-weight: 500; color: var(--texto); }
-.sol-card-dir { font-size: 12px; color: #888; display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.sol-card:hover { border-color: var(--azul-claro); box-shadow: 0 2px 10px rgba(26,58,107,0.12); transform: translateX(2px); }
+.sol-card.selected { border-color: var(--azul); border-left-color: var(--azul); background: #eef3ff; box-shadow: 0 2px 12px rgba(26,58,107,0.15); }
+.sol-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.sol-nro { font-weight: 800; color: var(--azul); font-size: 16px; letter-spacing: 0.3px; }
+.sol-card-name { font-size: 13px; font-weight: 600; color: #222; margin-bottom: 3px; }
+.sol-card-dir { font-size: 12px; color: #888; display: flex; align-items: center; gap: 4px; }
 .estado-badge {
   font-size: 11px;
   font-weight: 600;
@@ -274,17 +292,22 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 .form-group { display: flex; flex-direction: column; gap: 5px; }
 .form-group label { font-size: 12px; color: #666; font-weight: 500; }
 .form-group input, .form-group select {
-  padding: 9px 12px;
-  border: 1.5px solid var(--borde);
+  padding: 10px 14px;
+  border: 1.5px solid #d1d9e6;
   border-radius: 8px;
   font-size: 14px;
-  transition: border-color 0.2s;
-  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: #fafbfd;
+  color: var(--texto);
 }
 .form-group input:focus, .form-group select:focus {
   outline: none;
   border-color: var(--azul-claro);
+  box-shadow: 0 0 0 3px rgba(37,99,168,0.12);
+  background: white;
 }
+.form-group input[readonly] { background: #f3f5f9; color: #555; cursor: default; }
+.form-group label { font-size: 12px; color: #555; font-weight: 600; letter-spacing: 0.2px; }
 
 /* Stats cards */
 .stats-grid {
@@ -316,6 +339,28 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 }
 .stat-info .stat-num { font-size: 22px; font-weight: 700; line-height: 1; }
 .stat-info .stat-label { font-size: 12px; color: #666; margin-top: 2px; }
+
+/* Secciones del formulario */
+.form-section {
+  border: 1.5px solid var(--borde);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.form-section-header {
+  background: linear-gradient(90deg, var(--azul) 0%, var(--azul-claro) 100%);
+  color: white;
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form-section-header.naranja { background: linear-gradient(90deg, #b45309, #d97706); }
+.form-section-header.verde { background: linear-gradient(90deg, #15803d, #22c55e); }
+.form-section-body { padding: 16px; background: white; }
 
 /* Formulario nueva solicitud */
 .form-nueva { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
