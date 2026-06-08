@@ -991,13 +991,29 @@ async function cargarEvidenciaDir(sol) {
       });
     }
   } catch(e) {
-    console.error("Error cargando evidencia del director:", e);
-    const msg = e?.message || String(e);
-    if (panel) panel.innerHTML = `
-      <div style="padding:12px;">
-        <p style="color:#ef4444;font-size:11px;margin-bottom:8px;word-break:break-all;background:#fff5f5;border-radius:6px;padding:8px;border:1px solid #fca5a5;">${msg}</p>
-        <button onclick="cargarEvidenciaDir(window._solDir)" style="font-size:11px;padding:5px 12px;border:1.5px solid var(--azul);border-radius:6px;background:white;color:var(--azul);cursor:pointer;">🔄 Reintentar</button>
-      </div>`;
+    console.warn("Evidencia no disponible:", e?.message || e);
+    // Si la lista no existe o no hay permisos, mostrar "sin evidencia" en lugar de error
+    const esErrorLista = e?.message?.includes("404") || e?.message?.includes("does not exist") || e?.message?.includes("no existe");
+    if (panel) {
+      if (esErrorLista) {
+        panel.innerHTML = `
+          <div style="text-align:center;padding:20px;color:#9ca3af;">
+            <div style="font-size:32px;margin-bottom:8px;">📭</div>
+            <p style="font-size:13px;">Sin evidencia registrada por la unidad</p>
+          </div>`;
+      } else {
+        panel.innerHTML = `
+          <div style="padding:14px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:8px;">⚠️</div>
+            <p style="color:#b45309;font-size:13px;margin-bottom:10px;">No se pudo cargar la respuesta de la unidad</p>
+            <p style="color:#9ca3af;font-size:11px;margin-bottom:12px;word-break:break-all;">${e?.message||""}</p>
+            <button onclick="cargarEvidenciaDir(window._solDir)"
+              style="padding:7px 18px;border:1.5px solid var(--azul);border-radius:7px;background:white;color:var(--azul);cursor:pointer;font-size:13px;font-weight:600;">
+              🔄 Reintentar
+            </button>
+          </div>`;
+      }
+    }
   }
 }
 
@@ -1837,9 +1853,10 @@ function cargarSolicitudEnFormulario(sol) {
             ${ev.DescripcionEvidencia||"Sin descripción."}
           </div>
         </div>`).join("");
-    }).catch(() => {
+    }).catch(e => {
+      console.warn("Evidencia secretaria:", e?.message);
       const panel = document.getElementById("sec-evidencia-panel");
-      if (panel) panel.innerHTML = `<div style="text-align:center;padding:16px;color:#9ca3af;font-size:13px;">No se pudo cargar la respuesta</div>`;
+      if (panel) panel.innerHTML = `<div style="text-align:center;padding:16px;color:#9ca3af;font-size:13px;">Sin respuesta registrada por la unidad</div>`;
     });
   }
 
