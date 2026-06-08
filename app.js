@@ -676,6 +676,7 @@ async function seleccionarSolicitudDirector(id) {
   state.solicitudSeleccionada = sol;
   renderDirLista();
   renderDetalleDirector(sol);
+  mostrarDetalleMovil('.dir-layout');
   // Cargar PDF con PDF.js en panel central
   const pdfPanel = document.getElementById("dir-pdf");
   const pdfHeader = document.getElementById("dir-pdf-header");
@@ -746,11 +747,16 @@ function renderDetalleDirector(sol) {
   const esDevuelta    = sol.Estado === CONFIG.estados.DEVUELTA;
 
   if (header) {
-    header.style.cssText = `background:${esDerivable?'linear-gradient(90deg,#1e3a5f,#1a3a6b)':esCerrable?'linear-gradient(90deg,#14532d,#15803d)':'linear-gradient(90deg,#374151,#6b7280)'};color:white;display:flex;align-items:center;gap:8px;`;
+    header.style.cssText = `background:${esDerivable?'linear-gradient(90deg,#1e3a5f,#1a3a6b)':esCerrable?'linear-gradient(90deg,#14532d,#15803d)':'linear-gradient(90deg,#374151,#6b7280)'};color:white;display:flex;flex-direction:column;padding:0;`;
     header.innerHTML = `
-      <span>${esDerivable?'📤':esCerrable?'✅':'📋'}</span>
-      <span style="font-weight:700;">${sol.NroSolicitud}</span>
-      <span class="estado-badge estado-${sol.Estado}" style="font-size:11px;">${sol.Estado}</span>`;
+      <button class="mobile-back-bar" onclick="volverAListaMovil('.dir-layout')" style="font-size:13px;padding:8px 12px;">
+        ← Volver a lista
+      </button>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;padding:10px 14px;">
+        <span>${esDerivable?'📤':esCerrable?'✅':'📋'}</span>
+        <span style="font-weight:700;">${sol.NroSolicitud}</span>
+        <span class="estado-badge estado-${sol.Estado}" style="font-size:11px;">${sol.Estado}</span>
+      </div>`;
   }
 
   cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;padding:14px;">
@@ -864,7 +870,15 @@ async function cargarEvidenciaDir(sol) {
   const panel = document.getElementById("dir-evidencia-panel");
   if (!panel) return;
   try {
-    const evidencias = await getEvidenciasBySolicitud(sol.NroSolicitud);
+    // Intento 1: filtro OData. Si falla, carga todo y filtra en cliente.
+    let evidencias;
+    try {
+      evidencias = await getEvidenciasBySolicitud(sol.NroSolicitud);
+    } catch(eFiltro) {
+      console.warn("Filtro OData falló:", eFiltro.message, "— cargando sin filtro");
+      const todas = await getListItems(CONFIG.lists.evidencias);
+      evidencias = todas.filter(e => e.NroSolicitud === sol.NroSolicitud);
+    }
     if (!evidencias.length) {
       panel.innerHTML = `
         <div style="text-align:center;padding:20px;color:#9ca3af;">
@@ -978,10 +992,10 @@ async function cargarEvidenciaDir(sol) {
     }
   } catch(e) {
     console.error("Error cargando evidencia del director:", e);
+    const msg = e?.message || String(e);
     if (panel) panel.innerHTML = `
-      <div style="text-align:center;padding:16px;">
-        <div style="font-size:24px;margin-bottom:6px;">⚠️</div>
-        <p style="color:#9ca3af;font-size:12px;margin-bottom:10px;">No se pudo cargar la solución ejecutada</p>
+      <div style="padding:12px;">
+        <p style="color:#ef4444;font-size:11px;margin-bottom:8px;word-break:break-all;background:#fff5f5;border-radius:6px;padding:8px;border:1px solid #fca5a5;">${msg}</p>
         <button onclick="cargarEvidenciaDir(window._solDir)" style="font-size:11px;padding:5px 12px;border:1.5px solid var(--azul);border-radius:6px;background:white;color:var(--azul);cursor:pointer;">🔄 Reintentar</button>
       </div>`;
   }
@@ -1156,6 +1170,7 @@ async function seleccionarSolicitudUnidad(id) {
   state.solicitudSeleccionada = state.solicitudes.find(s => s.id === id);
   renderSidebarUnidad();
   renderDetalleUnidad(state.solicitudSeleccionada);
+  mostrarDetalleMovil('.uni-layout');
 }
 
 async function renderDetalleUnidad(sol) {
@@ -1184,6 +1199,7 @@ async function renderDetalleUnidad(sol) {
 
   cont.innerHTML = `
     <div style="overflow-y:auto;height:100%;display:flex;flex-direction:column;gap:0;">
+      <button class="mobile-back-bar" onclick="volverAListaMovil('.uni-layout')">← Volver a lista</button>
       <div class="panel-header" style="background:#f8fafc;border-bottom:1px solid var(--borde);">📋 ${sol.NroSolicitud} — ${sol.Solicitante}</div>
       <div style="padding:12px;background:#f8fafc;border-bottom:1px solid var(--borde);">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
@@ -1544,6 +1560,27 @@ async function exportarExcel() {
   a.click();
 }
 
+// ===== NAVEGACIÓN MÓVIL =====
+function isMobile() { return window.innerWidth <= 768; }
+
+function mostrarDetalleMovil(layoutClass) {
+  if (!isMobile()) return;
+  document.querySelector(layoutClass)?.classList.add('showing-detalle');
+}
+
+function volverAListaMovil(layoutClass) {
+  document.querySelector(layoutClass)?.classList.remove('showing-detalle');
+  state.solicitudSeleccionada = null;
+  if (layoutClass === '.sec-layout') {
+    renderListaSolicitudes();
+    renderFormNueva();
+    const header = document.getElementById("form-panel-header");
+    if (header) { header.textContent = "➕ Nueva Solicitud"; header.style.cssText = ""; }
+  }
+  if (layoutClass === '.dir-layout') { renderDirLista(); }
+  if (layoutClass === '.uni-layout') { renderSidebarUnidad(); }
+}
+
 // ===== HELPERS =====
 function seleccionarSolicitud(id) {
   const sol = state.solicitudes.find(s => s.id === id);
@@ -1560,6 +1597,7 @@ function seleccionarSolicitud(id) {
   state.solicitudSeleccionada = sol;
   renderListaSolicitudes();
   cargarSolicitudEnFormulario(sol);
+  mostrarDetalleMovil('.sec-layout');
 }
 
 function cargarSolicitudEnFormulario(sol) {
@@ -1567,19 +1605,24 @@ function cargarSolicitudEnFormulario(sol) {
   const editable = sol.Estado === CONFIG.estados.INGRESADA;
   const header = document.getElementById("form-panel-header");
   if (header) {
-    header.style.cssText = `display:flex;align-items:center;gap:10px;padding:12px 16px;color:white;
+    header.style.cssText = `display:flex;flex-direction:column;padding:0;color:white;
       background:${editable ? 'linear-gradient(90deg,#166534,#15803d)' : 'linear-gradient(90deg,#0f2547,#1a3a6b)'};`;
     header.innerHTML = `
-      <span style="font-size:16px;">${editable ? '✏️' : '👁️'}</span>
-      <span style="font-weight:600;font-size:13px;opacity:0.9;">${editable ? 'Editando' : 'Viendo'}</span>
-      <span style="font-weight:800;font-size:16px;letter-spacing:0.5px;color:white;">Solicitud #${sol.NroSolicitud}</span>
-      <span style="background:rgba(255,255,255,0.2);color:white;font-size:11px;font-weight:700;
-            padding:3px 10px;border-radius:12px;letter-spacing:0.3px;">${sol.Estado}</span>
-      <button onclick="limpiarSeleccion()" title="Cerrar"
-        style="margin-left:auto;background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);
-               color:white;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">
-        ✕ Cerrar
-      </button>`;
+      <button class="mobile-back-bar" onclick="volverAListaMovil('.sec-layout')" style="font-size:13px;padding:8px 12px;">
+        ← Volver a lista
+      </button>
+      <div style="display:flex;align-items:center;gap:10px;flex:1;padding:10px 16px;">
+        <span style="font-size:16px;">${editable ? '✏️' : '👁️'}</span>
+        <span style="font-weight:600;font-size:13px;opacity:0.9;">${editable ? 'Editando' : 'Viendo'}</span>
+        <span style="font-weight:800;font-size:16px;letter-spacing:0.5px;color:white;">Solicitud #${sol.NroSolicitud}</span>
+        <span style="background:rgba(255,255,255,0.2);color:white;font-size:11px;font-weight:700;
+              padding:3px 10px;border-radius:12px;letter-spacing:0.3px;">${sol.Estado}</span>
+        <button onclick="limpiarSeleccion()" title="Cerrar"
+          style="margin-left:auto;background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);
+                 color:white;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">
+          ✕ Cerrar
+        </button>
+      </div>`;
   }
 
   // ── Banner de modo edición ──
@@ -1991,6 +2034,7 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
 }
 
 function limpiarSeleccion() {
+  document.querySelector('.sec-layout')?.classList.remove('showing-detalle');
   state.solicitudSeleccionada = null;
   state.adjuntosNueva = [];
   renderListaSolicitudes();

@@ -402,6 +402,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 .panel-body { flex: 1; overflow-y: auto; padding: 12px; }
 
@@ -931,12 +932,133 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-/* Responsive */
+/* Responsive tablet */
 @media (max-width: 1100px) {
   .sec-layout, .dir-layout { grid-template-columns: 1fr 1fr; }
   .dir-layout .panel:nth-child(2) { display: none; }
 }
+
+/* ===== MOBILE BACK BUTTON ===== */
+.mobile-back-bar {
+  display: none;
+}
+
+/* ===== RESPONSIVE MÓVIL (≤ 768px) ===== */
 @media (max-width: 768px) {
-  .sec-layout, .dir-layout, .uni-layout { grid-template-columns: 1fr; }
+
+  /* Login: solo panel derecho */
   .login-left { display: none; }
+  .login-right { padding: 20px; }
+
+  /* Topbar compacto */
+  .topbar { padding: 8px 12px; gap: 8px; }
+  .topbar-divider { display: none; }
+  .topbar-org .org-name { font-size: 11px; }
+  .topbar-org .dep-name { font-size: 9px; }
+  .topbar-logo img { height: 34px !important; }
+  .user-info { display: none; }
+  .user-avatar { width: 30px; height: 30px; font-size: 13px; }
+
+  /* Tabs scrollables */
+  .tabs-bar {
+    padding: 0 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs-bar::-webkit-scrollbar { display: none; }
+  .tab-btn { padding: 10px 14px; font-size: 12px; white-space: nowrap; }
+  .tab-btn .badge { font-size: 9px; padding: 1px 5px; }
+
+  /* Main sin overflow fijo */
+  main { overflow-y: auto; }
+
+  /* ── SECRETARIA ── */
+  .sec-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 110px);
+    padding: 8px;
+    gap: 0;
+  }
+  /* Por defecto: mostrar col 1 (lista), ocultar col 2 (form) y col 3 (pdf) */
+  .sec-layout > *:nth-child(2),
+  .sec-layout > *:nth-child(3) { display: none; }
+  /* Cuando hay detalle seleccionado: mostrar col 2, ocultar col 1 y col 3 */
+  .sec-layout.showing-detalle > *:nth-child(1) { display: none; }
+  .sec-layout.showing-detalle > *:nth-child(2) { display: flex; }
+
+  /* ── DIRECTOR ── */
+  .dir-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 110px);
+    padding: 8px;
+    gap: 0;
+  }
+  /* Por defecto: mostrar col 1 (sidebar+lista), ocultar col 2 (pdf) y col 3 (detalle) */
+  .dir-layout > *:nth-child(2),
+  .dir-layout > *:nth-child(3) { display: none; }
+  /* Cuando hay detalle: mostrar col 3, ocultar col 1 y col 2 */
+  .dir-layout.showing-detalle > *:nth-child(1) { display: none; }
+  .dir-layout.showing-detalle > *:nth-child(3) { display: flex; }
+
+  /* ── UNIDAD ── */
+  .uni-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 110px);
+    padding: 8px;
+    gap: 0;
+  }
+  /* Por defecto: mostrar col 1 (lista), ocultar col 2 (detalle) */
+  .uni-layout > *:nth-child(2) { display: none; }
+  /* Cuando hay detalle: ocultar col 1, mostrar col 2 */
+  .uni-layout.showing-detalle > *:nth-child(1) { display: none; }
+  .uni-layout.showing-detalle > *:nth-child(2) { display: flex; }
+
+  /* ── BOTÓN VOLVER ── */
+  .mobile-back-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--azul);
+    color: white;
+    border: none;
+    padding: 11px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    border-bottom: 2px solid rgba(255,255,255,0.15);
+    flex-shrink: 0;
+  }
+  .mobile-back-bar:active { background: var(--azul-hover); }
+
+  /* Alturas de panels en móvil */
+  .sec-layout .panel,
+  .dir-layout .panel,
+  .uni-layout .panel {
+    height: auto;
+    min-height: calc(100vh - 130px);
+  }
+
+  /* Gráficos en columna */
+  .charts-view {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+  .chart-card.full { grid-column: 1; }
+
+  /* Cards de solicitud más grandes para touch */
+  .sol-card { padding: 12px 14px; }
+  .sol-card-name { font-size: 14px; }
+
+  /* Formulario */
+  .form-row { grid-template-columns: 1fr !important; }
+
+  /* Toast centrado */
+  .toast-container { right: 10px; left: 10px; }
+  .toast { max-width: 100%; }
 }

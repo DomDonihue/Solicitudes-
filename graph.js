@@ -37,8 +37,8 @@ async function getListItems(listName, filter = "") {
   let items = [];
   while (url) {
     const data = await spFetch(url);
-    items = items.concat(data.value);
-    url = data["odata.nextLink"] || null;
+    items = items.concat(Array.isArray(data?.value) ? data.value : []);
+    url = data?.["odata.nextLink"] || null;
   }
   // Normalizar: SharePoint devuelve Id (mayúscula), agregamos id minúscula para compatibilidad
   return items.map(item => ({ id: String(item.Id || item.id || ""), ...item }));

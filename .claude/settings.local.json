@@ -13,7 +13,9 @@
       "Skill(run)",
       "Skill(run:*)",
       "Bash(grep -Hm1 ^description: 'C:/Users/DOM/OneDrive - Ilustre Municipalidad de Doñihue/Escritorio/DOM_FORMULARIO/.claude/skills/*/SKILL.md')",
-      "Bash(echo \"no project skill\")"
+      "Bash(echo \"no project skill\")",
+      "Bash(node --check \"C:\\\\Users\\\\DOM\\\\OneDrive - Ilustre Municipalidad de Doñihue\\\\Escritorio\\\\Sistema Solicitudes\\\\app.js\")",
+      "PowerShell(node --check \"C:\\\\Users\\\\DOM\\\\OneDrive - Ilustre Municipalidad de Do�ihue\\\\Escritorio\\\\Sistema Solicitudes\\\\app.js\" 2>&1)"
     ]
   }
 }
