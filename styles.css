@@ -613,7 +613,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 /* ===== DIRECTOR ===== */
 .dir-layout {
   display: grid;
-  grid-template-columns: 220px 1fr 360px;
+  grid-template-columns: 220px 1fr 400px;
   gap: 12px;
   padding: 12px 16px;
   height: calc(100vh - 120px);

@@ -753,20 +753,26 @@ function renderDetalleDirector(sol) {
       <span class="estado-badge estado-${sol.Estado}" style="font-size:11px;">${sol.Estado}</span>`;
   }
 
-  cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;padding:14px;overflow-y:auto;">
+  cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;padding:14px;">
 
-    <!-- Datos solicitud -->
-    <div class="form-section">
-      <div class="form-section-header" style="font-size:11px;">📋 Datos de la Solicitud</div>
-      <div class="form-section-body" style="padding:10px 14px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:8px;">
-          <div><span style="color:#888;font-size:11px;display:block;">Nro Solicitud</span><strong>${sol.NroSolicitud}</strong></div>
-          <div><span style="color:#888;font-size:11px;display:block;">Fecha</span>${formatFecha(sol.FechaRecepcion)}</div>
-        </div>
-        <div style="font-size:13px;margin-bottom:6px;"><span style="color:#888;font-size:11px;display:block;">Solicitante</span>${sol.Solicitante}</div>
-        <div style="font-size:13px;margin-bottom:6px;"><span style="color:#888;font-size:11px;display:block;">Dirección</span>${sol.Direccion||"-"}</div>
-        <div style="font-size:13px;"><span style="color:#888;font-size:11px;display:block;">Solicitud</span>${sol.Solicitud||"-"}</div>
-        ${sol.UnidadDerivada?`<div style="margin-top:8px;padding:6px 10px;background:#fef3c7;border-radius:6px;font-size:12px;color:#b45309;">🏢 Derivada a: <strong>${sol.UnidadDerivada}</strong></div>`:""}
+    <!-- Datos básicos: solicitante, fecha, nro -->
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;margin-bottom:6px;">
+        <div><span style="color:#888;font-size:11px;display:block;">Nro Solicitud</span><strong>${sol.NroSolicitud}</strong></div>
+        <div><span style="color:#888;font-size:11px;display:block;">Fecha</span>${formatFecha(sol.FechaRecepcion)}</div>
+      </div>
+      <div style="font-size:13px;margin-bottom:4px;"><span style="color:#888;font-size:11px;display:block;">Solicitante</span>${sol.Solicitante}</div>
+      <div style="font-size:13px;"><span style="color:#888;font-size:11px;display:block;">Dirección</span>${sol.Direccion||"-"}</div>
+      ${sol.UnidadDerivada?`<div style="margin-top:8px;padding:5px 10px;background:#fef3c7;border-radius:6px;font-size:12px;color:#b45309;">🏢 Derivada a: <strong>${sol.UnidadDerivada}</strong></div>`:""}
+    </div>
+
+    <!-- DESCRIPCIÓN DE LA SOLICITUD — siempre visible y prominente -->
+    <div style="background:white;border:2px solid var(--azul);border-radius:10px;overflow:hidden;">
+      <div style="background:linear-gradient(90deg,#1e3a5f,#1a3a6b);color:white;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:0.3px;">
+        📋 Descripción de la Solicitud
+      </div>
+      <div style="padding:12px 14px;font-size:13px;color:#374151;line-height:1.7;min-height:48px;">
+        ${sol.Solicitud ? sol.Solicitud : '<span style="color:#9ca3af;font-style:italic;">Sin descripción registrada</span>'}
       </div>
     </div>
 
@@ -776,6 +782,20 @@ function renderDetalleDirector(sol) {
       <div class="accion-header devuelta">↩️ Motivo de Devolución</div>
       <div class="accion-body" style="background:#fff5f5;">
         <p style="font-size:13px;color:#b91c1c;margin:0;">${sol.MotivoDevolucion||"Sin motivo registrado"}</p>
+      </div>
+    </div>` : ""}
+
+    ${tieneEvidencia ? `
+    <!-- SOLUCIÓN EJECUTADA POR LA UNIDAD -->
+    <div style="background:white;border:2px solid #15803d;border-radius:10px;overflow:hidden;">
+      <div style="background:linear-gradient(90deg,#14532d,#15803d);color:white;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">
+        🏢 Solución Ejecutada por la Unidad
+      </div>
+      <div id="dir-evidencia-panel" style="padding:0;">
+        <div style="text-align:center;color:#9ca3af;font-size:12px;padding:16px;">
+          <div class="spinner" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>
+          Cargando solución...
+        </div>
       </div>
     </div>` : ""}
 
@@ -794,20 +814,6 @@ function renderDetalleDirector(sol) {
         <button class="btn-primary" onclick="derivarSolicitud('${sol.id}')" style="width:100%;padding:12px;">
           📤 ${esDevuelta?"Re-derivar Solicitud":"Derivar Solicitud"}
         </button>
-      </div>
-    </div>` : ""}
-
-    ${tieneEvidencia ? `
-    <!-- Evidencia de la unidad (Respondida o Cerrada) -->
-    <div class="accion-panel">
-      <div class="accion-header" style="background:linear-gradient(90deg,#1e3a5f,#2563a8);color:white;border-bottom:none;">
-        🏢 Solución ejecutada por la Unidad
-      </div>
-      <div class="accion-body" id="dir-evidencia-panel" style="padding:0;">
-        <div style="text-align:center;color:#9ca3af;font-size:12px;padding:16px;">
-          <div class="spinner" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>
-          Cargando evidencia...
-        </div>
       </div>
     </div>` : ""}
 
@@ -854,6 +860,7 @@ function renderDetalleDirector(sol) {
 }
 
 async function cargarEvidenciaDir(sol) {
+  window._solDir = sol;
   const panel = document.getElementById("dir-evidencia-panel");
   if (!panel) return;
   try {
@@ -970,7 +977,13 @@ async function cargarEvidenciaDir(sol) {
       });
     }
   } catch(e) {
-    if (panel) panel.innerHTML = `<p style="color:#9ca3af;font-size:12px;text-align:center;padding:12px;">No se pudo cargar la evidencia</p>`;
+    console.error("Error cargando evidencia del director:", e);
+    if (panel) panel.innerHTML = `
+      <div style="text-align:center;padding:16px;">
+        <div style="font-size:24px;margin-bottom:6px;">⚠️</div>
+        <p style="color:#9ca3af;font-size:12px;margin-bottom:10px;">No se pudo cargar la solución ejecutada</p>
+        <button onclick="cargarEvidenciaDir(window._solDir)" style="font-size:11px;padding:5px 12px;border:1.5px solid var(--azul);border-radius:6px;background:white;color:var(--azul);cursor:pointer;">🔄 Reintentar</button>
+      </div>`;
   }
 }
 
@@ -1654,6 +1667,20 @@ function cargarSolicitudEnFormulario(sol) {
         </div>
       </div>
 
+      <!-- ── Respuesta de la Unidad (solo Respondida / Cerrada) ── -->
+      ${(sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.CERRADA) ? `
+      <div style="background:white;border:2px solid #15803d;border-radius:10px;overflow:hidden;">
+        <div style="background:linear-gradient(90deg,#14532d,#15803d);color:white;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:0.3px;">
+          🏢 Respuesta de la Unidad
+        </div>
+        <div id="sec-evidencia-panel" style="padding:0;">
+          <div style="text-align:center;color:#9ca3af;font-size:12px;padding:16px;">
+            <div class="spinner" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>
+            Cargando respuesta...
+          </div>
+        </div>
+      </div>` : ''}
+
       <!-- ── Historial ── -->
       <div class="form-section">
         <div class="form-section-header verde">🕐 Historial de Movimientos</div>
@@ -1748,6 +1775,30 @@ function cargarSolicitudEnFormulario(sol) {
     if (c) c.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;">No se pudieron cargar los adjuntos</p>`;
     if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>⚠️</span><p>Error al cargar el documento</p></div>`;
   });
+
+  // ── Cargar respuesta de la unidad para Respondida/Cerrada ──
+  if (sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.CERRADA) {
+    getEvidenciasBySolicitud(sol.NroSolicitud).then(evidencias => {
+      const panel = document.getElementById("sec-evidencia-panel");
+      if (!panel) return;
+      if (!evidencias.length) {
+        panel.innerHTML = `<div style="text-align:center;padding:16px;color:#9ca3af;font-size:13px;">Sin respuesta registrada por la unidad</div>`;
+        return;
+      }
+      panel.innerHTML = evidencias.map(ev => `
+        <div style="border-bottom:1px solid #e2e8f0;padding:12px 14px;">
+          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">
+            🏢 ${ev.Unidad||"Unidad"} &nbsp;·&nbsp; 👤 ${ev.Responsable||""} &nbsp;·&nbsp; 📅 ${formatFecha(ev.FechaCarga)}
+          </div>
+          <div style="font-size:13px;color:#374151;line-height:1.7;background:#f0fdf4;border-left:3px solid #15803d;padding:10px 12px;border-radius:0 8px 8px 0;">
+            ${ev.DescripcionEvidencia||"Sin descripción."}
+          </div>
+        </div>`).join("");
+    }).catch(() => {
+      const panel = document.getElementById("sec-evidencia-panel");
+      if (panel) panel.innerHTML = `<div style="text-align:center;padding:16px;color:#9ca3af;font-size:13px;">No se pudo cargar la respuesta</div>`;
+    });
+  }
 
   // ── Cargar historial ──
   getHistorialBySolicitud(sol.NroSolicitud).then(hist => {
