@@ -32,7 +32,10 @@ async function spFetch(url, options = {}) {
 
 async function getListItems(listName, filter = "") {
   let url = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/items?$top=5000`;
-  if (filter) url += `&$filter=${encodeURIComponent(filter)}`;
+  // NO usar encodeURIComponent en el filtro completo: SharePoint necesita
+  // las comillas simples sin codificar para interpretar valores string OData.
+  // Solo codificamos los espacios y caracteres especiales que no son parte de OData.
+  if (filter) url += `&$filter=${filter.replace(/ /g, '%20')}`;
 
   let items = [];
   while (url) {
@@ -222,7 +225,22 @@ async function getHistorialBySolicitud(nroSolicitud) {
 }
 
 async function getEvidenciasBySolicitud(nroSolicitud) {
-  return getListItems(CONFIG.lists.evidencias, `NroSolicitud eq '${nroSolicitud}'`);
+  try {
+    // Intento 1: filtro OData directo
+    return await getListItems(CONFIG.lists.evidencias, `NroSolicitud eq '${nroSolicitud}'`);
+  } catch(e1) {
+    console.warn("Filtro OData evidencia falló, cargando todo:", e1.message);
+    try {
+      // Intento 2: cargar todo y filtrar en cliente
+      const todas = await getListItems(CONFIG.lists.evidencias);
+      return todas.filter(ev =>
+        String(ev.NroSolicitud || "").trim() === String(nroSolicitud || "").trim()
+      );
+    } catch(e2) {
+      console.warn("Carga total evidencia también falló:", e2.message);
+      return []; // Retornar vacío en lugar de lanzar excepción
+    }
+  }
 }
 
 async function crearEvidencia(fields) {
