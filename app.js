@@ -1017,6 +1017,22 @@ async function cargarEvidenciaDir(sol) {
   }
 }
 
+async function abrirAdjuntoUnidad(downloadUrl, serverRelativeUrl, nombre, isPdf) {
+  try {
+    showLoading("Cargando documento...");
+    const blobUrl = await getAttachmentBlobUrl(downloadUrl, serverRelativeUrl);
+    hideLoading();
+    if (isPdf) {
+      window.open(blobUrl, "_blank");
+    } else {
+      abrirLightbox(blobUrl, nombre);
+    }
+  } catch(e) {
+    hideLoading();
+    showToast("error", "No se pudo abrir el archivo");
+  }
+}
+
 function abrirLightbox(blobUrl, nombre) {
   const overlay = document.createElement("div");
   overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:zoom-out;";
@@ -1196,20 +1212,11 @@ async function renderDetalleUnidad(sol) {
     return;
   }
 
-  // Load attachments
-  let attachHtml = '<p style="color:#9ca3af;font-size:13px;">Cargando adjuntos...</p>';
-  const evidencias = await getEvidenciasBySolicitud(sol.NroSolicitud).catch(() => []);
-
-  try {
-    const attachments = await getListItemAttachments(CONFIG.lists.solicitudes, sol.id);
-    const pdfs = attachments.filter(a => a.name?.toLowerCase().endsWith('.pdf'));
-    const imgs = attachments.filter(a => /\.(jpg|jpeg|png|gif)$/i.test(a.name));
-    attachHtml = pdfs.length > 0 ?
-      `<iframe src="${pdfs[0]['@microsoft.graph.downloadUrl']}" style="width:100%;height:300px;border:none;border-radius:8px;"></iframe>` :
-      imgs.length > 0 ?
-      `<div class="attachments-grid">${imgs.map(i=>`<div class="attach-thumb" onclick="window.open('${i['@microsoft.graph.downloadUrl']}','_blank')"><img src="${i['@microsoft.graph.downloadUrl']}"></div>`).join("")}</div>` :
-      `<p style="color:#9ca3af;font-size:13px;text-align:center;padding:20px">Sin adjuntos</p>`;
-  } catch {}
+  // Cargar adjuntos de la solicitud y evidencias en paralelo
+  const [solicitudAtts, evidencias] = await Promise.all([
+    getListItemAttachments(CONFIG.lists.solicitudes, sol.id).catch(() => []),
+    getEvidenciasBySolicitud(sol.NroSolicitud).catch(() => [])
+  ]);
 
   const puedeCerrar = state.usuario.PuedeCerrar && sol.Estado === CONFIG.estados.RESPONDIDA;
 
@@ -1225,15 +1232,35 @@ async function renderDetalleUnidad(sol) {
           <div style="grid-column:1/-1;"><span style="color:#666">Solicitud: </span>${sol.Solicitud||"-"}</div>
         </div>
       </div>
-      <div style="padding:12px;border-bottom:1px solid var(--borde);">${attachHtml}</div>
+      <div id="uni-sol-adjuntos" style="padding:12px;border-bottom:1px solid var(--borde);">
+        ${solicitudAtts.length === 0
+          ? `<p style="color:#9ca3af;font-size:13px;text-align:center;padding:8px;">Sin documentos adjuntos</p>`
+          : solicitudAtts.map(a => {
+              const isPdf = a.name?.toLowerCase().endsWith('.pdf');
+              const isImg = /\.(jpg|jpeg|png|gif)$/i.test(a.name||'');
+              return `<div class="file-item" style="cursor:pointer;border-left:3px solid ${isPdf?'#ef4444':isImg?'#3b82f6':'#6b7280'};"
+                onclick="abrirAdjuntoUnidad('${a.downloadUrl}','${a.serverRelativeUrl}','${a.name}',${isPdf})">
+                <span>${isPdf?'📄':isImg?'🖼️':'📎'} <strong>${a.name}</strong></span>
+                <span style="font-size:11px;color:var(--azul);">Ver ↗</span>
+              </div>`;
+            }).join('')
+        }
+      </div>
 
       ${evidencias.length > 0 ? `
-      <div style="padding:12px;border-bottom:1px solid var(--borde);">
-        <div class="section-title">Evidencias registradas</div>
+      <div style="border-top:2px solid #15803d;">
+        <div style="background:linear-gradient(90deg,#14532d,#15803d);color:white;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:0.3px;">
+          🏢 Respuesta registrada
+        </div>
         ${evidencias.map(e=>`
-          <div style="background:#f8fafc;border-radius:8px;padding:10px;margin-top:6px;font-size:13px;">
-            <div style="font-weight:600;color:var(--azul)">${e.Responsable} — ${formatFecha(e.FechaCarga)}</div>
-            <div>${e.DescripcionEvidencia}</div>
+          <div style="padding:12px 14px;border-bottom:1px solid #e2e8f0;">
+            <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">
+              👤 ${e.Responsable||""} &nbsp;·&nbsp; 📅 ${formatFecha(e.FechaCarga)}
+            </div>
+            <div style="font-size:13px;color:#374151;line-height:1.7;background:#f0fdf4;border-left:3px solid #15803d;padding:10px 12px;border-radius:0 8px 8px 0;margin-bottom:8px;">
+              ${e.DescripcionEvidencia||"Sin descripción."}
+            </div>
+            <div id="uni-ev-media-${e.id}" style="margin-top:4px;"></div>
           </div>`).join("")}
       </div>` : ""}
 
@@ -1272,6 +1299,57 @@ async function renderDetalleUnidad(sol) {
         <button onclick="verHistorial('${sol.NroSolicitud}')" style="width:100%;padding:9px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#6b7280;">🕐 Ver Historial</button>
       </div>
     </div>`;
+
+  // ── Cargar imágenes adjuntas de cada evidencia registrada ──
+  for (const ev of evidencias) {
+    const mediaCont = document.getElementById(`uni-ev-media-${ev.id}`);
+    if (!mediaCont) continue;
+    getListItemAttachments(CONFIG.lists.evidencias, ev.id).then(async atts => {
+      const imgs = atts.filter(a => /\.(jpg|jpeg|png|gif)$/i.test(a.name||''));
+      const pdfs = atts.filter(a => a.name?.toLowerCase().endsWith('.pdf'));
+      if (!imgs.length && !pdfs.length) return; // sin adjuntos: no mostrar nada
+      mediaCont.innerHTML = `<div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;">📎 Adjuntos (${atts.length})</div>`;
+
+      // Grilla de imágenes
+      if (imgs.length) {
+        const grid = document.createElement("div");
+        grid.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(imgs.length,2)},1fr);gap:6px;margin-bottom:8px;`;
+        mediaCont.appendChild(grid);
+        for (const img of imgs) {
+          const box = document.createElement("div");
+          box.style.cssText = "border-radius:8px;overflow:hidden;aspect-ratio:4/3;background:#f3f4f6;border:2px solid var(--borde);cursor:zoom-in;position:relative;";
+          box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;"><div class="spinner" style="width:20px;height:20px;border-width:2px;"></div></div>`;
+          grid.appendChild(box);
+          getAttachmentBlobUrl(img.downloadUrl, img.serverRelativeUrl).then(blobUrl => {
+            const imgEl = document.createElement("img");
+            imgEl.src = blobUrl;
+            imgEl.style.cssText = "width:100%;height:100%;object-fit:cover;";
+            imgEl.onclick = () => abrirLightbox(blobUrl, img.name);
+            box.innerHTML = "";
+            box.appendChild(imgEl);
+            const badge = document.createElement("div");
+            badge.style.cssText = "position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.5);color:white;border-radius:4px;padding:2px 6px;font-size:10px;";
+            badge.textContent = "🔍 ver";
+            box.appendChild(badge);
+          }).catch(() => { box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:#fca5a5;">⚠️ Error</div>`; });
+        }
+      }
+
+      // PDFs listados
+      for (const pdf of pdfs) {
+        const pdfRow = document.createElement("div");
+        pdfRow.style.cssText = "font-size:12px;padding:6px 8px;background:#f8fafc;border:1px solid var(--borde);border-radius:6px;margin-bottom:4px;cursor:pointer;color:var(--azul);font-weight:600;";
+        pdfRow.innerHTML = `📄 ${pdf.name}`;
+        pdfRow.onclick = async () => {
+          try {
+            const blobUrl = await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl);
+            window.open(blobUrl, "_blank");
+          } catch {}
+        };
+        mediaCont.appendChild(pdfRow);
+      }
+    }).catch(() => {});
+  }
 }
 
 // Archivos de evidencia de la unidad
