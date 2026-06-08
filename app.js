@@ -1528,29 +1528,123 @@ async function verHistorial(nroSolicitud) {
   document.body.appendChild(modal);
 }
 
-// ===== GRAFICOS =====
+// ===== REPORTES =====
 async function renderGraficos() {
   const cont = document.getElementById("view-graficos");
+  const hoy = new Date().toISOString().split('T')[0];
+  const hace3m = new Date(new Date().setMonth(new Date().getMonth()-3)).toISOString().split('T')[0];
+
   cont.innerHTML = `
-    <div style="padding:16px 24px;background:white;border-bottom:1px solid var(--borde);display:flex;gap:16px;align-items:center;">
-      <div class="form-group" style="flex:1;">
-        <label>Período Desde</label>
-        <input type="date" id="graf-desde" value="${new Date(new Date().setMonth(new Date().getMonth()-3)).toISOString().split('T')[0]}" onchange="actualizarGraficos()">
+  <div style="display:flex;flex-direction:column;height:calc(100vh - 120px);overflow:hidden;">
+
+    <!-- Barra de controles -->
+    <div style="background:white;border-bottom:2px solid var(--borde);padding:12px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;flex-shrink:0;">
+      <div style="font-size:15px;font-weight:700;color:var(--azul);margin-right:8px;">📊 Reportes</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label style="font-size:12px;color:#666;font-weight:600;">Desde</label>
+        <input type="date" id="graf-desde" value="${hace3m}"
+          style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;"
+          onchange="actualizarGraficos()">
       </div>
-      <div class="form-group" style="flex:1;">
-        <label>Hasta</label>
-        <input type="date" id="graf-hasta" value="${new Date().toISOString().split('T')[0]}" onchange="actualizarGraficos()">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label style="font-size:12px;color:#666;font-weight:600;">Hasta</label>
+        <input type="date" id="graf-hasta" value="${hoy}"
+          style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;"
+          onchange="actualizarGraficos()">
       </div>
-      <button class="btn-primary" style="margin-top:20px;" onclick="actualizarGraficos()">📊 Actualizar</button>
-      <button class="btn-primary" style="margin-top:20px;background:#22c55e;" onclick="exportarExcel()">⬇️ Exportar</button>
+      <!-- Accesos rápidos de período -->
+      <div style="display:flex;gap:6px;">
+        <button onclick="setPeriodo(1)" style="padding:5px 10px;border:1.5px solid var(--borde);border-radius:6px;background:white;cursor:pointer;font-size:11px;font-weight:600;color:#666;">Este mes</button>
+        <button onclick="setPeriodo(3)" style="padding:5px 10px;border:1.5px solid var(--borde);border-radius:6px;background:white;cursor:pointer;font-size:11px;font-weight:600;color:#666;">3 meses</button>
+        <button onclick="setPeriodo(6)" style="padding:5px 10px;border:1.5px solid var(--borde);border-radius:6px;background:white;cursor:pointer;font-size:11px;font-weight:600;color:#666;">6 meses</button>
+        <button onclick="setPeriodo(12)" style="padding:5px 10px;border:1.5px solid var(--borde);border-radius:6px;background:white;cursor:pointer;font-size:11px;font-weight:600;color:#666;">1 año</button>
+        <button onclick="setPeriodo(0)" style="padding:5px 10px;border:1.5px solid var(--borde);border-radius:6px;background:white;cursor:pointer;font-size:11px;font-weight:600;color:#666;">Todo</button>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button onclick="actualizarGraficos()" class="btn-primary" style="padding:7px 16px;">🔄 Actualizar</button>
+        <button onclick="exportarExcel()" style="padding:7px 16px;background:#16a34a;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">⬇️ Exportar CSV</button>
+      </div>
     </div>
-    <div class="charts-view" id="charts-container">
-      <div class="chart-card"><h3>📊 Solicitudes por Estado</h3><canvas id="chart-estado" height="220"></canvas></div>
-      <div class="chart-card"><h3>🏢 Solicitudes por Unidad</h3><canvas id="chart-unidad" height="220"></canvas></div>
-      <div class="chart-card full"><h3>📅 Evolución por Mes</h3><canvas id="chart-mes" height="120"></canvas></div>
-    </div>`;
+
+    <!-- Contenido scroll -->
+    <div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:16px;">
+
+      <!-- KPIs -->
+      <div id="graf-kpis" style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;"></div>
+
+      <!-- Fila 1: doughnut + barras horizontales -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="chart-card">
+          <h3>📊 Distribución por Estado</h3>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div style="flex:1;max-height:220px;"><canvas id="chart-estado"></canvas></div>
+            <div id="legend-estado" style="font-size:12px;display:flex;flex-direction:column;gap:6px;min-width:140px;"></div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>🏢 Solicitudes por Unidad</h3>
+          <canvas id="chart-unidad" height="220"></canvas>
+        </div>
+      </div>
+
+      <!-- Fila 2: línea de tendencia (ancho completo) -->
+      <div class="chart-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <h3 style="margin:0;">📅 Evolución Mensual de Solicitudes</h3>
+          <div style="display:flex;gap:8px;font-size:11px;">
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:#1a3a6b;display:inline-block;border-radius:2px;"></span>Total ingresadas</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:#22c55e;display:inline-block;border-radius:2px;"></span>Cerradas</span>
+          </div>
+        </div>
+        <canvas id="chart-mes" height="100"></canvas>
+      </div>
+
+      <!-- Fila 3: tabla resumen por unidad -->
+      <div class="chart-card" style="padding:0;overflow:hidden;">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center;">
+          <h3 style="margin:0;">🏢 Resumen por Unidad</h3>
+          <span id="tabla-periodo" style="font-size:12px;color:#888;"></span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table id="tabla-unidades" style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:#f8fafc;border-bottom:2px solid var(--borde);">
+                <th style="padding:10px 16px;text-align:left;font-weight:700;color:#374151;">Unidad</th>
+                <th style="padding:10px 12px;text-align:center;color:#3b82f6;">Derivadas</th>
+                <th style="padding:10px 12px;text-align:center;color:#22c55e;">Respondidas</th>
+                <th style="padding:10px 12px;text-align:center;color:#6b7280;">Cerradas</th>
+                <th style="padding:10px 12px;text-align:center;color:#f59e0b;">En Proceso</th>
+                <th style="padding:10px 12px;text-align:center;color:#374151;">Total</th>
+                <th style="padding:10px 16px;text-align:left;color:#374151;">Efectividad</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-unidades-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>`;
 
   await actualizarGraficos();
+}
+
+function setPeriodo(meses) {
+  const hoy = new Date();
+  const hasta = hoy.toISOString().split('T')[0];
+  let desde;
+  if (meses === 0) {
+    desde = "2000-01-01";
+  } else if (meses === 1) {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+  } else {
+    desde = new Date(new Date().setMonth(hoy.getMonth() - meses)).toISOString().split('T')[0];
+  }
+  const d = document.getElementById("graf-desde");
+  const h = document.getElementById("graf-hasta");
+  if (d) d.value = desde;
+  if (h) h.value = hasta;
+  actualizarGraficos();
 }
 
 async function actualizarGraficos() {
@@ -1561,34 +1655,150 @@ async function actualizarGraficos() {
     const all = await getSolicitudes();
     const filtradas = all.filter(s => {
       const f = new Date(s.FechaRecepcion);
-      return (!desde || f >= new Date(desde)) && (!hasta || f <= new Date(hasta));
+      return (!desde || f >= new Date(desde)) && (!hasta || f <= new Date(hasta + "T23:59:59"));
     });
 
-    // Chart 1: por estado
+    const COLORES_ESTADO = {
+      "Ingresada":  "#3b82f6",
+      "Derivada":   "#f59e0b",
+      "En Proceso": "#06b6d4",
+      "Respondida": "#22c55e",
+      "Devuelta":   "#ef4444",
+      "Cerrada":    "#6b7280"
+    };
+
+    // ── KPIs ──
+    const total      = filtradas.length;
+    const cerradas   = filtradas.filter(s => s.Estado === "Cerrada").length;
+    const respondidas= filtradas.filter(s => s.Estado === "Respondida").length;
+    const pendientes = filtradas.filter(s => ["Ingresada","Derivada","En Proceso"].includes(s.Estado)).length;
+    const devueltas  = filtradas.filter(s => s.Estado === "Devuelta").length;
+    const tasa       = total > 0 ? Math.round((cerradas / total) * 100) : 0;
+
+    const kpis = [
+      { label:"Total período",   valor: total,      icon:"📋", color:"#1a3a6b", bg:"#eff6ff" },
+      { label:"Cerradas",        valor: cerradas,    icon:"🔒", color:"#6b7280", bg:"#f3f4f6" },
+      { label:"Respondidas",     valor: respondidas, icon:"✅", color:"#15803d", bg:"#f0fdf4" },
+      { label:"Pendientes",      valor: pendientes,  icon:"⏳", color:"#b45309", bg:"#fffbeb" },
+      { label:"Devueltas",       valor: devueltas,   icon:"↩️", color:"#b91c1c", bg:"#fff1f2" },
+      { label:"Tasa resolución", valor: tasa + "%",  icon:"📈", color:"#0e7490", bg:"#ecfeff" },
+    ];
+    const kpisCont = document.getElementById("graf-kpis");
+    if (kpisCont) kpisCont.innerHTML = kpis.map(k => `
+      <div style="background:${k.bg};border-radius:12px;padding:14px 16px;border:1.5px solid ${k.color}22;">
+        <div style="font-size:22px;margin-bottom:4px;">${k.icon}</div>
+        <div style="font-size:26px;font-weight:800;color:${k.color};line-height:1;">${k.valor}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px;font-weight:600;">${k.label}</div>
+      </div>`).join("");
+
+    // ── Chart 1: Doughnut por estado ──
     const byEstado = {};
     filtradas.forEach(s => { byEstado[s.Estado] = (byEstado[s.Estado] || 0) + 1; });
-    renderChart("chart-estado", "doughnut", Object.keys(byEstado), Object.values(byEstado),
-      ["#3b82f6","#f59e0b","#06b6d4","#22c55e","#ef4444","#6b7280"]);
+    const estadoLabels = Object.keys(byEstado);
+    const estadoData   = Object.values(byEstado);
+    const estadoColors = estadoLabels.map(e => COLORES_ESTADO[e] || "#94a3b8");
 
-    // Chart 2: por unidad
+    if (state.chartInstances["chart-estado"]) state.chartInstances["chart-estado"].destroy();
+    const ctx1 = document.getElementById("chart-estado")?.getContext("2d");
+    if (ctx1) {
+      state.chartInstances["chart-estado"] = new Chart(ctx1, {
+        type: "doughnut",
+        data: { labels: estadoLabels, datasets: [{ data: estadoData, backgroundColor: estadoColors, borderWidth: 2, borderColor: "white" }] },
+        options: { responsive:true, cutout:"65%", plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.raw} (${Math.round(ctx.raw/total*100)}%)` } } } }
+      });
+    }
+    // Leyenda custom
+    const legCont = document.getElementById("legend-estado");
+    if (legCont) legCont.innerHTML = estadoLabels.map((e,i) => `
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="width:12px;height:12px;border-radius:3px;background:${estadoColors[i]};flex-shrink:0;"></span>
+        <span style="color:#374151;">${e}</span>
+        <span style="margin-left:auto;font-weight:700;color:${estadoColors[i]};">${estadoData[i]}</span>
+      </div>`).join("");
+
+    // ── Chart 2: Barras horizontales por unidad ──
     const byUnidad = {};
     filtradas.filter(s => s.UnidadDerivada).forEach(s => {
       byUnidad[s.UnidadDerivada] = (byUnidad[s.UnidadDerivada] || 0) + 1;
     });
-    renderChart("chart-unidad", "bar", Object.keys(byUnidad), Object.values(byUnidad),
-      ["#1a3a6b","#2563a8","#3b82f6","#60a5fa","#93c5fd"]);
+    const unidadLabels = Object.keys(byUnidad).sort((a,b) => byUnidad[b]-byUnidad[a]);
+    const unidadData   = unidadLabels.map(u => byUnidad[u]);
 
-    // Chart 3: por mes
-    const byMes = {};
+    if (state.chartInstances["chart-unidad"]) state.chartInstances["chart-unidad"].destroy();
+    const ctx2 = document.getElementById("chart-unidad")?.getContext("2d");
+    if (ctx2) {
+      state.chartInstances["chart-unidad"] = new Chart(ctx2, {
+        type: "bar",
+        data: { labels: unidadLabels, datasets: [{ data: unidadData, backgroundColor: "#1a3a6b", borderRadius: 6, borderSkipped: false }] },
+        options: { indexAxis:"y", responsive:true, plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ stepSize:1 } }, y:{ ticks:{ font:{ size:11 } } } } }
+      });
+    }
+
+    // ── Chart 3: Línea mensual (ingresadas vs cerradas) ──
+    const byMesIng = {}, byMesCer = {};
     filtradas.forEach(s => {
       const m = s.FechaRecepcion?.substring(0, 7);
-      if (m) byMes[m] = (byMes[m] || 0) + 1;
+      if (m) byMesIng[m] = (byMesIng[m] || 0) + 1;
     });
-    const meses = Object.keys(byMes).sort();
-    renderChart("chart-mes", "line", meses.map(m => {
+    filtradas.filter(s => s.Estado === "Cerrada").forEach(s => {
+      const m = s.FechaRecepcion?.substring(0, 7);
+      if (m) byMesCer[m] = (byMesCer[m] || 0) + 1;
+    });
+    const meses = [...new Set([...Object.keys(byMesIng), ...Object.keys(byMesCer)])].sort();
+    const mesesLabel = meses.map(m => {
       const [y, mo] = m.split("-");
-      return `${["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][parseInt(mo)-1]} ${y}`;
-    }), meses.map(m => byMes[m]), ["#1a3a6b"]);
+      return `${["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][parseInt(mo)-1]} ${y.slice(2)}`;
+    });
+
+    if (state.chartInstances["chart-mes"]) state.chartInstances["chart-mes"].destroy();
+    const ctx3 = document.getElementById("chart-mes")?.getContext("2d");
+    if (ctx3) {
+      state.chartInstances["chart-mes"] = new Chart(ctx3, {
+        type: "line",
+        data: {
+          labels: mesesLabel,
+          datasets: [
+            { label:"Ingresadas", data: meses.map(m => byMesIng[m]||0), borderColor:"#1a3a6b", backgroundColor:"rgba(26,58,107,0.08)", fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:"#1a3a6b", borderWidth:2.5 },
+            { label:"Cerradas",   data: meses.map(m => byMesCer[m]||0), borderColor:"#22c55e", backgroundColor:"rgba(34,197,94,0.06)",  fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:"#22c55e", borderWidth:2.5, borderDash:[5,3] }
+          ]
+        },
+        options: { responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } }
+      });
+    }
+
+    // ── Tabla resumen por unidad ──
+    const unidades = [...new Set(filtradas.filter(s=>s.UnidadDerivada).map(s=>s.UnidadDerivada))].sort();
+    const tbody = document.getElementById("tabla-unidades-body");
+    const per   = document.getElementById("tabla-periodo");
+    if (per) per.textContent = desde && hasta ? `${desde} — ${hasta}` : "Todo el período";
+    if (tbody) {
+      tbody.innerHTML = unidades.map(u => {
+        const sols = filtradas.filter(s => s.UnidadDerivada === u);
+        const der  = sols.length;
+        const resp = sols.filter(s => s.Estado === "Respondida").length;
+        const cerr = sols.filter(s => s.Estado === "Cerrada").length;
+        const proc = sols.filter(s => s.Estado === "En Proceso").length;
+        const efe  = der > 0 ? Math.round(((resp + cerr) / der) * 100) : 0;
+        const efeColor = efe >= 80 ? "#15803d" : efe >= 50 ? "#b45309" : "#b91c1c";
+        return `
+          <tr style="border-bottom:1px solid var(--borde);" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''">
+            <td style="padding:10px 16px;font-weight:600;color:#1a3a6b;">${u}</td>
+            <td style="padding:10px 12px;text-align:center;"><span style="background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">${der}</span></td>
+            <td style="padding:10px 12px;text-align:center;"><span style="background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">${resp}</span></td>
+            <td style="padding:10px 12px;text-align:center;"><span style="background:#f3f4f6;color:#374151;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">${cerr}</span></td>
+            <td style="padding:10px 12px;text-align:center;"><span style="background:#fef3c7;color:#b45309;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">${proc}</span></td>
+            <td style="padding:10px 12px;text-align:center;font-weight:700;">${der}</td>
+            <td style="padding:10px 16px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="flex:1;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
+                  <div style="height:100%;width:${efe}%;background:${efeColor};border-radius:3px;transition:width 0.5s;"></div>
+                </div>
+                <span style="font-size:12px;font-weight:700;color:${efeColor};min-width:36px;">${efe}%</span>
+              </div>
+            </td>
+          </tr>`;
+      }).join("") || `<tr><td colspan="7" style="padding:24px;text-align:center;color:#9ca3af;">Sin datos para el período seleccionado</td></tr>`;
+    }
 
   } catch (e) {
     showToast("error", "Error en reportes: " + e.message);

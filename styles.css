@@ -810,19 +810,36 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 
 /* ===== GRAFICOS ===== */
 .charts-view {
-  padding: 24px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 .chart-card {
   background: white;
   border-radius: 12px;
-  box-shadow: var(--sombra);
-  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  padding: 18px 20px;
 }
-.chart-card h3 { font-size: 15px; color: var(--azul); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.chart-card h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--azul);
+  margin: 0 0 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .chart-card.full { grid-column: 1/-1; }
+
+/* KPI cards en reportes */
+#graf-kpis > div {
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+#graf-kpis > div:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
 
 /* Paginación */
 .paginacion {
@@ -1046,10 +1063,17 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 
   /* Gráficos en columna */
   .charts-view {
-    grid-template-columns: 1fr;
-    padding: 12px;
+    padding: 10px;
   }
   .chart-card.full { grid-column: 1; }
+  #graf-kpis { grid-template-columns: repeat(3, 1fr) !important; }
+
+  /* Charts lado a lado → columna en mobile */
+  #view-graficos [style*="grid-template-columns:1fr 1fr"] {
+    display: flex !important;
+    flex-direction: column;
+    gap: 12px;
+  }
 
   /* Cards de solicitud más grandes para touch */
   .sol-card { padding: 12px 14px; }
