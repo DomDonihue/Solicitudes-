@@ -224,22 +224,24 @@ async function getHistorialBySolicitud(nroSolicitud) {
   return getListItems(CONFIG.lists.historial, `NroSolicitud eq '${nroSolicitud}'`);
 }
 
-async function getEvidenciasBySolicitud(nroSolicitud) {
+// solicitudId = ID numérico del item (para registros Power Apps que no tienen NroSolicitud)
+async function getEvidenciasBySolicitud(nroSolicitud, solicitudId = null) {
   try {
-    // Intento 1: filtro OData directo
-    return await getListItems(CONFIG.lists.evidencias, `NroSolicitud eq '${nroSolicitud}'`);
-  } catch(e1) {
-    console.warn("Filtro OData evidencia falló, cargando todo:", e1.message);
-    try {
-      // Intento 2: cargar todo y filtrar en cliente
-      const todas = await getListItems(CONFIG.lists.evidencias);
-      return todas.filter(ev =>
-        String(ev.NroSolicitud || "").trim() === String(nroSolicitud || "").trim()
-      );
-    } catch(e2) {
-      console.warn("Carga total evidencia también falló:", e2.message);
-      return []; // Retornar vacío en lugar de lanzar excepción
-    }
+    // Cargar TODOS los items y filtrar en cliente (más robusto que OData)
+    const todas = await getListItems(CONFIG.lists.evidencias);
+    const nro = String(nroSolicitud || "").trim();
+    const idNum = solicitudId ? parseInt(solicitudId) : null;
+
+    return todas.filter(ev => {
+      // Coincidencia por NroSolicitud (registros nuevos desde nuestro sistema)
+      if (nro && String(ev.NroSolicitud || "").trim() === nro) return true;
+      // Coincidencia por SolicitudID (registros Power Apps — solo tienen el ID numérico)
+      if (idNum && (parseInt(ev.SolicitudID) === idNum || parseInt(ev.SolicitudId) === idNum)) return true;
+      return false;
+    });
+  } catch(e) {
+    console.warn("Error cargando evidencias:", e.message);
+    return [];
   }
 }
 

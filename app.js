@@ -870,15 +870,7 @@ async function cargarEvidenciaDir(sol) {
   const panel = document.getElementById("dir-evidencia-panel");
   if (!panel) return;
   try {
-    // Intento 1: filtro OData. Si falla, carga todo y filtra en cliente.
-    let evidencias;
-    try {
-      evidencias = await getEvidenciasBySolicitud(sol.NroSolicitud);
-    } catch(eFiltro) {
-      console.warn("Filtro OData falló:", eFiltro.message, "— cargando sin filtro");
-      const todas = await getListItems(CONFIG.lists.evidencias);
-      evidencias = todas.filter(e => e.NroSolicitud === sol.NroSolicitud);
-    }
+    const evidencias = await getEvidenciasBySolicitud(sol.NroSolicitud, sol.id);
     if (!evidencias.length) {
       panel.innerHTML = `
         <div style="text-align:center;padding:20px;color:#9ca3af;">
@@ -1215,7 +1207,7 @@ async function renderDetalleUnidad(sol) {
   // Cargar adjuntos de la solicitud y evidencias en paralelo
   const [solicitudAtts, evidencias] = await Promise.all([
     getListItemAttachments(CONFIG.lists.solicitudes, sol.id).catch(() => []),
-    getEvidenciasBySolicitud(sol.NroSolicitud).catch(() => [])
+    getEvidenciasBySolicitud(sol.NroSolicitud, sol.id).catch(() => [])
   ]);
 
   const puedeCerrar = state.usuario.PuedeCerrar && sol.Estado === CONFIG.estados.RESPONDIDA;
@@ -1915,7 +1907,7 @@ function cargarSolicitudEnFormulario(sol) {
 
   // ── Cargar respuesta de la unidad para Respondida/Cerrada ──
   if (sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.CERRADA) {
-    getEvidenciasBySolicitud(sol.NroSolicitud).then(evidencias => {
+    getEvidenciasBySolicitud(sol.NroSolicitud, sol.id).then(evidencias => {
       const panel = document.getElementById("sec-evidencia-panel");
       if (!panel) return;
       if (!evidencias.length) {
