@@ -872,12 +872,31 @@ function renderDetalleDirector(sol) {
     </div>` : ""}
 
     ${sol.Estado === CONFIG.estados.CERRADA ? `
-    <!-- Indicador de cierre -->
-    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
-      <span style="font-size:20px;">🔒</span>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:#15803d;">Solicitud Cerrada Formalmente</div>
-        <div style="font-size:11px;color:#16a34a;">Caso completado y archivado en el sistema</div>
+    <!-- Indicador de cierre + opción reabrir -->
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="font-size:20px;">🔒</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#15803d;">Solicitud Cerrada Formalmente</div>
+          <div style="font-size:11px;color:#16a34a;">Caso completado y archivado en el sistema</div>
+        </div>
+      </div>
+      <!-- Reabrir -->
+      <div style="border-top:1px solid #bbf7d0;padding-top:10px;">
+        <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:6px;">🔄 ¿Necesita reabrirse?</div>
+        <select id="dir-reabrir-estado" style="width:100%;padding:6px 8px;border:1.5px solid var(--borde);border-radius:7px;font-size:12px;margin-bottom:6px;">
+          <option value="">— Seleccionar nuevo estado —</option>
+          <option value="Ingresada">📥 Ingresada</option>
+          <option value="Derivada">📤 Derivada</option>
+          <option value="En Proceso">⚙️ En Proceso</option>
+          <option value="Respondida">✅ Respondida</option>
+          <option value="Pendiente de Cierre">⏳ Pendiente de Cierre</option>
+        </select>
+        <textarea id="dir-reabrir-obs" rows="2" placeholder="Motivo de reapertura (obligatorio)..." style="margin-bottom:6px;"></textarea>
+        <button onclick="reabrirSolicitud('${sol.id}')"
+          style="width:100%;padding:8px;background:#1a3a6b;color:white;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">
+          🔄 Cambiar Estado
+        </button>
       </div>
     </div>` : ""}
 
@@ -1167,6 +1186,29 @@ async function cerrarSolicitud(solId) {
     showToast("success","🔒 Solicitud cerrada formalmente");
     await renderDirector();
   } catch(e) { showToast("error","Error: "+e.message); }
+  finally { hideLoading(); }
+}
+
+async function reabrirSolicitud(solId) {
+  const nuevoEstado = document.getElementById("dir-reabrir-estado")?.value;
+  const obs         = document.getElementById("dir-reabrir-obs")?.value.trim();
+  if (!nuevoEstado) { showToast("error", "Selecciona el estado al que deseas cambiar"); return; }
+  if (!obs)         { showToast("error", "Ingresa el motivo de reapertura"); return; }
+  if (!confirm(`¿Confirmas cambiar el estado a "${nuevoEstado}"?\nMotivo: ${obs}`)) return;
+  showLoading("Actualizando estado...");
+  try {
+    const sol = state.solicitudes.find(s => s.id === solId);
+    await actualizarSolicitud(solId, { Estado: nuevoEstado });
+    registrarHistorial({
+      NroSolicitud: sol.NroSolicitud,
+      Title: `Reabierta — cambiada a ${nuevoEstado}`,
+      EstadoAnterior: sol.Estado, EstadoNuevo: nuevoEstado,
+      UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
+      Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(), Observaciones: obs
+    }).catch(e => console.warn("Historial (no crítico):", e.message));
+    showToast("success", `🔄 Estado cambiado a "${nuevoEstado}"`);
+    await renderDirector();
+  } catch(e) { showToast("error", "Error: " + e.message); }
   finally { hideLoading(); }
 }
 
