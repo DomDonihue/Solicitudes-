@@ -217,7 +217,18 @@ async function actualizarSolicitud(itemId, fields) {
 }
 
 async function registrarHistorial(fields) {
-  return createListItem(CONFIG.lists.historial, fields);
+  // Nunca debe bloquear el flujo principal — si falla, solo log
+  try {
+    // Mapear Accion → Title por compatibilidad con versiones anteriores del código
+    if (fields.Accion !== undefined && fields.Title === undefined) {
+      fields = { ...fields, Title: fields.Accion };
+      delete fields.Accion;
+    }
+    return await createListItem(CONFIG.lists.historial, fields);
+  } catch(e) {
+    console.warn("registrarHistorial (no crítico):", e.message);
+    return null;
+  }
 }
 
 async function getHistorialBySolicitud(nroSolicitud) {
