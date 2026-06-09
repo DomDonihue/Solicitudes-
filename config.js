@@ -21,6 +21,7 @@ const CONFIG = {
   },
   unidades: ["Inspección", "Operaciones", "Administración", "Aseo y Ornato", "Dirección de Obras"],
   roles: {
+    ADMIN: "Administrador",
     DIRECTOR: "Director",
     SECRETARIA: "Secretaria",
     UNIDAD: "Unidad"

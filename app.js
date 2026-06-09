@@ -85,8 +85,9 @@ function showApp() {
 
   buildTabs();
   const rol = u.Rol;
-  if (rol === CONFIG.roles.SECRETARIA) navigateTab("solicitudes");
-  else if (rol === CONFIG.roles.DIRECTOR) navigateTab("gestion");
+  if (rol === CONFIG.roles.ADMIN)      navigateTab("admin");
+  else if (rol === CONFIG.roles.SECRETARIA) navigateTab("solicitudes");
+  else if (rol === CONFIG.roles.DIRECTOR)   navigateTab("gestion");
   else navigateTab("unidad");
 }
 
@@ -97,17 +98,19 @@ function buildTabs() {
   const rol = state.usuario.Rol;
 
   const tabs = [];
+  if (rol === CONFIG.roles.ADMIN) {
+    tabs.push({ id: "admin",     icon: "🛡️", label: "Administración" });
+    tabs.push({ id: "gestion",   icon: "⚙️", label: "Gestión" });
+    tabs.push({ id: "graficos",  icon: "📊", label: "Reportes" });
+  }
   if (rol === CONFIG.roles.SECRETARIA) {
-    // Secretaria: solo ingreso de solicitudes
     tabs.push({ id: "solicitudes", icon: "📋", label: "Ingreso Solicitudes" });
   }
   if (rol === CONFIG.roles.DIRECTOR) {
-    // Director: gestión completa
     tabs.push({ id: "gestion", icon: "⚙️", label: "Gestión" });
     tabs.push({ id: "graficos", icon: "📊", label: "Reportes" });
   }
   if (rol === CONFIG.roles.UNIDAD) {
-    // Unidad: sus solicitudes + reportes
     tabs.push({ id: "unidad", icon: "🏢", label: "Mis Solicitudes" });
     tabs.push({ id: "graficos", icon: "📊", label: "Reportes" });
   }
@@ -130,9 +133,10 @@ function navigateTab(tabId) {
   if (view) view.classList.add("active");
 
   if (tabId === "solicitudes") renderSecretaria();
-  if (tabId === "gestion") renderDirector();
-  if (tabId === "unidad") renderUnidad();
-  if (tabId === "graficos") renderGraficos();
+  if (tabId === "gestion")    renderDirector();
+  if (tabId === "unidad")     renderUnidad();
+  if (tabId === "graficos")   renderGraficos();
+  if (tabId === "admin")      renderAdmin();
 }
 
 // ===== SECRETARIA VIEW =====
@@ -872,31 +876,11 @@ function renderDetalleDirector(sol) {
     </div>` : ""}
 
     ${sol.Estado === CONFIG.estados.CERRADA ? `
-    <!-- Indicador de cierre + opción reabrir -->
-    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-        <span style="font-size:20px;">🔒</span>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:#15803d;">Solicitud Cerrada Formalmente</div>
-          <div style="font-size:11px;color:#16a34a;">Caso completado y archivado en el sistema</div>
-        </div>
-      </div>
-      <!-- Reabrir -->
-      <div style="border-top:1px solid #bbf7d0;padding-top:10px;">
-        <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:6px;">🔄 ¿Necesita reabrirse?</div>
-        <select id="dir-reabrir-estado" style="width:100%;padding:6px 8px;border:1.5px solid var(--borde);border-radius:7px;font-size:12px;margin-bottom:6px;">
-          <option value="">— Seleccionar nuevo estado —</option>
-          <option value="Ingresada">📥 Ingresada</option>
-          <option value="Derivada">📤 Derivada</option>
-          <option value="En Proceso">⚙️ En Proceso</option>
-          <option value="Respondida">✅ Respondida</option>
-          <option value="Pendiente de Cierre">⏳ Pendiente de Cierre</option>
-        </select>
-        <textarea id="dir-reabrir-obs" rows="2" placeholder="Motivo de reapertura (obligatorio)..." style="margin-bottom:6px;"></textarea>
-        <button onclick="reabrirSolicitud('${sol.id}')"
-          style="width:100%;padding:8px;background:#1a3a6b;color:white;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">
-          🔄 Cambiar Estado
-        </button>
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">🔒</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#15803d;">Solicitud Cerrada Formalmente</div>
+        <div style="font-size:11px;color:#16a34a;">Caso completado y archivado en el sistema</div>
       </div>
     </div>` : ""}
 
@@ -1627,6 +1611,166 @@ async function verHistorial(nroSolicitud) {
       </div>
     </div>`;
   document.body.appendChild(modal);
+}
+
+// ===== ADMINISTRADOR =====
+const TODOS_ESTADOS = ["Ingresada","Derivada","En Proceso","Respondida","Pendiente de Cierre","Devuelta","Cerrada"];
+const ESTADO_COLOR  = { "Ingresada":"#3b82f6","Derivada":"#f59e0b","En Proceso":"#06b6d4","Respondida":"#22c55e","Pendiente de Cierre":"#7e22ce","Devuelta":"#ef4444","Cerrada":"#6b7280" };
+
+async function renderAdmin() {
+  const cont = document.getElementById("view-admin");
+  cont.innerHTML = `
+  <div style="display:flex;flex-direction:column;height:calc(100vh - 120px);overflow:hidden;">
+
+    <!-- Header admin -->
+    <div style="background:linear-gradient(90deg,#1e1b4b,#312e81);color:white;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
+      <span style="font-size:20px;">🛡️</span>
+      <div>
+        <div style="font-size:15px;font-weight:700;">Panel de Administración</div>
+        <div style="font-size:11px;opacity:0.75;">Gestión avanzada — cambio de estados de todas las solicitudes</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div style="background:white;border-bottom:2px solid var(--borde);padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;flex-shrink:0;">
+      <input type="text" id="adm-buscar" placeholder="🔍 Buscar por N°, solicitante, dirección..."
+        style="flex:1;min-width:200px;padding:7px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;"
+        oninput="filtrarAdmin()">
+      <select id="adm-filtro-estado" onchange="filtrarAdmin()"
+        style="padding:7px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;">
+        <option value="">Todos los estados</option>
+        ${TODOS_ESTADOS.map(e => `<option value="${e}">${e}</option>`).join("")}
+      </select>
+      <select id="adm-filtro-unidad" onchange="filtrarAdmin()"
+        style="padding:7px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;">
+        <option value="">Todas las unidades</option>
+        ${CONFIG.unidades.map(u => `<option value="${u}">${u}</option>`).join("")}
+      </select>
+      <button onclick="renderAdmin()" class="btn-primary" style="padding:7px 14px;">🔄 Actualizar</button>
+      <span id="adm-count" style="font-size:12px;color:#6b7280;font-weight:600;"></span>
+    </div>
+
+    <!-- Tabla -->
+    <div style="flex:1;overflow-y:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;" id="adm-tabla">
+        <thead style="position:sticky;top:0;z-index:1;">
+          <tr style="background:#1e1b4b;color:white;">
+            <th style="padding:10px 12px;text-align:left;font-weight:600;">N° Solicitud</th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;">Solicitante</th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;">Dirección</th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;">Fecha</th>
+            <th style="padding:10px 12px;text-align:center;font-weight:600;">Estado actual</th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;">Unidad</th>
+            <th style="padding:10px 12px;text-align:center;font-weight:600;">Cambiar estado</th>
+          </tr>
+        </thead>
+        <tbody id="adm-tbody">
+          <tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af;">
+            <div class="spinner" style="margin:0 auto 8px;"></div>Cargando solicitudes...
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+
+  await cargarTablaAdmin();
+}
+
+let _adminSolicitudes = [];
+
+async function cargarTablaAdmin() {
+  showLoading("Cargando todas las solicitudes...");
+  try {
+    _adminSolicitudes = await getSolicitudes();
+    _adminSolicitudes.sort((a,b) => new Date(b.FechaRecepcion) - new Date(a.FechaRecepcion));
+    filtrarAdmin();
+  } catch(e) {
+    showToast("error","Error: " + e.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+function filtrarAdmin() {
+  const q      = (document.getElementById("adm-buscar")?.value || "").toLowerCase();
+  const estado = document.getElementById("adm-filtro-estado")?.value || "";
+  const unidad = document.getElementById("adm-filtro-unidad")?.value || "";
+
+  const filtradas = _adminSolicitudes.filter(s => {
+    if (estado && s.Estado !== estado) return false;
+    if (unidad && s.UnidadDerivada !== unidad) return false;
+    if (q) {
+      return (s.NroSolicitud||"").toLowerCase().includes(q) ||
+             (s.Solicitante||"").toLowerCase().includes(q) ||
+             (s.Direccion||"").toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  const cnt = document.getElementById("adm-count");
+  if (cnt) cnt.textContent = `${filtradas.length} solicitudes`;
+
+  const tbody = document.getElementById("adm-tbody");
+  if (!tbody) return;
+
+  if (!filtradas.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#9ca3af;">Sin resultados</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtradas.map(s => {
+    const c = ESTADO_COLOR[s.Estado] || "#94a3b8";
+    return `
+    <tr style="border-bottom:1px solid var(--borde);" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''">
+      <td style="padding:8px 12px;font-weight:700;color:#1a3a6b;">${s.NroSolicitud||`#${s.id}`}</td>
+      <td style="padding:8px 12px;">${s.Solicitante||""}</td>
+      <td style="padding:8px 12px;font-size:12px;color:#6b7280;">${s.Direccion||""}</td>
+      <td style="padding:8px 12px;font-size:12px;color:#6b7280;white-space:nowrap;">${formatFecha(s.FechaRecepcion)}</td>
+      <td style="padding:8px 12px;text-align:center;">
+        <span style="background:${c}20;color:${c};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid ${c}50;">${s.Estado}</span>
+      </td>
+      <td style="padding:8px 12px;font-size:12px;">${s.UnidadDerivada||"—"}</td>
+      <td style="padding:8px 12px;text-align:center;">
+        <div style="display:flex;gap:6px;align-items:center;justify-content:center;">
+          <select id="adm-sel-${s.id}" style="padding:4px 6px;border:1.5px solid var(--borde);border-radius:6px;font-size:12px;">
+            <option value="">— nuevo estado —</option>
+            ${TODOS_ESTADOS.filter(e => e !== s.Estado).map(e =>
+              `<option value="${e}">${e}</option>`
+            ).join("")}
+          </select>
+          <button onclick="cambiarEstadoAdmin('${s.id}')"
+            style="padding:5px 10px;background:#312e81;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;">
+            ✓ Aplicar
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+async function cambiarEstadoAdmin(solId) {
+  const sel = document.getElementById(`adm-sel-${solId}`);
+  const nuevoEstado = sel?.value;
+  if (!nuevoEstado) { showToast("error","Selecciona un estado"); return; }
+  const sol = _adminSolicitudes.find(s => s.id === solId);
+  if (!confirm(`¿Cambiar estado de ${sol?.NroSolicitud||solId}?\n${sol?.Estado} → ${nuevoEstado}`)) return;
+  showLoading("Actualizando...");
+  try {
+    await actualizarSolicitud(solId, { Estado: nuevoEstado });
+    registrarHistorial({
+      NroSolicitud: sol.NroSolicitud,
+      Title: `[Admin] Estado cambiado a ${nuevoEstado}`,
+      EstadoAnterior: sol.Estado, EstadoNuevo: nuevoEstado,
+      UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
+      Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(),
+      Observaciones: "Cambio manual por Administrador del sistema"
+    }).catch(e => console.warn("Historial:", e.message));
+    showToast("success", `✅ ${sol?.NroSolicitud} → ${nuevoEstado}`);
+    // Actualizar en memoria sin recargar todo
+    sol.Estado = nuevoEstado;
+    filtrarAdmin();
+  } catch(e) { showToast("error","Error: " + e.message); }
+  finally { hideLoading(); }
 }
 
 // ===== REPORTES =====
