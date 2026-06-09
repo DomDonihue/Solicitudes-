@@ -16,6 +16,7 @@ const CONFIG = {
     EN_PROCESO: "En Proceso",
     RESPONDIDA: "Respondida",
     DEVUELTA: "Devuelta",
+    PENDIENTE_CIERRE: "Pendiente de Cierre",
     CERRADA: "Cerrada"
   },
   unidades: ["Inspección", "Operaciones", "Administración", "Aseo y Ornato", "Dirección de Obras"],

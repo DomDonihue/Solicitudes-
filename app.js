@@ -526,7 +526,7 @@ async function renderDirector() {
   try {
     state.solicitudes = await getSolicitudes();
     // Orden: Devuelta (urgente) > Ingresada > Respondida > Derivada > En Proceso > Cerrada
-    const prioridad = { "Devuelta":0,"Ingresada":1,"Respondida":2,"Derivada":3,"En Proceso":4,"Cerrada":5 };
+    const prioridad = { "Devuelta":0,"Ingresada":1,"Respondida":2,"Derivada":3,"En Proceso":4,"Pendiente de Cierre":5,"Cerrada":6 };
     state.solicitudes.sort((a,b) => {
       const pa = prioridad[a.Estado]??9, pb = prioridad[b.Estado]??9;
       if (pa !== pb) return pa - pb;
@@ -547,12 +547,13 @@ function renderDirSidebar() {
   state.solicitudes.forEach(s => { counts[s.Estado] = (counts[s.Estado]||0)+1; });
 
   const stats = [
-    { e:"Ingresada",  icon:"📥", bg:"#dbeafe", tc:"#1d4ed8" },
-    { e:"Derivada",   icon:"📤", bg:"#fef3c7", tc:"#b45309" },
-    { e:"En Proceso", icon:"⚙️", bg:"#cffafe", tc:"#0e7490" },
-    { e:"Respondida", icon:"✅", bg:"#dcfce7", tc:"#15803d" },
-    { e:"Devuelta",   icon:"↩️", bg:"#fee2e2", tc:"#b91c1c" },
-    { e:"Cerrada",    icon:"🔒", bg:"#f3f4f6", tc:"#4b5563" }
+    { e:"Ingresada",          icon:"📥", bg:"#dbeafe", tc:"#1d4ed8" },
+    { e:"Derivada",           icon:"📤", bg:"#fef3c7", tc:"#b45309" },
+    { e:"En Proceso",         icon:"⚙️", bg:"#cffafe", tc:"#0e7490" },
+    { e:"Respondida",         icon:"✅", bg:"#dcfce7", tc:"#15803d" },
+    { e:"Devuelta",           icon:"↩️", bg:"#fee2e2", tc:"#b91c1c" },
+    { e:"Pendiente de Cierre",icon:"⏳", bg:"#fdf4ff", tc:"#7e22ce" },
+    { e:"Cerrada",            icon:"🔒", bg:"#f3f4f6", tc:"#4b5563" }
   ];
 
   const sidebar = document.getElementById("dir-sidebar");
@@ -740,19 +741,20 @@ function renderDetalleDirector(sol) {
     return;
   }
 
-  const esDerivable   = sol.Estado === CONFIG.estados.INGRESADA || sol.Estado === CONFIG.estados.DEVUELTA;
-  const esCerrable    = sol.Estado === CONFIG.estados.RESPONDIDA;
-  const tieneEvidencia= sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.CERRADA;
-  const esDevuelta    = sol.Estado === CONFIG.estados.DEVUELTA;
+  const esDerivable       = sol.Estado === CONFIG.estados.INGRESADA || sol.Estado === CONFIG.estados.DEVUELTA;
+  const esCerrable        = sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
+  const esPendienteCierre = sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
+  const tieneEvidencia    = sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.CERRADA || sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
+  const esDevuelta        = sol.Estado === CONFIG.estados.DEVUELTA;
 
   if (header) {
-    header.style.cssText = `background:${esDerivable?'linear-gradient(90deg,#1e3a5f,#1a3a6b)':esCerrable?'linear-gradient(90deg,#14532d,#15803d)':'linear-gradient(90deg,#374151,#6b7280)'};color:white;display:flex;flex-direction:column;padding:0;`;
+    header.style.cssText = `background:${esDerivable?'linear-gradient(90deg,#1e3a5f,#1a3a6b)':esPendienteCierre?'linear-gradient(90deg,#4a1772,#7e22ce)':esCerrable?'linear-gradient(90deg,#14532d,#15803d)':'linear-gradient(90deg,#374151,#6b7280)'};color:white;display:flex;flex-direction:column;padding:0;`;
     header.innerHTML = `
       <button class="mobile-back-bar" onclick="volverAListaMovil('.dir-layout')" style="font-size:13px;padding:8px 12px;">
         ← Volver a lista
       </button>
       <div style="display:flex;align-items:center;gap:8px;flex:1;padding:10px 14px;">
-        <span>${esDerivable?'📤':esCerrable?'✅':'📋'}</span>
+        <span>${esDerivable?'📤':esPendienteCierre?'⏳':esCerrable?'✅':'📋'}</span>
         <span style="font-weight:700;">${sol.NroSolicitud}</span>
         <span class="estado-badge estado-${sol.Estado}" style="font-size:11px;">${sol.Estado}</span>
       </div>`;
@@ -823,15 +825,49 @@ function renderDetalleDirector(sol) {
     </div>` : ""}
 
     ${esCerrable ? `
-    <!-- Panel cerrar -->
+    <!-- Panel cerrar — dos opciones -->
     <div class="accion-panel">
-      <div class="accion-header cerrar">✅ Cerrar Solicitud</div>
+      <div class="accion-header cerrar" style="background:linear-gradient(90deg,#14532d,#15803d);">📋 Resolución de Solicitud</div>
       <div class="accion-body">
-        <p style="font-size:12px;color:#666;margin-bottom:10px;">La solicitud ha sido respondida por la unidad. El Director puede cerrarla formalmente.</p>
-        <textarea id="dir-cierre-obs" rows="2" placeholder="Observaciones de cierre (opcional)..."></textarea>
-        <button class="btn-success" onclick="cerrarSolicitud('${sol.id}')" style="width:100%;padding:12px;">
-          🔒 Cerrar Solicitud Formalmente
-        </button>
+        <p style="font-size:12px;color:#555;margin-bottom:10px;">
+          ${esPendienteCierre
+            ? '⏳ Solicitud en plazo de evaluación. Una vez generado el parte final, puede cerrarse formalmente.'
+            : 'La unidad ha respondido. Seleccione cómo proceder:'}
+        </p>
+        <textarea id="dir-cierre-obs" rows="2" placeholder="Observaciones / número de parte final (opcional)..." style="margin-bottom:10px;"></textarea>
+
+        ${!esPendienteCierre ? `
+        <div style="background:#fdf4ff;border:1.5px solid #d8b4fe;border-radius:10px;padding:12px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:#7e22ce;margin-bottom:6px;">⏳ Pendiente de Cierre</div>
+          <p style="font-size:11px;color:#6b21a8;margin:0 0 8px;">Queda en plazo de evaluación hasta que se genere el parte final de inspección.</p>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <label style="font-size:11px;font-weight:600;color:#7e22ce;white-space:nowrap;">Plazo hasta:</label>
+            <input type="date" id="dir-plazo-cierre"
+              style="flex:1;padding:5px 8px;border:1.5px solid #d8b4fe;border-radius:6px;font-size:12px;"
+              value="${new Date(new Date().setDate(new Date().getDate()+30)).toISOString().split('T')[0]}">
+          </div>
+          <button onclick="pendienteCierreSolicitud('${sol.id}')"
+            style="width:100%;padding:9px;background:#7e22ce;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">
+            ⏳ Marcar Pendiente de Cierre
+          </button>
+        </div>` : ""}
+
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;">
+          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">🔒 Cierre Definitivo</div>
+          <p style="font-size:11px;color:#166534;margin:0 0 8px;">Cierra formalmente la solicitud. El caso queda archivado en el sistema.</p>
+          <button class="btn-success" onclick="cerrarSolicitud('${sol.id}')" style="width:100%;padding:9px;">
+            🔒 Cerrar Solicitud Formalmente
+          </button>
+        </div>
+      </div>
+    </div>` : ""}
+
+    ${esPendienteCierre ? `
+    <div style="background:#fdf4ff;border:1.5px solid #d8b4fe;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <span style="font-size:20px;">⏳</span>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#7e22ce;">Pendiente de Cierre</div>
+        <div style="font-size:11px;color:#6b21a8;">Aguardando parte final${sol.PlazoCierre ? ' — Plazo: ' + formatFecha(sol.PlazoCierre) : ''}</div>
       </div>
     </div>` : ""}
 
@@ -1086,6 +1122,30 @@ async function derivarSolicitud(solId) {
     }).catch(e => console.warn("Historial (no crítico):", e.message));
     notificarUnidad({...sol,Estado:CONFIG.estados.DERIVADA},unidad).catch(console.error);
     showToast("success",`✅ Derivada a ${unidad}`);
+    await renderDirector();
+  } catch(e) { showToast("error","Error: "+e.message); }
+  finally { hideLoading(); }
+}
+
+async function pendienteCierreSolicitud(solId) {
+  const obs   = document.getElementById("dir-cierre-obs")?.value.trim();
+  const plazo = document.getElementById("dir-plazo-cierre")?.value;
+  if (!confirm("¿Confirmas marcar esta solicitud como Pendiente de Cierre?\nQuedará en evaluación hasta que se genere el parte final.")) return;
+  showLoading("Actualizando estado...");
+  try {
+    const sol = state.solicitudes.find(s=>s.id===solId);
+    await actualizarSolicitud(solId, {
+      Estado: CONFIG.estados.PENDIENTE_CIERRE,
+      PlazoCierre: plazo || null
+    });
+    registrarHistorial({
+      NroSolicitud:sol.NroSolicitud, Title:"Pendiente de Cierre — en plazo de evaluación",
+      EstadoAnterior:sol.Estado, EstadoNuevo:CONFIG.estados.PENDIENTE_CIERRE,
+      UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
+      Unidad:state.usuario.Unidad, FechaAccion:new Date().toISOString(),
+      Observaciones: (obs || "") + (plazo ? ` | Plazo: ${plazo}` : "")
+    }).catch(e => console.warn("Historial (no crítico):", e.message));
+    showToast("success","⏳ Solicitud marcada como Pendiente de Cierre");
     await renderDirector();
   } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }
@@ -1612,6 +1672,7 @@ async function renderGraficos() {
                 <th style="padding:10px 12px;text-align:center;color:#3b82f6;">Derivadas</th>
                 <th style="padding:10px 12px;text-align:center;color:#22c55e;">Respondidas</th>
                 <th style="padding:10px 12px;text-align:center;color:#6b7280;">Cerradas</th>
+                <th style="padding:10px 12px;text-align:center;color:#7e22ce;">Pend. Cierre</th>
                 <th style="padding:10px 12px;text-align:center;color:#f59e0b;">En Proceso</th>
                 <th style="padding:10px 12px;text-align:center;color:#374151;">Total</th>
                 <th style="padding:10px 16px;text-align:left;color:#374151;">Efectividad</th>
@@ -1658,29 +1719,31 @@ async function actualizarGraficos() {
     });
 
     const COLORES_ESTADO = {
-      "Ingresada":  "#3b82f6",
-      "Derivada":   "#f59e0b",
-      "En Proceso": "#06b6d4",
-      "Respondida": "#22c55e",
-      "Devuelta":   "#ef4444",
-      "Cerrada":    "#6b7280"
+      "Ingresada":           "#3b82f6",
+      "Derivada":            "#f59e0b",
+      "En Proceso":          "#06b6d4",
+      "Respondida":          "#22c55e",
+      "Devuelta":            "#ef4444",
+      "Pendiente de Cierre": "#7e22ce",
+      "Cerrada":             "#6b7280"
     };
 
     // ── KPIs ──
-    const total      = filtradas.length;
-    const cerradas   = filtradas.filter(s => s.Estado === "Cerrada").length;
-    const respondidas= filtradas.filter(s => s.Estado === "Respondida").length;
-    const pendientes = filtradas.filter(s => ["Ingresada","Derivada","En Proceso"].includes(s.Estado)).length;
-    const devueltas  = filtradas.filter(s => s.Estado === "Devuelta").length;
-    const tasa       = total > 0 ? Math.round((cerradas / total) * 100) : 0;
+    const total         = filtradas.length;
+    const cerradas      = filtradas.filter(s => s.Estado === "Cerrada").length;
+    const respondidas   = filtradas.filter(s => s.Estado === "Respondida").length;
+    const pendCierre    = filtradas.filter(s => s.Estado === "Pendiente de Cierre").length;
+    const pendientes    = filtradas.filter(s => ["Ingresada","Derivada","En Proceso"].includes(s.Estado)).length;
+    const devueltas     = filtradas.filter(s => s.Estado === "Devuelta").length;
+    const tasa          = total > 0 ? Math.round(((cerradas + pendCierre) / total) * 100) : 0;
 
     const kpis = [
-      { label:"Total período",   valor: total,      icon:"📋", color:"#1a3a6b", bg:"#eff6ff" },
-      { label:"Cerradas",        valor: cerradas,    icon:"🔒", color:"#6b7280", bg:"#f3f4f6" },
-      { label:"Respondidas",     valor: respondidas, icon:"✅", color:"#15803d", bg:"#f0fdf4" },
-      { label:"Pendientes",      valor: pendientes,  icon:"⏳", color:"#b45309", bg:"#fffbeb" },
-      { label:"Devueltas",       valor: devueltas,   icon:"↩️", color:"#b91c1c", bg:"#fff1f2" },
-      { label:"Tasa resolución", valor: tasa + "%",  icon:"📈", color:"#0e7490", bg:"#ecfeff" },
+      { label:"Total período",      valor: total,       icon:"📋", color:"#1a3a6b", bg:"#eff6ff" },
+      { label:"Cerradas",           valor: cerradas,    icon:"🔒", color:"#6b7280", bg:"#f3f4f6" },
+      { label:"Respondidas",        valor: respondidas, icon:"✅", color:"#15803d", bg:"#f0fdf4" },
+      { label:"Pend. de Cierre",    valor: pendCierre,  icon:"⏳", color:"#7e22ce", bg:"#fdf4ff" },
+      { label:"Devueltas",          valor: devueltas,   icon:"↩️", color:"#b91c1c", bg:"#fff1f2" },
+      { label:"Tasa resolución",    valor: tasa + "%",  icon:"📈", color:"#0e7490", bg:"#ecfeff" },
     ];
     const kpisCont = document.getElementById("graf-kpis");
     if (kpisCont) kpisCont.innerHTML = kpis.map(k => `
@@ -1776,8 +1839,9 @@ async function actualizarGraficos() {
         const der  = sols.length;
         const resp = sols.filter(s => s.Estado === "Respondida").length;
         const cerr = sols.filter(s => s.Estado === "Cerrada").length;
+        const penc = sols.filter(s => s.Estado === "Pendiente de Cierre").length;
         const proc = sols.filter(s => s.Estado === "En Proceso").length;
-        const efe  = der > 0 ? Math.round(((resp + cerr) / der) * 100) : 0;
+        const efe  = der > 0 ? Math.round(((resp + cerr + penc) / der) * 100) : 0;
         const efeColor = efe >= 80 ? "#15803d" : efe >= 50 ? "#b45309" : "#b91c1c";
         return `
           <tr style="border-bottom:1px solid var(--borde);" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''">
@@ -1785,6 +1849,7 @@ async function actualizarGraficos() {
             <td style="padding:10px 12px;text-align:center;"><span style="background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">${der}</span></td>
             <td style="padding:10px 12px;text-align:center;"><span style="background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">${resp}</span></td>
             <td style="padding:10px 12px;text-align:center;"><span style="background:#f3f4f6;color:#374151;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">${cerr}</span></td>
+            <td style="padding:10px 12px;text-align:center;"><span style="background:#fdf4ff;color:#7e22ce;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">${penc}</span></td>
             <td style="padding:10px 12px;text-align:center;"><span style="background:#fef3c7;color:#b45309;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;">${proc}</span></td>
             <td style="padding:10px 12px;text-align:center;font-weight:700;">${der}</td>
             <td style="padding:10px 16px;">

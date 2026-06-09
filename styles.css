@@ -438,6 +438,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 .estado-En\ Proceso { background: #cffafe; color: #0e7490; }
 .estado-Respondida { background: #dcfce7; color: #15803d; }
 .estado-Devuelta { background: #fee2e2; color: #b91c1c; }
+.estado-Pendiente\ de\ Cierre { background: #fdf4ff; color: #7e22ce; }
 .estado-Cerrada { background: #f3f4f6; color: #4b5563; }
 
 /* Filtros */
