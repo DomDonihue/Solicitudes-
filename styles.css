@@ -409,9 +409,9 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 /* Solicitud cards */
 .sol-card {
   border: 1.5px solid var(--borde);
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 8px;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 5px;
   cursor: pointer;
   transition: all 0.18s;
   position: relative;
@@ -420,10 +420,10 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 }
 .sol-card:hover { border-color: var(--azul-claro); box-shadow: 0 2px 10px rgba(26,58,107,0.12); transform: translateX(2px); }
 .sol-card.selected { border-color: var(--azul); border-left-color: var(--azul); background: #eef3ff; box-shadow: 0 2px 12px rgba(26,58,107,0.15); }
-.sol-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-.sol-nro { font-weight: 800; color: var(--azul); font-size: 16px; letter-spacing: 0.3px; }
-.sol-card-name { font-size: 13px; font-weight: 600; color: #222; margin-bottom: 3px; }
-.sol-card-dir { font-size: 12px; color: #888; display: flex; align-items: center; gap: 4px; }
+.sol-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+.sol-nro { font-weight: 800; color: var(--azul); font-size: 14px; letter-spacing: 0.3px; }
+.sol-card-name { font-size: 12px; font-weight: 600; color: #222; margin-bottom: 2px; }
+.sol-card-dir { font-size: 11px; color: #888; display: flex; align-items: center; gap: 4px; }
 .estado-badge {
   font-size: 11px;
   font-weight: 600;

@@ -495,9 +495,9 @@ async function guardarSolicitud() {
     }
 
     // Historial
-    await registrarHistorial({
+    registrarHistorial({
       NroSolicitud: nro,
-      Accion: "Ingreso de solicitud",
+      Title:"Ingreso de solicitud",
       EstadoAnterior: "",
       EstadoNuevo: CONFIG.estados.INGRESADA,
       UsuarioAccion: state.usuario.NombreCompleto,
@@ -505,7 +505,7 @@ async function guardarSolicitud() {
       Unidad: state.usuario.Unidad,
       FechaAccion: new Date().toISOString(),
       Observaciones: desc
-    });
+    }).catch(e => console.warn("Historial (no crítico):", e.message));
 
     // Notificar director
     await notificarDirector(item, "Nueva solicitud ingresada").catch(console.error);
@@ -559,36 +559,35 @@ function renderDirSidebar() {
   sidebar.innerHTML = `
     <!-- Botón Todos -->
     <button onclick="filtrarDirector('Todos')"
-      style="width:100%;margin-bottom:8px;padding:8px 12px;border-radius:8px;border:1.5px solid ${state.filtroEstado==='Todos'?'var(--azul)':'var(--borde)'};
+      style="width:100%;margin-bottom:6px;padding:6px 10px;border-radius:7px;border:1.5px solid ${state.filtroEstado==='Todos'?'var(--azul)':'var(--borde)'};
              background:${state.filtroEstado==='Todos'?'var(--azul)':'white'};color:${state.filtroEstado==='Todos'?'white':'var(--texto)'};
-             font-size:12px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-      <span>📊 Todas las solicitudes</span>
-      <span style="background:${state.filtroEstado==='Todos'?'rgba(255,255,255,0.25)':'var(--gris-bg)'};padding:2px 8px;border-radius:10px;font-weight:700;">
+             font-size:11px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+      <span>📊 Todas</span>
+      <span style="background:${state.filtroEstado==='Todos'?'rgba(255,255,255,0.25)':'var(--gris-bg)'};padding:1px 7px;border-radius:10px;font-weight:700;">
         ${state.solicitudes.length}
       </span>
     </button>
 
-    <!-- Grid 2x3 de estados -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+    <!-- Grid 2x3 de estados compacto -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
       ${stats.map(({e,icon,bg,tc}) => {
         const cnt = counts[e]||0;
         const activo = state.filtroEstado === e;
         const urgente = e==="Devuelta" && cnt>0;
         return `
         <div onclick="filtrarDirector('${e}')"
-          style="background:${activo?tc:bg};border-radius:10px;padding:10px 8px;text-align:center;cursor:pointer;
+          style="background:${activo?tc:bg};border-radius:8px;padding:6px 4px;text-align:center;cursor:pointer;
                  border:2px solid ${activo?tc:urgente?'#fca5a5':'transparent'};
                  transition:all 0.18s;box-shadow:${activo?'0 2px 8px rgba(0,0,0,0.15)':'none'};"
-          onmouseenter="this.style.transform='translateY(-2px)'"
+          onmouseenter="this.style.transform='translateY(-1px)'"
           onmouseleave="this.style.transform=''">
-          <div style="font-size:16px;margin-bottom:3px;">${icon}</div>
-          <div style="font-size:20px;font-weight:800;color:${activo?'white':tc};line-height:1;">${cnt}</div>
-          <div style="font-size:10px;color:${activo?'rgba(255,255,255,0.85)':tc};margin-top:2px;font-weight:500;">${e}</div>
-          ${urgente&&!activo?`<div style="font-size:9px;color:#b91c1c;font-weight:700;">⚠️ urgente</div>`:''}
+          <div style="font-size:13px;margin-bottom:1px;">${icon}</div>
+          <div style="font-size:17px;font-weight:800;color:${activo?'white':tc};line-height:1;">${cnt}</div>
+          <div style="font-size:9px;color:${activo?'rgba(255,255,255,0.85)':tc};margin-top:1px;font-weight:500;">${e}</div>
+          ${urgente&&!activo?`<div style="font-size:8px;color:#b91c1c;font-weight:700;">⚠️</div>`:''}
         </div>`;
       }).join("")}
-    </div>
-    <div style="text-align:center;font-size:11px;color:#9ca3af;margin-top:8px;">Total: ${state.solicitudes.length}</div>`;
+    </div>`;
 }
 
 function filtrarDirector(estado) {
@@ -1078,14 +1077,14 @@ async function derivarSolicitud(solId) {
     const sol = state.solicitudes.find(s=>s.id===solId);
     const esRederivar = sol.Estado === CONFIG.estados.DEVUELTA;
     await actualizarSolicitud(solId, { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad });
-    await registrarHistorial({
+    registrarHistorial({
       NroSolicitud:sol.NroSolicitud,
-      Accion: esRederivar ? "Re-derivada a unidad" : "Derivada a unidad",
+      Title:esRederivar ? "Re-derivada a unidad" : "Derivada a unidad",
       EstadoAnterior:sol.Estado, EstadoNuevo:CONFIG.estados.DERIVADA,
       UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
       Unidad:unidad, FechaAccion:new Date().toISOString(), Observaciones:obs
-    });
-    await notificarUnidad({...sol,Estado:CONFIG.estados.DERIVADA},unidad).catch(console.error);
+    }).catch(e => console.warn("Historial (no crítico):", e.message));
+    notificarUnidad({...sol,Estado:CONFIG.estados.DERIVADA},unidad).catch(console.error);
     showToast("success",`✅ Derivada a ${unidad}`);
     await renderDirector();
   } catch(e) { showToast("error","Error: "+e.message); }
@@ -1099,12 +1098,12 @@ async function cerrarSolicitud(solId) {
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
     await actualizarSolicitud(solId, { Estado:CONFIG.estados.CERRADA });
-    await registrarHistorial({
-      NroSolicitud:sol.NroSolicitud, Accion:"Solicitud cerrada formalmente",
+    registrarHistorial({
+      NroSolicitud:sol.NroSolicitud, Title:"Solicitud cerrada formalmente",
       EstadoAnterior:sol.Estado, EstadoNuevo:CONFIG.estados.CERRADA,
       UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
       Unidad:state.usuario.Unidad, FechaAccion:new Date().toISOString(), Observaciones:obs
-    });
+    }).catch(e => console.warn("Historial (no crítico):", e.message));
     showToast("success","🔒 Solicitud cerrada formalmente");
     await renderDirector();
   } catch(e) { showToast("error","Error: "+e.message); }
@@ -1394,9 +1393,9 @@ async function responderSolicitud(solId) {
       }
     }
 
-    await registrarHistorial({
+    registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Accion: "Solicitud respondida",
+      Title:"Solicitud respondida",
       EstadoAnterior: sol.Estado,
       EstadoNuevo: CONFIG.estados.RESPONDIDA,
       UsuarioAccion: state.usuario.NombreCompleto,
@@ -1404,7 +1403,7 @@ async function responderSolicitud(solId) {
       Unidad: state.usuario.Unidad,
       FechaAccion: new Date().toISOString(),
       Observaciones: obs
-    });
+    }).catch(e => console.warn("Historial (no crítico):", e.message));
 
     await notificarDirector({ ...sol, Estado: CONFIG.estados.RESPONDIDA }, "Solicitud respondida por unidad").catch(console.error);
     showToast("success", "✅ Solicitud respondida");
@@ -1422,9 +1421,9 @@ async function enProcesoSolicitud(solId) {
   try {
     const sol = state.solicitudes.find(s => s.id === solId);
     await actualizarSolicitud(solId, { Estado: CONFIG.estados.EN_PROCESO });
-    await registrarHistorial({
+    registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Accion: "Solicitud en proceso",
+      Title:"Solicitud en proceso",
       EstadoAnterior: sol.Estado,
       EstadoNuevo: CONFIG.estados.EN_PROCESO,
       UsuarioAccion: state.usuario.NombreCompleto,
@@ -1432,7 +1431,7 @@ async function enProcesoSolicitud(solId) {
       Unidad: state.usuario.Unidad,
       FechaAccion: new Date().toISOString(),
       Observaciones: obs
-    });
+    }).catch(e => console.warn("Historial (no crítico):", e.message));
     showToast("info", "⚙️ Solicitud marcada En Proceso");
     await renderUnidad();
   } catch (e) {
@@ -1450,9 +1449,9 @@ async function devolverSolicitudUnidad(solId) {
   try {
     const sol = state.solicitudes.find(s => s.id === solId);
     await actualizarSolicitud(solId, { Estado: CONFIG.estados.DEVUELTA, MotivoDevolucion: obs });
-    await registrarHistorial({
+    registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Accion: "Solicitud devuelta",
+      Title:"Solicitud devuelta",
       EstadoAnterior: sol.Estado,
       EstadoNuevo: CONFIG.estados.DEVUELTA,
       UsuarioAccion: state.usuario.NombreCompleto,
@@ -1461,7 +1460,7 @@ async function devolverSolicitudUnidad(solId) {
       FechaAccion: new Date().toISOString(),
       Observaciones: obs,
       Motivo: obs
-    });
+    }).catch(e => console.warn("Historial (no crítico):", e.message));
     await notificarDirector({ ...sol, Estado: CONFIG.estados.DEVUELTA }, "Solicitud devuelta por unidad").catch(console.error);
     showToast("info", "↩️ Solicitud devuelta");
     await renderUnidad();
@@ -1478,9 +1477,9 @@ async function cerrarSolicitudUnidad(solId) {
   try {
     const sol = state.solicitudes.find(s => s.id === solId);
     await actualizarSolicitud(solId, { Estado: CONFIG.estados.CERRADA });
-    await registrarHistorial({
+    registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Accion: "Solicitud cerrada",
+      Title:"Solicitud cerrada",
       EstadoAnterior: sol.Estado,
       EstadoNuevo: CONFIG.estados.CERRADA,
       UsuarioAccion: state.usuario.NombreCompleto,
@@ -1488,7 +1487,7 @@ async function cerrarSolicitudUnidad(solId) {
       Unidad: state.usuario.Unidad,
       FechaAccion: new Date().toISOString(),
       Observaciones: obs
-    });
+    }).catch(e => console.warn("Historial (no crítico):", e.message));
     showToast("success", "🔒 Solicitud cerrada");
     await renderUnidad();
   } catch (e) {
