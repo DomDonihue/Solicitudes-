@@ -210,12 +210,22 @@
     <!-- UNIDAD -->
     <div id="view-unidad" class="view">
       <div class="uni-layout">
-        <!-- Lista con filtros integrados -->
+        <!-- COL 1: Lista con filtros -->
         <div class="panel" style="display:flex;flex-direction:column;overflow:hidden;">
           <div class="panel-header" id="uni-titulo">🏢 Mis Solicitudes</div>
           <div id="uni-lista" style="flex:1;overflow:hidden;display:flex;flex-direction:column;"></div>
         </div>
-        <!-- Detalle + acciones -->
+        <!-- COL 2: Visor PDF -->
+        <div class="panel" style="display:flex;flex-direction:column;overflow:hidden;">
+          <div class="panel-header" id="uni-pdf-header">📄 Documento</div>
+          <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:10px;" id="uni-pdf">
+            <div class="pdf-visor-empty">
+              <span>📄</span>
+              <p>Selecciona una solicitud para ver el documento</p>
+            </div>
+          </div>
+        </div>
+        <!-- COL 3: Detalle + acciones -->
         <div class="panel" id="uni-detalle" style="display:flex;flex-direction:column;overflow:hidden;">
           <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;flex-direction:column;gap:16px;">
             <span style="font-size:60px">📋</span>

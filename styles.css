@@ -803,9 +803,9 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
 /* ===== UNIDAD ===== */
 .uni-layout {
   display: grid;
-  grid-template-columns: 1fr 480px;
-  gap: 20px;
-  padding: 20px 24px;
+  grid-template-columns: 240px 1fr 440px;
+  gap: 12px;
+  padding: 12px 16px;
   height: calc(100vh - 120px);
 }
 
@@ -1029,11 +1029,12 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
     padding: 8px;
     gap: 0;
   }
-  /* Por defecto: mostrar col 1 (lista), ocultar col 2 (detalle) */
-  .uni-layout > *:nth-child(2) { display: none; }
-  /* Cuando hay detalle: ocultar col 1, mostrar col 2 */
+  /* Por defecto: mostrar col 1 (lista), ocultar col 2 (pdf) y col 3 (detalle) */
+  .uni-layout > *:nth-child(2),
+  .uni-layout > *:nth-child(3) { display: none; }
+  /* Cuando hay detalle: mostrar col 3, ocultar col 1 y col 2 */
   .uni-layout.showing-detalle > *:nth-child(1) { display: none; }
-  .uni-layout.showing-detalle > *:nth-child(2) { display: flex; }
+  .uni-layout.showing-detalle > *:nth-child(3) { display: flex; }
 
   /* ── BOTÓN VOLVER ── */
   .mobile-back-bar {

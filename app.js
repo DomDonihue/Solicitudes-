@@ -1058,7 +1058,31 @@ async function abrirAdjuntoUnidad(downloadUrl, serverRelativeUrl, nombre, isPdf)
     const blobUrl = await getAttachmentBlobUrl(downloadUrl, serverRelativeUrl);
     hideLoading();
     if (isPdf) {
-      window.open(blobUrl, "_blank");
+      // Mostrar en el panel PDF central
+      const pdfPanel = document.getElementById("uni-pdf");
+      const pdfHeader = document.getElementById("uni-pdf-header");
+      if (pdfPanel) {
+        if (pdfHeader) pdfHeader.textContent = `📄 ${nombre}`;
+        pdfPanel.innerHTML = "";
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        const wrap = document.createElement("div");
+        wrap.style.cssText = "flex:1;overflow-y:auto;background:#525659;border-radius:8px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:0;";
+        pdfPanel.appendChild(wrap);
+        const pdf = await pdfjsLib.getDocument(blobUrl).promise;
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const w = (wrap.clientWidth || 350) - 20;
+          const vp = page.getViewport({ scale: 1 });
+          const canvas = document.createElement("canvas");
+          const svp = page.getViewport({ scale: w / vp.width });
+          canvas.width = svp.width; canvas.height = svp.height;
+          canvas.style.cssText = "width:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);";
+          await page.render({ canvasContext: canvas.getContext("2d"), viewport: svp }).promise;
+          wrap.appendChild(canvas);
+        }
+      } else {
+        window.open(blobUrl, "_blank");
+      }
     } else {
       abrirLightbox(blobUrl, nombre);
     }
@@ -1282,9 +1306,59 @@ function cambiarPaginaUni(p) { state.pagina = p; renderSidebarUnidad(); }
 
 async function seleccionarSolicitudUnidad(id) {
   state.solicitudSeleccionada = state.solicitudes.find(s => s.id === id);
+  const sol = state.solicitudSeleccionada;
   renderSidebarUnidad();
-  renderDetalleUnidad(state.solicitudSeleccionada);
+  renderDetalleUnidad(sol);
   mostrarDetalleMovil('.uni-layout');
+
+  // Cargar PDF en panel central
+  const pdfPanel = document.getElementById("uni-pdf");
+  const pdfHeader = document.getElementById("uni-pdf-header");
+  if (!pdfPanel || !sol) return;
+  pdfPanel.innerHTML = `<div style="text-align:center;color:#9ca3af;padding:30px;"><div class="spinner" style="margin:0 auto 12px;"></div><p>Cargando documento...</p></div>`;
+  try {
+    const atts = await getListItemAttachments(CONFIG.lists.solicitudes, sol.id);
+    if (!atts.length) {
+      pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>📭</span><p>Sin documentos adjuntos</p></div>`;
+      return;
+    }
+    const first = atts.find(a => a.name?.toLowerCase().endsWith('.pdf')) || atts[0];
+    if (pdfHeader) pdfHeader.textContent = `📄 ${sol.NroSolicitud} — ${first.name}`;
+    const blobUrl = await getAttachmentBlobUrl(first.downloadUrl, first.serverRelativeUrl);
+    pdfPanel.innerHTML = "";
+    if (first.name?.toLowerCase().endsWith('.pdf') && typeof pdfjsLib !== "undefined") {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      const wrap = document.createElement("div");
+      wrap.style.cssText = "flex:1;overflow-y:auto;background:#525659;border-radius:8px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:0;";
+      pdfPanel.appendChild(wrap);
+      const pdf = await pdfjsLib.getDocument(blobUrl).promise;
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const w = (wrap.clientWidth || 350) - 20;
+        const vp = page.getViewport({ scale: 1 });
+        const scale = w / vp.width;
+        const svp = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = svp.width; canvas.height = svp.height;
+        canvas.style.cssText = "width:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);";
+        await page.render({ canvasContext: canvas.getContext("2d"), viewport: svp }).promise;
+        wrap.appendChild(canvas);
+        if (p < pdf.numPages) {
+          const sep = document.createElement("div");
+          sep.style.cssText = "color:rgba(255,255,255,0.35);font-size:11px;";
+          sep.textContent = `— ${p} / ${pdf.numPages} —`;
+          wrap.appendChild(sep);
+        }
+      }
+    } else {
+      const img = document.createElement("img");
+      img.src = blobUrl;
+      img.style.cssText = "width:100%;border-radius:8px;";
+      pdfPanel.appendChild(img);
+    }
+  } catch(e) {
+    pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>⚠️</span><p style="color:#ef4444;font-size:13px;">No se pudo cargar el documento</p></div>`;
+  }
 }
 
 async function renderDetalleUnidad(sol) {
