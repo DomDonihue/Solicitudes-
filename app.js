@@ -1111,29 +1111,100 @@ async function cargarHistorialDir(nroSolicitud) {
   if (!hc) return;
   hc.innerHTML = `<div style="text-align:center;color:#9ca3af;font-size:12px;padding:10px;"><div class="spinner" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>Cargando...</div>`;
   try {
-    const hist = await getHistorialBySolicitud(nroSolicitud);
-    hist.sort((a,b)=>new Date(b.FechaAccion)-new Date(a.FechaAccion));
-    if (!hist.length) { hc.innerHTML=`<p style="text-align:center;color:#9ca3af;font-size:12px;">Sin historial</p>`; return; }
-    const dot = a=>{a=(a||"").toLowerCase();return a.includes('deriv')?'#f59e0b':a.includes('respond')?'#22c55e':a.includes('devuel')?'#ef4444':a.includes('cerr')?'#6b7280':'#3b82f6';};
-    hc.innerHTML = hist.map(h=>{
-      // SharePoint puede devolver campos con nombre interno distinto
-      const accion = h.Accion || h.Title || h.title || "—";
-      const usuario = h.UsuarioAccion || h.UsuarioAccion0 || "";
-      const unidad  = h.Unidad || "";
-      const obs     = h.Observaciones || "";
-      const fecha   = h.FechaAccion || h.Modified || "";
-      const estAnt  = h.EstadoAnterior || "";
-      const estNuevo= h.EstadoNuevo || "";
-      return `
-      <div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #f3f4f6;">
-        <div style="width:8px;height:8px;border-radius:50%;background:${dot(accion)};margin-top:4px;flex-shrink:0;"></div>
+    // Cargar historial y evidencias en paralelo
+    const sol = state.solicitudSeleccionada;
+    const [hist, evidencias] = await Promise.all([
+      getHistorialBySolicitud(nroSolicitud),
+      sol ? getEvidenciasBySolicitud(nroSolicitud, sol.id).catch(()=>[]) : Promise.resolve([])
+    ]);
+
+    // Unificar en línea de tiempo: historial + respuestas de unidad
+    const eventos = [
+      ...hist.map(h => ({
+        tipo: 'historial',
+        fecha: h.FechaAccion || h.Modified || "",
+        accion: h.Accion || h.Title || "—",
+        usuario: h.UsuarioAccion || "",
+        rol: h.RolUsuario || "",
+        unidad: h.Unidad || "",
+        obs: h.Observaciones || "",
+        estAnt: h.EstadoAnterior || "",
+        estNuevo: h.EstadoNuevo || ""
+      })),
+      ...evidencias.map(e => ({
+        tipo: 'respuesta',
+        fecha: e.FechaCarga || "",
+        accion: `Respuesta de ${e.Unidad || "Unidad"}`,
+        usuario: e.Responsable || "",
+        rol: "",
+        unidad: e.Unidad || "",
+        obs: e.DescripcionEvidencia || "",
+        estAnt: "", estNuevo: "",
+        evId: e.id
+      }))
+    ];
+
+    eventos.sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+
+    if (!eventos.length) { hc.innerHTML=`<p style="text-align:center;color:#9ca3af;font-size:12px;">Sin historial</p>`; return; }
+
+    const dot = (tipo, accion) => {
+      if (tipo === 'respuesta') return '#15803d';
+      const a = (accion||"").toLowerCase();
+      return a.includes('deriv')?'#f59e0b':a.includes('respond')?'#22c55e':a.includes('devuel')?'#ef4444':a.includes('cerr')?'#6b7280':a.includes('pend')?'#7e22ce':'#3b82f6';
+    };
+
+    hc.innerHTML = eventos.map(ev => `
+      <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;">
+        <div style="width:9px;height:9px;border-radius:50%;background:${dot(ev.tipo,ev.accion)};margin-top:4px;flex-shrink:0;"></div>
         <div style="flex:1;">
-          <div style="font-size:12px;font-weight:600;color:#1a1a1a;">${accion}</div>
-          <div style="font-size:11px;color:#888;">${formatFechaHora(fecha)}${usuario?' · '+usuario:''}${unidad?' · '+unidad:''}</div>
-          ${estAnt?`<div style="font-size:10px;color:#aaa;">${estAnt} → ${estNuevo}</div>`:""}
-          ${obs?`<div style="font-size:11px;color:#555;font-style:italic;">"${obs}"</div>`:""}
+          <div style="font-size:12px;font-weight:700;color:${ev.tipo==='respuesta'?'#15803d':'#1a1a1a'};">
+            ${ev.tipo==='respuesta'?'🏢 ':''}${ev.accion}
+          </div>
+          <div style="font-size:11px;color:#888;">
+            ${formatFechaHora(ev.fecha)}${ev.usuario?' · '+ev.usuario:''}${ev.unidad?' · <strong>'+ev.unidad+'</strong>':''}
+          </div>
+          ${ev.estAnt?`<div style="font-size:10px;color:#aaa;margin-top:1px;">${ev.estAnt} → ${ev.estNuevo}</div>`:""}
+          ${ev.obs?`<div style="font-size:12px;color:#374151;background:${ev.tipo==='respuesta'?'#f0fdf4':'#f8fafc'};border-left:3px solid ${dot(ev.tipo,ev.accion)};padding:6px 8px;border-radius:0 6px 6px 0;margin-top:4px;line-height:1.5;">${ev.obs}</div>`:""}
+          ${ev.tipo==='respuesta'?`<div id="dir-ev-atts-${ev.evId}" style="margin-top:4px;font-size:11px;color:#9ca3af;">Cargando adjuntos...</div>`:""}
         </div>
-      </div>`;}).join("");
+      </div>`).join("");
+
+    // Cargar adjuntos de cada evidencia
+    for (const ev of eventos.filter(e=>e.tipo==='respuesta')) {
+      const cont = document.getElementById(`dir-ev-atts-${ev.evId}`);
+      if (!cont) continue;
+      getListItemAttachments(CONFIG.lists.evidencias, ev.evId).then(atts => {
+        if (!atts.length) { cont.remove(); return; }
+        const imgs = atts.filter(a=>/\.(jpg|jpeg|png|gif)$/i.test(a.name||''));
+        const pdfs = atts.filter(a=>a.name?.toLowerCase().endsWith('.pdf'));
+        cont.innerHTML = `<div style="font-weight:600;color:#6b7280;margin-bottom:4px;">📎 ${atts.length} adjunto${atts.length>1?'s':''}</div>`;
+        if (imgs.length) {
+          const grid = document.createElement("div");
+          grid.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(imgs.length,3)},1fr);gap:4px;margin-bottom:4px;`;
+          cont.appendChild(grid);
+          imgs.forEach(img => {
+            const box = document.createElement("div");
+            box.style.cssText = "border-radius:6px;overflow:hidden;aspect-ratio:4/3;background:#f3f4f6;cursor:zoom-in;";
+            box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;"><div class="spinner" style="width:16px;height:16px;border-width:2px;"></div></div>`;
+            grid.appendChild(box);
+            getAttachmentBlobUrl(img.downloadUrl, img.serverRelativeUrl).then(url => {
+              const el = document.createElement("img");
+              el.src = url; el.style.cssText = "width:100%;height:100%;object-fit:cover;";
+              el.onclick = () => abrirLightbox(url, img.name);
+              box.innerHTML = ""; box.appendChild(el);
+            }).catch(()=>{ box.innerHTML=`<div style="font-size:10px;color:#fca5a5;text-align:center;padding:4px;">⚠️</div>`; });
+          });
+        }
+        pdfs.forEach(pdf => {
+          const row = document.createElement("div");
+          row.style.cssText = "font-size:11px;padding:4px 6px;background:#f8fafc;border:1px solid var(--borde);border-radius:4px;margin-bottom:3px;cursor:pointer;color:var(--azul);";
+          row.innerHTML = `📄 ${pdf.name}`;
+          row.onclick = async () => { try { window.open(await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl),"_blank"); } catch{} };
+          cont.appendChild(row);
+        });
+      }).catch(()=>{ if(cont) cont.remove(); });
+    }
   } catch(e) {
     hc.innerHTML=`<p style="color:#9ca3af;font-size:12px;text-align:center;">Error al cargar historial</p>`;
   }
