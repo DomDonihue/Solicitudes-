@@ -1243,7 +1243,7 @@ async function pendienteCierreSolicitud(solId) {
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
     const pcFields = { Estado: CONFIG.estados.PENDIENTE_CIERRE };
-    if (plazo) pcFields.FechaCierre = plazo;
+    if (plazo) pcFields.FechaCierre = new Date(plazo + "T12:00:00").toISOString();
     await actualizarSolicitud(solId, pcFields);
     registrarHistorial({
       NroSolicitud:sol.NroSolicitud, Title:"Pendiente de Cierre — en plazo de evaluación",
