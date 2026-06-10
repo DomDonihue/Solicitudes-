@@ -853,7 +853,7 @@ function renderDetalleDirector(sol) {
             <label style="font-size:11px;font-weight:600;color:#7e22ce;white-space:nowrap;">Plazo hasta:</label>
             <input type="date" id="dir-plazo-cierre"
               style="flex:1;padding:5px 8px;border:1.5px solid #d8b4fe;border-radius:6px;font-size:12px;"
-              value="${new Date(new Date().setDate(new Date().getDate()+30)).toISOString().split('T')[0]}">
+              value="${new Date().toISOString().split('T')[0]}">
           </div>
           <button onclick="pendienteCierreSolicitud('${sol.id}')"
             style="width:100%;padding:9px;background:#7e22ce;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">
@@ -876,7 +876,7 @@ function renderDetalleDirector(sol) {
       <span style="font-size:20px;">⏳</span>
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:700;color:#7e22ce;">Pendiente de Cierre</div>
-        <div style="font-size:11px;color:#6b21a8;">Aguardando parte final${sol.PlazoCierre ? ' — Plazo: ' + formatFecha(sol.PlazoCierre) : ''}</div>
+        <div style="font-size:11px;color:#6b21a8;" id="dir-plazo-texto">Aguardando parte final</div>
       </div>
     </div>` : ""}
 
@@ -1166,10 +1166,7 @@ async function pendienteCierreSolicitud(solId) {
   showLoading("Actualizando estado...");
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
-    await actualizarSolicitud(solId, {
-      Estado: CONFIG.estados.PENDIENTE_CIERRE,
-      PlazoCierre: plazo || null
-    });
+    await actualizarSolicitud(solId, { Estado: CONFIG.estados.PENDIENTE_CIERRE });
     registrarHistorial({
       NroSolicitud:sol.NroSolicitud, Title:"Pendiente de Cierre — en plazo de evaluación",
       EstadoAnterior:sol.Estado, EstadoNuevo:CONFIG.estados.PENDIENTE_CIERRE,
@@ -1385,7 +1382,10 @@ async function renderDetalleUnidad(sol) {
     .sort((a,b) => new Date(b.FechaAccion) - new Date(a.FechaAccion));
 
   const instruccionDirector = accionesDirector.find(h => h.Observaciones)?.Observaciones || "";
-  const placoBruto = sol.PlazoCierre || accionesDirector.find(h => h.PlazoCierre)?.PlazoCierre;
+  // PlazoCierre se guarda en historial Observaciones: "... | Plazo: YYYY-MM-DD"
+  const historialConPlazo = accionesDirector.find(h => h.Observaciones?.includes("Plazo:"));
+  const plazoMatch = historialConPlazo?.Observaciones?.match(/Plazo:\s*(\d{4}-\d{2}-\d{2})/);
+  const placoBruto = plazoMatch?.[1] || null;
   const plazoCierreTexto = placoBruto ? formatFecha(placoBruto) : null;
 
   cont.innerHTML = `
