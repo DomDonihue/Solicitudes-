@@ -1988,6 +1988,9 @@ async function renderAdmUsuarios() {
             <th style="padding:9px 12px;text-align:center;">Rol</th>
             <th style="padding:9px 12px;text-align:left;">Unidad</th>
             <th style="padding:9px 12px;text-align:center;">Activo</th>
+            <th style="padding:9px 12px;text-align:center;">Derivar</th>
+            <th style="padding:9px 12px;text-align:center;">Cerrar</th>
+            <th style="padding:9px 12px;text-align:center;">Admin</th>
             <th style="padding:9px 12px;text-align:center;">Acciones</th>
           </tr>
         </thead>
@@ -2027,9 +2030,27 @@ async function renderAdmUsuarios() {
               </select>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;">
-            <input type="checkbox" id="adm-usr-activo" checked style="width:16px;height:16px;cursor:pointer;">
-            <label for="adm-usr-activo" style="font-size:13px;font-weight:600;color:#374151;cursor:pointer;">Usuario activo</label>
+          <!-- Checkboxes de permisos -->
+          <div style="background:#f8fafc;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+            <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:2px;">PERMISOS</div>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="adm-usr-activo" style="width:15px;height:15px;cursor:pointer;">
+                Activo
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="adm-usr-derivar" style="width:15px;height:15px;cursor:pointer;">
+                Puede Derivar
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="adm-usr-cerrar" style="width:15px;height:15px;cursor:pointer;">
+                Puede Cerrar
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="adm-usr-esadmin" style="width:15px;height:15px;cursor:pointer;">
+                Es Administrador
+              </label>
+            </div>
           </div>
         </div>
         <input type="hidden" id="adm-usr-id">
@@ -2068,6 +2089,9 @@ function filtrarUsuarios() {
       <td style="padding:8px 12px;text-align:center;"><span style="background:${c}20;color:${c};padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid ${c}30;">${u.Rol||""}</span></td>
       <td style="padding:8px 12px;font-size:11px;">${u.Unidad||"—"}</td>
       <td style="padding:8px 12px;text-align:center;"><span style="padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;background:${activo?'#dcfce7':'#fee2e2'};color:${activo?'#15803d':'#b91c1c'};">${activo?"Sí":"No"}</span></td>
+      <td style="padding:8px 12px;text-align:center;">${u.PuedeDerivar?'✅':'—'}</td>
+      <td style="padding:8px 12px;text-align:center;">${u.PuedeCerrar?'✅':'—'}</td>
+      <td style="padding:8px 12px;text-align:center;">${u.EsAdministrador?'✅':'—'}</td>
       <td style="padding:8px 12px;text-align:center;">
         <button onclick="abrirModalUsuario('${u.id}')" style="padding:4px 10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:5px;cursor:pointer;font-size:11px;">✏️ Editar</button>
       </td>
@@ -2091,7 +2115,10 @@ function abrirModalUsuario(id) {
   document.getElementById("adm-usr-correo").value = u?.Correo||"";
   document.getElementById("adm-usr-rol").value    = u?.Rol||"Unidad";
   document.getElementById("adm-usr-unidad").value = u?.Unidad||"";
-  document.getElementById("adm-usr-activo").checked = u ? (u.Activo!==false&&u.Activo!==0) : true;
+  document.getElementById("adm-usr-activo").checked  = u ? (u.Activo!==false&&u.Activo!==0) : true;
+  document.getElementById("adm-usr-derivar").checked = u ? (u.PuedeDerivar===true||u.PuedeDerivar===1) : false;
+  document.getElementById("adm-usr-cerrar").checked  = u ? (u.PuedeCerrar===true||u.PuedeCerrar===1) : false;
+  document.getElementById("adm-usr-esadmin").checked = u ? (u.EsAdministrador===true||u.EsAdministrador===1) : false;
   toggleUnidadField();
 }
 
@@ -2106,11 +2133,15 @@ async function guardarUsuarioAdmin() {
   const correo  = document.getElementById("adm-usr-correo")?.value.trim();
   const rol     = document.getElementById("adm-usr-rol")?.value;
   const unidad  = document.getElementById("adm-usr-unidad")?.value;
-  const activo  = document.getElementById("adm-usr-activo")?.checked;
+  const activo   = document.getElementById("adm-usr-activo")?.checked;
+  const derivar  = document.getElementById("adm-usr-derivar")?.checked;
+  const cerrar   = document.getElementById("adm-usr-cerrar")?.checked;
+  const esAdmin  = document.getElementById("adm-usr-esadmin")?.checked;
   if (!nombre||!correo||!rol) { showToast("error","Nombre, correo y rol son obligatorios"); return; }
   showLoading("Guardando usuario...");
   try {
-    const fields = { NombreCompleto:nombre, Correo:correo, Rol:rol, Unidad:unidad||"", Activo:activo };
+    const fields = { NombreCompleto:nombre, Correo:correo, Rol:rol, Unidad:unidad||"",
+                     Activo:activo, PuedeDerivar:derivar, PuedeCerrar:cerrar, EsAdministrador:esAdmin };
     if (id) {
       await actualizarUsuario(id, fields);
       const u = _adminUsuarios.find(x=>x.id===id);
