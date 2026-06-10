@@ -1672,7 +1672,7 @@ async function responderSolicitud(solId) {
     }
 
     const evItem = await crearEvidencia({
-      NroSolicitud: sol.NroSolicitud,
+      Title: sol.NroSolicitud || `Evidencia ${sol.id}`,
       SolicitudID: parseInt(sol.id),
       Unidad: state.usuario.Unidad,
       DescripcionEvidencia: obs,
