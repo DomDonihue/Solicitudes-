@@ -1203,7 +1203,7 @@ async function reabrirSolicitud(solId) {
 
 // ===== UNIDAD VIEW =====
 // Orden de estados para mostrar más urgentes primero
-const ORDEN_ESTADO = { "Devuelta": 0, "Derivada": 1, "En Proceso": 2, "Respondida": 3, "Cerrada": 4, "Ingresada": 5 };
+const ORDEN_ESTADO = { "Devuelta": 0, "Derivada": 1, "En Proceso": 2, "Respondida": 3, "Pendiente de Cierre": 5, "Cerrada": 6, "Ingresada": 4 };
 
 function ordenarSolicitudes(lista) {
   return lista.sort((a, b) => {
@@ -1235,7 +1235,7 @@ function renderSidebarUnidad() {
   const counts = {};
   state.solicitudes.forEach(s => { counts[s.Estado] = (counts[s.Estado] || 0) + 1; });
 
-  const estados = ["Todos","Derivada","En Proceso","Respondida","Devuelta"];
+  const estados = ["Todos","Derivada","En Proceso","Respondida","Devuelta","Pendiente de Cierre","Cerrada"];
   const filtradas = state.filtroEstado === "Todos" ? state.solicitudes :
     state.solicitudes.filter(s => s.Estado === state.filtroEstado);
   const inicio = (state.pagina - 1) * state.pageSize;
@@ -1294,29 +1294,66 @@ async function renderDetalleUnidad(sol) {
     return;
   }
 
-  // Cargar adjuntos de la solicitud y evidencias en paralelo
-  const [solicitudAtts, evidencias] = await Promise.all([
+  const esCerrada = sol.Estado === CONFIG.estados.CERRADA;
+  const esPendienteCierre = sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
+  const esRespondida = sol.Estado === CONFIG.estados.RESPONDIDA;
+  const puedeResponder = !esCerrada;
+
+  const [solicitudAtts, evidencias, historial] = await Promise.all([
     getListItemAttachments(CONFIG.lists.solicitudes, sol.id).catch(() => []),
-    getEvidenciasBySolicitud(sol.NroSolicitud, sol.id).catch(() => [])
+    getEvidenciasBySolicitud(sol.NroSolicitud, sol.id).catch(() => []),
+    getHistorialBySolicitud(sol.NroSolicitud).catch(() => [])
   ]);
 
-  const puedeCerrar = state.usuario.PuedeCerrar && sol.Estado === CONFIG.estados.RESPONDIDA;
+  // Buscar las instrucciones/comentarios del director en el historial
+  const accionesDirector = historial
+    .filter(h => h.RolUsuario === "Director" || (h.Title||"").includes("[Admin]"))
+    .sort((a,b) => new Date(b.FechaAccion) - new Date(a.FechaAccion));
+
+  const instruccionDirector = accionesDirector.find(h => h.Observaciones)?.Observaciones || "";
+  const placoBruto = sol.PlazoCierre || accionesDirector.find(h => h.PlazoCierre)?.PlazoCierre;
+  const plazoCierreTexto = placoBruto ? formatFecha(placoBruto) : null;
 
   cont.innerHTML = `
     <div style="overflow-y:auto;height:100%;display:flex;flex-direction:column;gap:0;">
       <button class="mobile-back-bar" onclick="volverAListaMovil('.uni-layout')">← Volver a lista</button>
       <div class="panel-header" style="background:#f8fafc;border-bottom:1px solid var(--borde);">📋 ${sol.NroSolicitud} — ${sol.Solicitante}</div>
+
+      <!-- Datos generales -->
       <div style="padding:12px;background:#f8fafc;border-bottom:1px solid var(--borde);">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
           <div><span style="color:#666">Fecha: </span>${formatFecha(sol.FechaRecepcion)}</div>
           <div><span style="color:#666">Estado: </span><span class="estado-badge estado-${sol.Estado}">${sol.Estado}</span></div>
           <div style="grid-column:1/-1;"><span style="color:#666">Dirección: </span>${sol.Direccion||"-"}</div>
           <div style="grid-column:1/-1;"><span style="color:#666">Solicitud: </span>${sol.Solicitud||"-"}</div>
+          ${sol.ObservacionesDirector ? `<div style="grid-column:1/-1;"><span style="color:#666">Obs. Director: </span>${sol.ObservacionesDirector}</div>` : ""}
         </div>
       </div>
+
+      <!-- Banner Pendiente de Cierre -->
+      ${esPendienteCierre ? `
+      <div style="background:#fdf4ff;border-left:4px solid #7e22ce;padding:12px 14px;border-bottom:1px solid #e9d5ff;">
+        <div style="font-size:12px;font-weight:700;color:#7e22ce;margin-bottom:6px;">⏳ PENDIENTE DE CIERRE — Segunda instancia</div>
+        ${plazoCierreTexto ? `<div style="font-size:12px;color:#6b21a8;margin-bottom:4px;">📅 Plazo fijado por Director: <strong>${plazoCierreTexto}</strong></div>` : ""}
+        ${instruccionDirector ? `
+        <div style="background:#ede9fe;border-left:3px solid #7c3aed;padding:8px 10px;border-radius:0 6px 6px 0;font-size:13px;color:#4c1d95;margin-top:4px;">
+          🏛️ <strong>Instrucción del Director:</strong><br>${instruccionDirector}
+        </div>` : ""}
+        <div style="font-size:11px;color:#7e22ce;margin-top:8px;">Registra una nueva respuesta para cerrar esta solicitud.</div>
+      </div>` : ""}
+
+      <!-- Instrucciones del director (otros estados) -->
+      ${!esPendienteCierre && instruccionDirector ? `
+      <div style="background:#eff6ff;border-left:4px solid #1a3a6b;padding:10px 14px;border-bottom:1px solid #bfdbfe;">
+        <div style="font-size:11px;font-weight:700;color:#1a3a6b;margin-bottom:4px;">🏛️ Instrucciones del Director</div>
+        <div style="font-size:13px;color:#1e3a5f;">${instruccionDirector}</div>
+      </div>` : ""}
+
+      <!-- Documentos de la solicitud -->
       <div id="uni-sol-adjuntos" style="padding:12px;border-bottom:1px solid var(--borde);">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;">📎 Documentos de la solicitud</div>
         ${solicitudAtts.length === 0
-          ? `<p style="color:#9ca3af;font-size:13px;text-align:center;padding:8px;">Sin documentos adjuntos</p>`
+          ? `<p style="color:#9ca3af;font-size:13px;text-align:center;padding:4px;">Sin documentos adjuntos</p>`
           : solicitudAtts.map(a => {
               const isPdf = a.name?.toLowerCase().endsWith('.pdf');
               const isImg = /\.(jpg|jpeg|png|gif)$/i.test(a.name||'');
@@ -1329,13 +1366,15 @@ async function renderDetalleUnidad(sol) {
         }
       </div>
 
+      <!-- Respuestas anteriores -->
       ${evidencias.length > 0 ? `
       <div style="border-top:2px solid #15803d;">
         <div style="background:linear-gradient(90deg,#14532d,#15803d);color:white;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:0.3px;">
-          🏢 Respuesta registrada
+          🏢 ${evidencias.length > 1 ? `Respuestas registradas (${evidencias.length})` : "Respuesta registrada"}
         </div>
-        ${evidencias.map(e=>`
-          <div style="padding:12px 14px;border-bottom:1px solid #e2e8f0;">
+        ${evidencias.map((e,idx)=>`
+          <div style="padding:12px 14px;border-bottom:1px solid #e2e8f0;${idx>0?'background:#f9fafb;':''}">
+            <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:2px;">Respuesta ${idx+1}</div>
             <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">
               👤 ${e.Responsable||""} &nbsp;·&nbsp; 📅 ${formatFecha(e.FechaCarga)}
             </div>
@@ -1347,39 +1386,52 @@ async function renderDetalleUnidad(sol) {
       </div>` : ""}
 
       <!-- Panel de acción -->
+      ${puedeResponder ? `
       <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
         <div class="form-section">
-          <div class="form-section-header" style="font-size:11px;">📝 Descripción de la Solución</div>
+          <div class="form-section-header" style="font-size:11px;">
+            ${esPendienteCierre ? "📝 Nueva respuesta (2ª instancia)" : "📝 Descripción de la Solución"}
+          </div>
           <div class="form-section-body">
             <textarea id="uni-obs" rows="4"
-              placeholder="Describe detalladamente la acción realizada, visita, notificación o solución ejecutada..."
-              style="width:100%;padding:10px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+              placeholder="${esPendienteCierre ? "Describe las acciones tomadas en la segunda inspección..." : "Describe detalladamente la acción realizada, visita, notificación o solución ejecutada..."}"
+              style="width:100%;padding:10px;border:1.5px solid ${esPendienteCierre?'#a855f7':'var(--borde)'};border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
           </div>
         </div>
         <div class="form-section">
           <div class="form-section-header naranja" style="font-size:11px;">📸 Evidencia Fotográfica / Documentos</div>
           <div class="form-section-body">
             <p style="font-size:12px;color:#888;margin-bottom:8px;">Adjunta fotos de la visita o documentos que corroboren la solución ejecutada.</p>
-            <div style="border:2px dashed #f59e0b;border-radius:10px;padding:16px;text-align:center;cursor:pointer;background:#fffbeb;"
+            <div style="border:2px dashed ${esPendienteCierre?'#a855f7':'#f59e0b'};border-radius:10px;padding:16px;text-align:center;cursor:pointer;background:${esPendienteCierre?'#fdf4ff':'#fffbeb'};"
               onclick="document.getElementById('uni-ev-files').click()"
-              ondragover="event.preventDefault();this.style.background='#fef3c7'"
-              ondragleave="this.style.background='#fffbeb'"
-              ondrop="event.preventDefault();this.style.background='#fffbeb';handleEvFiles(event.dataTransfer.files)">
+              ondragover="event.preventDefault();this.style.opacity='0.7'"
+              ondragleave="this.style.opacity='1'"
+              ondrop="event.preventDefault();this.style.opacity='1';handleEvFiles(event.dataTransfer.files)">
               <div style="font-size:28px;">📷</div>
-              <div style="font-weight:600;font-size:13px;color:#b45309;">Arrastra fotos aquí</div>
+              <div style="font-weight:600;font-size:13px;color:${esPendienteCierre?'#7e22ce':'#b45309'};">Arrastra fotos aquí</div>
               <div style="font-size:11px;color:#9ca3af;margin-top:2px;">o haz clic — JPG, PNG, PDF</div>
             </div>
             <input type="file" id="uni-ev-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleEvFiles(this.files)" style="display:none;">
             <div id="uni-ev-preview" style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;"></div>
           </div>
         </div>
-        <button class="btn-success" onclick="responderSolicitud('${sol.id}')" style="width:100%;padding:13px;font-size:14px;">✅ Responder — Registrar Solución</button>
+        <button class="btn-success" onclick="responderSolicitud('${sol.id}')"
+          style="width:100%;padding:13px;font-size:14px;${esPendienteCierre?'background:linear-gradient(90deg,#7e22ce,#9333ea);':''}">
+          ${esPendienteCierre ? "📋 Registrar 2ª Respuesta" : "✅ Responder — Registrar Solución"}
+        </button>
+        ${!esPendienteCierre && !esRespondida ? `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <button class="btn-primary" style="background:#0e7490;padding:10px;" onclick="enProcesoSolicitud('${sol.id}')">⚙️ En Proceso</button>
           <button class="btn-warning" style="padding:10px;" onclick="devolverSolicitudUnidad('${sol.id}')">↩️ Devolver</button>
-        </div>
+        </div>` : ""}
         <button onclick="verHistorial('${sol.NroSolicitud}')" style="width:100%;padding:9px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#6b7280;">🕐 Ver Historial</button>
-      </div>
+      </div>` : `
+      <div style="padding:14px;">
+        <div style="background:#f3f4f6;border-radius:8px;padding:14px;text-align:center;color:#6b7280;font-size:13px;">
+          🔒 Solicitud cerrada — solo lectura
+        </div>
+        <button onclick="verHistorial('${sol.NroSolicitud}')" style="width:100%;margin-top:10px;padding:9px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#6b7280;">🕐 Ver Historial</button>
+      </div>`}
     </div>`;
 
   // ── Cargar imágenes adjuntas de cada evidencia registrada ──
@@ -1467,7 +1519,12 @@ async function responderSolicitud(solId) {
   showLoading("Respondiendo...");
   try {
     const sol = state.solicitudes.find(s => s.id === solId);
-    await actualizarSolicitud(solId, { Estado: CONFIG.estados.RESPONDIDA });
+    const esPendienteCierre = sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
+    // Si está en Pendiente de Cierre, se mantiene ese estado (el Director cierra)
+    // Si es cualquier otro estado activo, pasa a Respondida
+    if (!esPendienteCierre) {
+      await actualizarSolicitud(solId, { Estado: CONFIG.estados.RESPONDIDA });
+    }
 
     const evItem = await crearEvidencia({
       NroSolicitud: sol.NroSolicitud,
@@ -1484,11 +1541,12 @@ async function responderSolicitud(solId) {
       }
     }
 
+    const nuevoEstado = esPendienteCierre ? CONFIG.estados.PENDIENTE_CIERRE : CONFIG.estados.RESPONDIDA;
     registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Title:"Solicitud respondida",
+      Title: esPendienteCierre ? "2ª respuesta registrada (Pend. Cierre)" : "Solicitud respondida",
       EstadoAnterior: sol.Estado,
-      EstadoNuevo: CONFIG.estados.RESPONDIDA,
+      EstadoNuevo: nuevoEstado,
       UsuarioAccion: state.usuario.NombreCompleto,
       RolUsuario: state.usuario.Rol,
       Unidad: state.usuario.Unidad,
@@ -1496,8 +1554,9 @@ async function responderSolicitud(solId) {
       Observaciones: obs
     }).catch(e => console.warn("Historial (no crítico):", e.message));
 
-    await notificarDirector({ ...sol, Estado: CONFIG.estados.RESPONDIDA }, "Solicitud respondida por unidad").catch(console.error);
-    showToast("success", "✅ Solicitud respondida");
+    const accionNotif = esPendienteCierre ? "2ª respuesta registrada — Pendiente de Cierre" : "Solicitud respondida por unidad";
+    await notificarDirector({ ...sol, Estado: nuevoEstado }, accionNotif).catch(console.error);
+    showToast("success", esPendienteCierre ? "📋 2ª respuesta registrada" : "✅ Solicitud respondida");
     await renderUnidad();
   } catch (e) {
     showToast("error", "Error: " + e.message);
