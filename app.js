@@ -33,6 +33,11 @@ async function initApp() {
       return;
     }
     state.usuario = { ...perfil, displayName: msUser.displayName };
+    // Cargar unidades desde SharePoint (reemplaza la lista hardcodeada)
+    const unidadesSP = await getUnidades().catch(() => []);
+    if (unidadesSP.length) {
+      CONFIG.unidades = unidadesSP.map(u => u.Title).filter(Boolean);
+    }
     hideLoading();
     showApp();
   } catch (e) {
@@ -1617,131 +1622,123 @@ async function verHistorial(nroSolicitud) {
 const TODOS_ESTADOS = ["Ingresada","Derivada","En Proceso","Respondida","Pendiente de Cierre","Devuelta","Cerrada"];
 const ESTADO_COLOR  = { "Ingresada":"#3b82f6","Derivada":"#f59e0b","En Proceso":"#06b6d4","Respondida":"#22c55e","Pendiente de Cierre":"#7e22ce","Devuelta":"#ef4444","Cerrada":"#6b7280" };
 
-async function renderAdmin() {
+function admTabStyle(activo) {
+  return activo
+    ? "padding:8px 18px;background:#312e81;color:white;border:none;border-bottom:3px solid #818cf8;cursor:pointer;font-size:13px;font-weight:700;"
+    : "padding:8px 18px;background:white;color:#374151;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:13px;font-weight:600;";
+}
+
+async function renderAdmin(seccion = "solicitudes") {
   const cont = document.getElementById("view-admin");
   cont.innerHTML = `
   <div style="display:flex;flex-direction:column;height:calc(100vh - 120px);overflow:hidden;">
-
-    <!-- Header admin -->
-    <div style="background:linear-gradient(90deg,#1e1b4b,#312e81);color:white;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
-      <span style="font-size:20px;">🛡️</span>
-      <div>
-        <div style="font-size:15px;font-weight:700;">Panel de Administración</div>
-        <div style="font-size:11px;opacity:0.75;">Gestión avanzada — cambio de estados de todas las solicitudes</div>
+    <!-- Header -->
+    <div style="background:linear-gradient(90deg,#1e1b4b,#312e81);color:white;padding:10px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
+      <span style="font-size:18px;">🛡️</span>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:700;">Panel de Administración</div>
+        <div style="font-size:11px;opacity:0.7;">Gestión avanzada del sistema DOM</div>
       </div>
     </div>
+    <!-- Pestañas internas -->
+    <div style="display:flex;background:white;border-bottom:2px solid var(--borde);flex-shrink:0;">
+      <button id="adm-tab-solicitudes" style="${admTabStyle(seccion==='solicitudes')}" onclick="renderAdmin('solicitudes')">📋 Solicitudes</button>
+      <button id="adm-tab-unidades"    style="${admTabStyle(seccion==='unidades')}"    onclick="renderAdmin('unidades')">🏢 Unidades</button>
+      <button id="adm-tab-usuarios"    style="${admTabStyle(seccion==='usuarios')}"    onclick="renderAdmin('usuarios')">👤 Usuarios</button>
+    </div>
+    <!-- Contenido dinámico -->
+    <div id="adm-contenido" style="flex:1;overflow:hidden;display:flex;flex-direction:column;"></div>
+  </div>`;
 
-    <!-- Filtros -->
-    <div style="background:white;border-bottom:2px solid var(--borde);padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;flex-shrink:0;">
-      <input type="text" id="adm-buscar" placeholder="🔍 Buscar por N°, solicitante, dirección..."
-        style="flex:1;min-width:200px;padding:7px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;"
+  if (seccion === "solicitudes") await renderAdmSolicitudes();
+  else if (seccion === "unidades") await renderAdmUnidades();
+  else if (seccion === "usuarios") await renderAdmUsuarios();
+}
+
+// ── Sección Solicitudes ──────────────────────────────────
+let _adminSolicitudes = [];
+
+async function renderAdmSolicitudes() {
+  const cont = document.getElementById("adm-contenido");
+  cont.innerHTML = `
+    <div style="background:white;border-bottom:1px solid var(--borde);padding:8px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0;">
+      <input type="text" id="adm-buscar" placeholder="🔍 N°, solicitante, dirección..."
+        style="flex:1;min-width:180px;padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12px;"
         oninput="filtrarAdmin()">
       <select id="adm-filtro-estado" onchange="filtrarAdmin()"
-        style="padding:7px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;">
+        style="padding:6px 8px;border:1.5px solid var(--borde);border-radius:7px;font-size:12px;">
         <option value="">Todos los estados</option>
-        ${TODOS_ESTADOS.map(e => `<option value="${e}">${e}</option>`).join("")}
+        ${TODOS_ESTADOS.map(e=>`<option value="${e}">${e}</option>`).join("")}
       </select>
       <select id="adm-filtro-unidad" onchange="filtrarAdmin()"
-        style="padding:7px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;">
+        style="padding:6px 8px;border:1.5px solid var(--borde);border-radius:7px;font-size:12px;">
         <option value="">Todas las unidades</option>
-        ${CONFIG.unidades.map(u => `<option value="${u}">${u}</option>`).join("")}
+        ${CONFIG.unidades.map(u=>`<option value="${u}">${u}</option>`).join("")}
       </select>
-      <button onclick="renderAdmin()" class="btn-primary" style="padding:7px 14px;">🔄 Actualizar</button>
-      <span id="adm-count" style="font-size:12px;color:#6b7280;font-weight:600;"></span>
+      <button onclick="renderAdmin('solicitudes')" class="btn-primary" style="padding:6px 12px;font-size:12px;">🔄</button>
+      <span id="adm-count" style="font-size:11px;color:#6b7280;font-weight:600;"></span>
     </div>
-
-    <!-- Tabla -->
     <div style="flex:1;overflow-y:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;" id="adm-tabla">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead style="position:sticky;top:0;z-index:1;">
           <tr style="background:#1e1b4b;color:white;">
-            <th style="padding:10px 12px;text-align:left;font-weight:600;">N° Solicitud</th>
-            <th style="padding:10px 12px;text-align:left;font-weight:600;">Solicitante</th>
-            <th style="padding:10px 12px;text-align:left;font-weight:600;">Dirección</th>
-            <th style="padding:10px 12px;text-align:left;font-weight:600;">Fecha</th>
-            <th style="padding:10px 12px;text-align:center;font-weight:600;">Estado actual</th>
-            <th style="padding:10px 12px;text-align:left;font-weight:600;">Unidad</th>
-            <th style="padding:10px 12px;text-align:center;font-weight:600;">Cambiar estado</th>
+            <th style="padding:9px 10px;text-align:left;">N° Solicitud</th>
+            <th style="padding:9px 10px;text-align:left;">Solicitante</th>
+            <th style="padding:9px 10px;text-align:left;">Dirección</th>
+            <th style="padding:9px 10px;text-align:left;">Fecha</th>
+            <th style="padding:9px 10px;text-align:center;">Estado actual</th>
+            <th style="padding:9px 10px;text-align:left;">Unidad</th>
+            <th style="padding:9px 10px;text-align:center;">Cambiar estado</th>
           </tr>
         </thead>
         <tbody id="adm-tbody">
-          <tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af;">
-            <div class="spinner" style="margin:0 auto 8px;"></div>Cargando solicitudes...
-          </td></tr>
+          <tr><td colspan="7" style="text-align:center;padding:40px;color:#9ca3af;">Cargando...</td></tr>
         </tbody>
       </table>
-    </div>
-  </div>`;
+    </div>`;
 
-  await cargarTablaAdmin();
-}
-
-let _adminSolicitudes = [];
-
-async function cargarTablaAdmin() {
-  showLoading("Cargando todas las solicitudes...");
+  showLoading("Cargando solicitudes...");
   try {
     _adminSolicitudes = await getSolicitudes();
-    _adminSolicitudes.sort((a,b) => new Date(b.FechaRecepcion) - new Date(a.FechaRecepcion));
+    _adminSolicitudes.sort((a,b) => new Date(b.FechaRecepcion)-new Date(a.FechaRecepcion));
     filtrarAdmin();
-  } catch(e) {
-    showToast("error","Error: " + e.message);
-  } finally {
-    hideLoading();
-  }
+  } catch(e) { showToast("error","Error: "+e.message); }
+  finally { hideLoading(); }
 }
 
 function filtrarAdmin() {
-  const q      = (document.getElementById("adm-buscar")?.value || "").toLowerCase();
-  const estado = document.getElementById("adm-filtro-estado")?.value || "";
-  const unidad = document.getElementById("adm-filtro-unidad")?.value || "";
-
+  const q      = (document.getElementById("adm-buscar")?.value||"").toLowerCase();
+  const estado = document.getElementById("adm-filtro-estado")?.value||"";
+  const unidad = document.getElementById("adm-filtro-unidad")?.value||"";
   const filtradas = _adminSolicitudes.filter(s => {
     if (estado && s.Estado !== estado) return false;
     if (unidad && s.UnidadDerivada !== unidad) return false;
-    if (q) {
-      return (s.NroSolicitud||"").toLowerCase().includes(q) ||
-             (s.Solicitante||"").toLowerCase().includes(q) ||
-             (s.Direccion||"").toLowerCase().includes(q);
-    }
+    if (q) return (s.NroSolicitud||"").toLowerCase().includes(q) ||
+                  (s.Solicitante||"").toLowerCase().includes(q) ||
+                  (s.Direccion||"").toLowerCase().includes(q);
     return true;
   });
-
   const cnt = document.getElementById("adm-count");
   if (cnt) cnt.textContent = `${filtradas.length} solicitudes`;
-
   const tbody = document.getElementById("adm-tbody");
   if (!tbody) return;
-
-  if (!filtradas.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#9ca3af;">Sin resultados</td></tr>`;
-    return;
-  }
-
+  if (!filtradas.length) { tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:28px;color:#9ca3af;">Sin resultados</td></tr>`; return; }
   tbody.innerHTML = filtradas.map(s => {
-    const c = ESTADO_COLOR[s.Estado] || "#94a3b8";
-    return `
-    <tr style="border-bottom:1px solid var(--borde);" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''">
-      <td style="padding:8px 12px;font-weight:700;color:#1a3a6b;">${s.NroSolicitud||`#${s.id}`}</td>
-      <td style="padding:8px 12px;">${s.Solicitante||""}</td>
-      <td style="padding:8px 12px;font-size:12px;color:#6b7280;">${s.Direccion||""}</td>
-      <td style="padding:8px 12px;font-size:12px;color:#6b7280;white-space:nowrap;">${formatFecha(s.FechaRecepcion)}</td>
-      <td style="padding:8px 12px;text-align:center;">
-        <span style="background:${c}20;color:${c};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid ${c}50;">${s.Estado}</span>
-      </td>
-      <td style="padding:8px 12px;font-size:12px;">${s.UnidadDerivada||"—"}</td>
-      <td style="padding:8px 12px;text-align:center;">
-        <div style="display:flex;gap:6px;align-items:center;justify-content:center;">
-          <select id="adm-sel-${s.id}" style="padding:4px 6px;border:1.5px solid var(--borde);border-radius:6px;font-size:12px;">
+    const c = ESTADO_COLOR[s.Estado]||"#94a3b8";
+    return `<tr style="border-bottom:1px solid var(--borde);" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''">
+      <td style="padding:7px 10px;font-weight:700;color:#1a3a6b;">${s.NroSolicitud||`#${s.id}`}</td>
+      <td style="padding:7px 10px;">${s.Solicitante||""}</td>
+      <td style="padding:7px 10px;color:#6b7280;">${s.Direccion||""}</td>
+      <td style="padding:7px 10px;color:#6b7280;white-space:nowrap;">${formatFecha(s.FechaRecepcion)}</td>
+      <td style="padding:7px 10px;text-align:center;"><span style="background:${c}20;color:${c};padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid ${c}40;">${s.Estado}</span></td>
+      <td style="padding:7px 10px;font-size:11px;">${s.UnidadDerivada||"—"}</td>
+      <td style="padding:7px 10px;text-align:center;">
+        <div style="display:flex;gap:5px;align-items:center;justify-content:center;">
+          <select id="adm-sel-${s.id}" style="padding:3px 5px;border:1.5px solid var(--borde);border-radius:5px;font-size:11px;">
             <option value="">— nuevo estado —</option>
-            ${TODOS_ESTADOS.filter(e => e !== s.Estado).map(e =>
-              `<option value="${e}">${e}</option>`
-            ).join("")}
+            ${TODOS_ESTADOS.filter(e=>e!==s.Estado).map(e=>`<option value="${e}">${e}</option>`).join("")}
           </select>
-          <button onclick="cambiarEstadoAdmin('${s.id}')"
-            style="padding:5px 10px;background:#312e81;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;">
-            ✓ Aplicar
-          </button>
+          <button onclick="cambiarEstadoAdmin('${s.id}')" style="padding:4px 9px;background:#312e81;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600;">✓</button>
         </div>
       </td>
     </tr>`;
@@ -1749,27 +1746,312 @@ function filtrarAdmin() {
 }
 
 async function cambiarEstadoAdmin(solId) {
-  const sel = document.getElementById(`adm-sel-${solId}`);
-  const nuevoEstado = sel?.value;
+  const nuevoEstado = document.getElementById(`adm-sel-${solId}`)?.value;
   if (!nuevoEstado) { showToast("error","Selecciona un estado"); return; }
-  const sol = _adminSolicitudes.find(s => s.id === solId);
-  if (!confirm(`¿Cambiar estado de ${sol?.NroSolicitud||solId}?\n${sol?.Estado} → ${nuevoEstado}`)) return;
+  const sol = _adminSolicitudes.find(s=>s.id===solId);
+  if (!confirm(`¿Cambiar ${sol?.NroSolicitud||solId}?\n${sol?.Estado} → ${nuevoEstado}`)) return;
   showLoading("Actualizando...");
   try {
     await actualizarSolicitud(solId, { Estado: nuevoEstado });
-    registrarHistorial({
-      NroSolicitud: sol.NroSolicitud,
-      Title: `[Admin] Estado cambiado a ${nuevoEstado}`,
-      EstadoAnterior: sol.Estado, EstadoNuevo: nuevoEstado,
-      UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
-      Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(),
-      Observaciones: "Cambio manual por Administrador del sistema"
-    }).catch(e => console.warn("Historial:", e.message));
-    showToast("success", `✅ ${sol?.NroSolicitud} → ${nuevoEstado}`);
-    // Actualizar en memoria sin recargar todo
+    registrarHistorial({ NroSolicitud:sol.NroSolicitud, Title:`[Admin] Estado → ${nuevoEstado}`,
+      EstadoAnterior:sol.Estado, EstadoNuevo:nuevoEstado,
+      UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
+      Unidad:state.usuario.Unidad, FechaAccion:new Date().toISOString(),
+      Observaciones:"Cambio manual por Administrador"
+    }).catch(e=>console.warn(e));
+    showToast("success",`✅ ${sol?.NroSolicitud} → ${nuevoEstado}`);
     sol.Estado = nuevoEstado;
     filtrarAdmin();
-  } catch(e) { showToast("error","Error: " + e.message); }
+  } catch(e) { showToast("error","Error: "+e.message); }
+  finally { hideLoading(); }
+}
+
+// ── Sección Unidades ──────────────────────────────────
+let _adminUnidades = [];
+
+async function renderAdmUnidades() {
+  const cont = document.getElementById("adm-contenido");
+  cont.innerHTML = `
+    <div style="padding:16px 20px;flex-shrink:0;background:white;border-bottom:1px solid var(--borde);display:flex;gap:10px;align-items:flex-end;">
+      <div style="flex:1;">
+        <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:4px;">NOMBRE DE LA UNIDAD</label>
+        <input type="text" id="adm-uni-nueva" placeholder="Ej: Inspección, Operaciones..."
+          style="width:100%;padding:7px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;box-sizing:border-box;">
+      </div>
+      <button onclick="agregarUnidad()" class="btn-primary" style="padding:8px 18px;white-space:nowrap;">+ Agregar Unidad</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 20px;">
+      <div id="adm-uni-lista" style="display:flex;flex-direction:column;gap:8px;">
+        <div style="text-align:center;padding:32px;color:#9ca3af;">Cargando unidades...</div>
+      </div>
+    </div>`;
+
+  await cargarAdmUnidades();
+}
+
+async function cargarAdmUnidades() {
+  showLoading("Cargando unidades...");
+  try {
+    _adminUnidades = await getListItems(CONFIG.lists.unidades);
+    renderListaUnidades();
+  } catch(e) {
+    document.getElementById("adm-uni-lista").innerHTML = `<div style="color:#ef4444;padding:16px;">Error: ${e.message}<br><small>Asegúrate de crear la lista "UnidadesDOM" en SharePoint con columnas: Title, Activo</small></div>`;
+  } finally { hideLoading(); }
+}
+
+function renderListaUnidades() {
+  const cont = document.getElementById("adm-uni-lista");
+  if (!cont) return;
+  if (!_adminUnidades.length) {
+    cont.innerHTML = `<div style="text-align:center;padding:32px;color:#9ca3af;">No hay unidades. Agrega la primera.</div>`;
+    return;
+  }
+  cont.innerHTML = _adminUnidades.map(u => {
+    const activo = u.Activo !== false && u.Activo !== 0;
+    return `
+    <div style="background:white;border:1.5px solid ${activo?'var(--borde)':'#fecaca'};border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;">
+      <div id="adm-uni-view-${u.id}" style="flex:1;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:16px;">🏢</span>
+        <span style="font-size:14px;font-weight:600;color:${activo?'#1a3a6b':'#9ca3af'};${activo?'':'text-decoration:line-through;'}">${u.Title}</span>
+        <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${activo?'#dcfce7':'#fee2e2'};color:${activo?'#15803d':'#b91c1c'};font-weight:600;">${activo?'Activa':'Inactiva'}</span>
+      </div>
+      <div id="adm-uni-edit-${u.id}" style="flex:1;display:none;gap:8px;">
+        <input type="text" id="adm-uni-nombre-${u.id}" value="${u.Title}"
+          style="flex:1;padding:6px 10px;border:1.5px solid var(--azul);border-radius:6px;font-size:13px;">
+      </div>
+      <div style="display:flex;gap:6px;">
+        <!-- Botón editar -->
+        <button id="adm-uni-btn-edit-${u.id}" onclick="editarUnidadToggle('${u.id}')"
+          style="padding:5px 10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:6px;cursor:pointer;font-size:12px;">✏️ Editar</button>
+        <!-- Botón guardar (oculto) -->
+        <button id="adm-uni-btn-save-${u.id}" onclick="guardarUnidad('${u.id}')" style="display:none;
+          padding:5px 10px;background:#15803d;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">💾 Guardar</button>
+        <!-- Activo/Inactivo -->
+        <button onclick="toggleUnidadActivo('${u.id}',${!activo})"
+          style="padding:5px 10px;background:${activo?'#fef3c7':'#dcfce7'};color:${activo?'#b45309':'#15803d'};border:1px solid ${activo?'#fde68a':'#86efac'};border-radius:6px;cursor:pointer;font-size:12px;">
+          ${activo?'⏸ Desactivar':'▶ Activar'}
+        </button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function editarUnidadToggle(id) {
+  const view = document.getElementById(`adm-uni-view-${id}`);
+  const edit = document.getElementById(`adm-uni-edit-${id}`);
+  const btnEdit = document.getElementById(`adm-uni-btn-edit-${id}`);
+  const btnSave = document.getElementById(`adm-uni-btn-save-${id}`);
+  const showing = edit.style.display === "flex";
+  if (showing) {
+    view.style.display = "flex"; edit.style.display = "none";
+    btnEdit.style.display = ""; btnSave.style.display = "none";
+  } else {
+    view.style.display = "none"; edit.style.display = "flex";
+    btnEdit.style.display = "none"; btnSave.style.display = "";
+  }
+}
+
+async function guardarUnidad(id) {
+  const nombre = document.getElementById(`adm-uni-nombre-${id}`)?.value.trim();
+  if (!nombre) { showToast("error","El nombre no puede estar vacío"); return; }
+  showLoading("Guardando...");
+  try {
+    await actualizarUnidad(id, { Title: nombre });
+    const u = _adminUnidades.find(x=>x.id===id);
+    if (u) u.Title = nombre;
+    CONFIG.unidades = _adminUnidades.filter(x=>x.Activo!==false&&x.Activo!==0).map(x=>x.Title);
+    showToast("success","✅ Unidad actualizada");
+    renderListaUnidades();
+  } catch(e) { showToast("error","Error: "+e.message); }
+  finally { hideLoading(); }
+}
+
+async function toggleUnidadActivo(id, nuevoActivo) {
+  showLoading("Actualizando...");
+  try {
+    await actualizarUnidad(id, { Activo: nuevoActivo });
+    const u = _adminUnidades.find(x=>x.id===id);
+    if (u) u.Activo = nuevoActivo;
+    CONFIG.unidades = _adminUnidades.filter(x=>x.Activo!==false&&x.Activo!==0).map(x=>x.Title);
+    showToast("success", nuevoActivo?"✅ Unidad activada":"⏸ Unidad desactivada");
+    renderListaUnidades();
+  } catch(e) { showToast("error","Error: "+e.message); }
+  finally { hideLoading(); }
+}
+
+async function agregarUnidad() {
+  const nombre = document.getElementById("adm-uni-nueva")?.value.trim();
+  if (!nombre) { showToast("error","Ingresa el nombre de la unidad"); return; }
+  showLoading("Creando unidad...");
+  try {
+    const nueva = await crearUnidad(nombre);
+    _adminUnidades.push({ id: String(nueva.Id||nueva.id), Title: nombre, Activo: true });
+    CONFIG.unidades = _adminUnidades.filter(u=>u.Activo!==false&&u.Activo!==0).map(u=>u.Title);
+    document.getElementById("adm-uni-nueva").value = "";
+    showToast("success",`✅ Unidad "${nombre}" creada`);
+    renderListaUnidades();
+  } catch(e) { showToast("error","Error: "+e.message); }
+  finally { hideLoading(); }
+}
+
+// ── Sección Usuarios ──────────────────────────────────
+let _adminUsuarios = [];
+
+async function renderAdmUsuarios() {
+  const cont = document.getElementById("adm-contenido");
+  cont.innerHTML = `
+    <div style="padding:12px 16px;flex-shrink:0;background:white;border-bottom:1px solid var(--borde);display:flex;gap:8px;align-items:center;">
+      <input type="text" id="adm-usr-buscar" placeholder="🔍 Buscar usuario..."
+        style="flex:1;padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12px;"
+        oninput="filtrarUsuarios()">
+      <button onclick="abrirModalUsuario(null)" class="btn-primary" style="padding:7px 14px;white-space:nowrap;">+ Nuevo Usuario</button>
+      <button onclick="renderAdmin('usuarios')" style="padding:7px 10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:7px;cursor:pointer;font-size:12px;">🔄</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead style="position:sticky;top:0;z-index:1;">
+          <tr style="background:#1e1b4b;color:white;">
+            <th style="padding:9px 12px;text-align:left;">Nombre</th>
+            <th style="padding:9px 12px;text-align:left;">Correo</th>
+            <th style="padding:9px 12px;text-align:center;">Rol</th>
+            <th style="padding:9px 12px;text-align:left;">Unidad</th>
+            <th style="padding:9px 12px;text-align:center;">Activo</th>
+            <th style="padding:9px 12px;text-align:center;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="adm-usr-tbody">
+          <tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Modal usuario -->
+    <div id="adm-usr-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;">
+      <div style="background:white;border-radius:14px;padding:24px;width:440px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+        <h3 id="adm-usr-modal-title" style="margin:0 0 16px;font-size:15px;color:#1a3a6b;">Nuevo Usuario</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:3px;">NOMBRE COMPLETO</label>
+            <input type="text" id="adm-usr-nombre" style="width:100%;padding:7px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:3px;">CORREO MICROSOFT 365</label>
+            <input type="email" id="adm-usr-correo" style="width:100%;padding:7px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:3px;">ROL</label>
+              <select id="adm-usr-rol" style="width:100%;padding:7px 8px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;" onchange="toggleUnidadField()">
+                <option value="Administrador">🛡️ Administrador</option>
+                <option value="Director">🏛️ Director</option>
+                <option value="Secretaria">📋 Secretaria</option>
+                <option value="Unidad">🏢 Unidad</option>
+              </select>
+            </div>
+            <div id="adm-usr-unidad-wrap">
+              <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:3px;">UNIDAD</label>
+              <select id="adm-usr-unidad" style="width:100%;padding:7px 8px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;">
+                <option value="">— Sin unidad —</option>
+                ${CONFIG.unidades.map(u=>`<option value="${u}">${u}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;">
+            <input type="checkbox" id="adm-usr-activo" checked style="width:16px;height:16px;cursor:pointer;">
+            <label for="adm-usr-activo" style="font-size:13px;font-weight:600;color:#374151;cursor:pointer;">Usuario activo</label>
+          </div>
+        </div>
+        <input type="hidden" id="adm-usr-id">
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button onclick="guardarUsuarioAdmin()" class="btn-primary" style="flex:1;padding:10px;">💾 Guardar</button>
+          <button onclick="cerrarModalUsuario()" style="flex:1;padding:10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:8px;cursor:pointer;font-weight:600;">Cancelar</button>
+        </div>
+      </div>
+    </div>`;
+
+  showLoading("Cargando usuarios...");
+  try {
+    _adminUsuarios = await getTodosUsuarios();
+    filtrarUsuarios();
+  } catch(e) { showToast("error","Error: "+e.message); }
+  finally { hideLoading(); }
+}
+
+function filtrarUsuarios() {
+  const q = (document.getElementById("adm-usr-buscar")?.value||"").toLowerCase();
+  const filtrados = _adminUsuarios.filter(u =>
+    !q || (u.NombreCompleto||"").toLowerCase().includes(q) ||
+          (u.Correo||"").toLowerCase().includes(q) ||
+          (u.Rol||"").toLowerCase().includes(q)
+  );
+  const tbody = document.getElementById("adm-usr-tbody");
+  if (!tbody) return;
+  if (!filtrados.length) { tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:28px;color:#9ca3af;">Sin resultados</td></tr>`; return; }
+  const ROL_COLOR = { "Administrador":"#312e81","Director":"#1a3a6b","Secretaria":"#0e7490","Unidad":"#15803d" };
+  tbody.innerHTML = filtrados.map(u => {
+    const c = ROL_COLOR[u.Rol]||"#6b7280";
+    const activo = u.Activo !== false && u.Activo !== 0;
+    return `<tr style="border-bottom:1px solid var(--borde);" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''">
+      <td style="padding:8px 12px;font-weight:600;">${u.NombreCompleto||""}</td>
+      <td style="padding:8px 12px;color:#6b7280;font-size:11px;">${u.Correo||""}</td>
+      <td style="padding:8px 12px;text-align:center;"><span style="background:${c}20;color:${c};padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid ${c}30;">${u.Rol||""}</span></td>
+      <td style="padding:8px 12px;font-size:11px;">${u.Unidad||"—"}</td>
+      <td style="padding:8px 12px;text-align:center;"><span style="padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;background:${activo?'#dcfce7':'#fee2e2'};color:${activo?'#15803d':'#b91c1c'};">${activo?"Sí":"No"}</span></td>
+      <td style="padding:8px 12px;text-align:center;">
+        <button onclick="abrirModalUsuario('${u.id}')" style="padding:4px 10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:5px;cursor:pointer;font-size:11px;">✏️ Editar</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function toggleUnidadField() {
+  const rol = document.getElementById("adm-usr-rol")?.value;
+  const wrap = document.getElementById("adm-usr-unidad-wrap");
+  if (wrap) wrap.style.opacity = (rol==="Unidad") ? "1" : "0.4";
+}
+
+function abrirModalUsuario(id) {
+  const modal = document.getElementById("adm-usr-modal");
+  modal.style.display = "flex";
+  const u = id ? _adminUsuarios.find(x=>x.id===id) : null;
+  document.getElementById("adm-usr-modal-title").textContent = u ? "Editar Usuario" : "Nuevo Usuario";
+  document.getElementById("adm-usr-id").value    = u?.id||"";
+  document.getElementById("adm-usr-nombre").value = u?.NombreCompleto||"";
+  document.getElementById("adm-usr-correo").value = u?.Correo||"";
+  document.getElementById("adm-usr-rol").value    = u?.Rol||"Unidad";
+  document.getElementById("adm-usr-unidad").value = u?.Unidad||"";
+  document.getElementById("adm-usr-activo").checked = u ? (u.Activo!==false&&u.Activo!==0) : true;
+  toggleUnidadField();
+}
+
+function cerrarModalUsuario() {
+  const modal = document.getElementById("adm-usr-modal");
+  if (modal) modal.style.display = "none";
+}
+
+async function guardarUsuarioAdmin() {
+  const id      = document.getElementById("adm-usr-id")?.value;
+  const nombre  = document.getElementById("adm-usr-nombre")?.value.trim();
+  const correo  = document.getElementById("adm-usr-correo")?.value.trim();
+  const rol     = document.getElementById("adm-usr-rol")?.value;
+  const unidad  = document.getElementById("adm-usr-unidad")?.value;
+  const activo  = document.getElementById("adm-usr-activo")?.checked;
+  if (!nombre||!correo||!rol) { showToast("error","Nombre, correo y rol son obligatorios"); return; }
+  showLoading("Guardando usuario...");
+  try {
+    const fields = { NombreCompleto:nombre, Correo:correo, Rol:rol, Unidad:unidad||"", Activo:activo };
+    if (id) {
+      await actualizarUsuario(id, fields);
+      const u = _adminUsuarios.find(x=>x.id===id);
+      if (u) Object.assign(u, fields);
+      showToast("success","✅ Usuario actualizado");
+    } else {
+      const nuevo = await crearUsuario(fields);
+      _adminUsuarios.push({ id:String(nuevo.Id||nuevo.id), ...fields });
+      showToast("success","✅ Usuario creado");
+    }
+    cerrarModalUsuario();
+    filtrarUsuarios();
+  } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }
 }
 

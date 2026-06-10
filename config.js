@@ -8,7 +8,8 @@ const CONFIG = {
     usuarios: "UsuarioDom",
     solicitudes: "Solicitud_Dom",
     historial: "HistorialSolicitud",
-    evidencias: "EvidenciaSolicitudes"
+    evidencias: "EvidenciaSolicitudes",
+    unidades: "UnidadesDOM"
   },
   estados: {
     INGRESADA: "Ingresada",

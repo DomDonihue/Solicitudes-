@@ -269,6 +269,43 @@ async function getUsuariosByUnidad(unidad) {
   return getListItems(CONFIG.lists.usuarios, `Unidad eq '${unidad}' and Activo eq 1`);
 }
 
+// ===== Unidades (SharePoint list UnidadesDOM) =====
+async function getUnidades() {
+  try {
+    const items = await getListItems(CONFIG.lists.unidades);
+    return items.filter(u => u.Activo !== false && u.Activo !== 0);
+  } catch(e) {
+    console.warn("No se pudo cargar UnidadesDOM, usando lista predeterminada:", e.message);
+    return CONFIG.unidades.map((n,i) => ({ id: String(i), Title: n }));
+  }
+}
+
+async function crearUnidad(nombre) {
+  return createListItem(CONFIG.lists.unidades, { Title: nombre, Activo: true });
+}
+
+async function actualizarUnidad(itemId, fields) {
+  return updateListItem(CONFIG.lists.unidades, itemId, fields);
+}
+
+async function eliminarUnidad(itemId) {
+  const url = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(CONFIG.lists.unidades)}')/items(${itemId})`;
+  await spFetch(url, { method: "DELETE" });
+}
+
+// ===== Usuarios (SharePoint list UsuarioDom) =====
+async function getTodosUsuarios() {
+  return getListItems(CONFIG.lists.usuarios);
+}
+
+async function crearUsuario(fields) {
+  return createListItem(CONFIG.lists.usuarios, fields);
+}
+
+async function actualizarUsuario(itemId, fields) {
+  return updateListItem(CONFIG.lists.usuarios, itemId, fields);
+}
+
 // ===== Notificaciones =====
 
 async function notificarDirector(solicitud, accion) {
