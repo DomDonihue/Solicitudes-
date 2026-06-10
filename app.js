@@ -1795,8 +1795,80 @@ async function cargarAdmUnidades() {
     _adminUnidades = await getListItems(CONFIG.lists.unidades);
     renderListaUnidades();
   } catch(e) {
-    document.getElementById("adm-uni-lista").innerHTML = `<div style="color:#ef4444;padding:16px;">Error: ${e.message}<br><small>Asegúrate de crear la lista "UnidadesDOM" en SharePoint con columnas: Title, Activo</small></div>`;
+    if (e.message.includes("404") || e.message.includes("no existe")) {
+      // Lista no existe — mostrar botón para crearla automáticamente
+      document.getElementById("adm-uni-lista").innerHTML = `
+        <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:20px;text-align:center;">
+          <div style="font-size:28px;margin-bottom:8px;">📋</div>
+          <div style="font-size:14px;font-weight:700;color:#9a3412;margin-bottom:6px;">La lista "UnidadesDOM" no existe en SharePoint</div>
+          <div style="font-size:12px;color:#c2410c;margin-bottom:16px;">Se puede crear automáticamente con las columnas necesarias.</div>
+          <button onclick="crearListaUnidades()" class="btn-primary" style="padding:10px 24px;font-size:13px;">
+            🚀 Crear lista automáticamente en SharePoint
+          </button>
+        </div>`;
+    } else {
+      document.getElementById("adm-uni-lista").innerHTML = `<div style="color:#ef4444;padding:16px;">Error: ${e.message}</div>`;
+    }
   } finally { hideLoading(); }
+}
+
+async function crearListaUnidades() {
+  showLoading("Creando lista UnidadesDOM en SharePoint...");
+  try {
+    const token = await getSharePointToken();
+    const SP_BASE_URL = `${CONFIG.sharePointSite}/_api`;
+
+    // 1. Crear la lista
+    const resLista = await fetch(`${SP_BASE_URL}/web/lists`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json;odata=nometadata",
+        "Content-Type": "application/json;odata=verbose"
+      },
+      body: JSON.stringify({
+        __metadata: { type: "SP.List" },
+        Title: CONFIG.lists.unidades,
+        BaseTemplate: 100,
+        Description: "Lista de unidades del sistema DOM"
+      })
+    });
+    if (!resLista.ok) {
+      const err = await resLista.text();
+      // Si ya existe (código 409), continuamos igual
+      if (!err.includes("ya existe") && !err.includes("already exists") && resLista.status !== 409) {
+        throw new Error(`No se pudo crear la lista: ${err}`);
+      }
+    }
+
+    // 2. Agregar columna Activo (Sí/No)
+    await fetch(`${SP_BASE_URL}/web/lists/getbytitle('${encodeURIComponent(CONFIG.lists.unidades)}')/fields`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json;odata=nometadata",
+        "Content-Type": "application/json;odata=verbose"
+      },
+      body: JSON.stringify({
+        __metadata: { type: "SP.Field" },
+        Title: "Activo",
+        FieldTypeKind: 8,  // Boolean
+        DefaultValue: "1"
+      })
+    }).catch(() => {}); // Si ya existe, ignorar
+
+    // 3. Poblar con las unidades actuales de config
+    for (const nombre of CONFIG.unidades) {
+      await createListItem(CONFIG.lists.unidades, { Title: nombre, Activo: true }).catch(() => {});
+    }
+
+    showToast("success", "✅ Lista UnidadesDOM creada con las unidades actuales");
+    await cargarAdmUnidades();
+  } catch(e) {
+    showToast("error", "Error creando lista: " + e.message);
+  } finally {
+    hideLoading();
+  }
 }
 
 function renderListaUnidades() {
