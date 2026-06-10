@@ -876,7 +876,7 @@ function renderDetalleDirector(sol) {
       <span style="font-size:20px;">⏳</span>
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:700;color:#7e22ce;">Pendiente de Cierre</div>
-        <div style="font-size:11px;color:#6b21a8;" id="dir-plazo-texto">Aguardando parte final</div>
+        <div style="font-size:11px;color:#6b21a8;">Aguardando parte final${sol.FechaCierre ? ' — Plazo: ' + formatFecha(sol.FechaCierre) : ''}</div>
       </div>
     </div>` : ""}
 
@@ -1144,7 +1144,9 @@ async function derivarSolicitud(solId) {
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
     const esRederivar = sol.Estado === CONFIG.estados.DEVUELTA;
-    await actualizarSolicitud(solId, { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad });
+    const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad };
+    if (obs) updateFields.Acciones = obs;
+    await actualizarSolicitud(solId, updateFields);
     registrarHistorial({
       NroSolicitud:sol.NroSolicitud,
       Title:esRederivar ? "Re-derivada a unidad" : "Derivada a unidad",
@@ -1166,13 +1168,15 @@ async function pendienteCierreSolicitud(solId) {
   showLoading("Actualizando estado...");
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
-    await actualizarSolicitud(solId, { Estado: CONFIG.estados.PENDIENTE_CIERRE });
+    const pcFields = { Estado: CONFIG.estados.PENDIENTE_CIERRE };
+    if (plazo) pcFields.FechaCierre = plazo;
+    await actualizarSolicitud(solId, pcFields);
     registrarHistorial({
       NroSolicitud:sol.NroSolicitud, Title:"Pendiente de Cierre — en plazo de evaluación",
       EstadoAnterior:sol.Estado, EstadoNuevo:CONFIG.estados.PENDIENTE_CIERRE,
       UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
       Unidad:state.usuario.Unidad, FechaAccion:new Date().toISOString(),
-      Observaciones: (obs || "") + (plazo ? ` | Plazo: ${plazo}` : "")
+      Observaciones: (obs ? obs + (plazo ? ` | Plazo: ${plazo}` : "") : (plazo ? `Plazo: ${plazo}` : ""))
     }).catch(e => console.warn("Historial (no crítico):", e.message));
     showToast("success","⏳ Solicitud marcada como Pendiente de Cierre");
     await renderDirector();
@@ -1370,22 +1374,15 @@ async function renderDetalleUnidad(sol) {
   const esRespondida = sol.Estado === CONFIG.estados.RESPONDIDA;
   const puedeResponder = !esCerrada;
 
-  const [solicitudAtts, evidencias, historial] = await Promise.all([
+  const [solicitudAtts, evidencias] = await Promise.all([
     getListItemAttachments(CONFIG.lists.solicitudes, sol.id).catch(() => []),
-    getEvidenciasBySolicitud(sol.NroSolicitud, sol.id).catch(() => []),
-    getHistorialBySolicitud(sol.NroSolicitud).catch(() => [])
+    getEvidenciasBySolicitud(sol.NroSolicitud, sol.id).catch(() => [])
   ]);
 
-  // Buscar las instrucciones/comentarios del director en el historial
-  const accionesDirector = historial
-    .filter(h => h.RolUsuario === "Director" || (h.Title||"").includes("[Admin]"))
-    .sort((a,b) => new Date(b.FechaAccion) - new Date(a.FechaAccion));
-
-  const instruccionDirector = accionesDirector.find(h => h.Observaciones)?.Observaciones || "";
-  // PlazoCierre se guarda en historial Observaciones: "... | Plazo: YYYY-MM-DD"
-  const historialConPlazo = accionesDirector.find(h => h.Observaciones?.includes("Plazo:"));
-  const plazoMatch = historialConPlazo?.Observaciones?.match(/Plazo:\s*(\d{4}-\d{2}-\d{2})/);
-  const placoBruto = plazoMatch?.[1] || null;
+  // Instrucciones del director desde campo Acciones de la solicitud (guardado al derivar)
+  const instruccionDirector = sol.Acciones || "";
+  // Plazo desde FechaCierre (campo de Solicitud_Dom, guardado al marcar Pendiente de Cierre)
+  const placoBruto = sol.FechaCierre || null;
   const plazoCierreTexto = placoBruto ? formatFecha(placoBruto) : null;
 
   cont.innerHTML = `

@@ -219,12 +219,15 @@ async function actualizarSolicitud(itemId, fields) {
 async function registrarHistorial(fields) {
   // Nunca debe bloquear el flujo principal — si falla, solo log
   try {
-    // Mapear Accion → Title por compatibilidad con versiones anteriores del código
-    if (fields.Accion !== undefined && fields.Title === undefined) {
-      fields = { ...fields, Title: fields.Accion };
-      delete fields.Accion;
+    // El campo en SharePoint se llama "Accion" (no Title)
+    // Si viene Title lo mapeamos a Accion; SharePoint requiere Title también (campo obligatorio)
+    const mapped = { ...fields };
+    if (mapped.Title !== undefined && mapped.Accion === undefined) {
+      mapped.Accion = mapped.Title;
     }
-    return await createListItem(CONFIG.lists.historial, fields);
+    // Title es campo obligatorio en SharePoint — usar Accion como valor
+    if (!mapped.Title) mapped.Title = mapped.Accion || "Registro";
+    return await createListItem(CONFIG.lists.historial, mapped);
   } catch(e) {
     console.warn("registrarHistorial (no crítico):", e.message);
     return null;
