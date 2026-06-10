@@ -852,8 +852,7 @@ function renderDetalleDirector(sol) {
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
             <label style="font-size:11px;font-weight:600;color:#7e22ce;white-space:nowrap;">Plazo hasta:</label>
             <input type="date" id="dir-plazo-cierre"
-              style="flex:1;padding:5px 8px;border:1.5px solid #d8b4fe;border-radius:6px;font-size:12px;"
-              value="${new Date().toISOString().split('T')[0]}">
+              style="flex:1;padding:5px 8px;border:1.5px solid #d8b4fe;border-radius:6px;font-size:12px;">
           </div>
           <button onclick="pendienteCierreSolicitud('${sol.id}')"
             style="width:100%;padding:9px;background:#7e22ce;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">
@@ -900,6 +899,10 @@ function renderDetalleDirector(sol) {
     </div>
 
   </div>`;
+
+  // Setear fecha plazo siempre en tiempo real (evita caché del template)
+  const inputPlazo = document.getElementById("dir-plazo-cierre");
+  if (inputPlazo) inputPlazo.value = new Date().toISOString().split('T')[0];
 
   // Cargar historial automáticamente
   cargarHistorialDir(sol.NroSolicitud);
