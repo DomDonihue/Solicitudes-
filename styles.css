@@ -78,7 +78,7 @@ body {
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background: #0a1628;
+  background: #0a1628 url('img/hero.png') center center / cover no-repeat;
 }
 /* Fondo fotográfico */
 #login-page::before {
@@ -122,7 +122,9 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, #0a1e44 0%, #1a3a6b 60%, #0f2547 100%);
+  background:
+    linear-gradient(180deg, rgba(8,20,50,0.82) 0%, rgba(15,37,71,0.78) 50%, rgba(5,15,40,0.88) 100%),
+    url('img/fondo.png') center center / cover no-repeat;
   z-index: -1;
 }
 .login-escudo-wrap {
