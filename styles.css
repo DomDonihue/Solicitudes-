@@ -78,22 +78,27 @@ body {
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background: #0a1628 url('img/hero.png') center center / cover no-repeat;
-  background-attachment: fixed;
+  background: #0a1628;
 }
-/* sin imagen secundaria — solo hero de fondo */
-#login-page::before { display: none; }
-/* Overlay: oscuro a la izquierda (panel) → casi transparente a la derecha */
+/* Fondo fotográfico */
+#login-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('img/fondo.png') center center / cover no-repeat;
+  z-index: 0;
+  filter: brightness(1.08) saturate(1.1);
+}
+/* Overlay oscuro */
 #login-page::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    100deg,
-    rgba(5,15,40,0.96) 0%,
-    rgba(8,20,50,0.82) 25%,
-    rgba(10,25,55,0.38) 55%,
-    rgba(5,15,40,0.18) 100%
+    135deg,
+    rgba(5,15,40,0.92) 0%,
+    rgba(10,25,60,0.80) 40%,
+    rgba(15,37,71,0.70) 100%
   );
   z-index: 1;
 }
@@ -116,9 +121,7 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(8,20,50,0.82) 0%, rgba(15,37,71,0.78) 50%, rgba(5,15,40,0.88) 100%),
-    url('img/fondo.png') center center / cover no-repeat;
+  background: linear-gradient(180deg, #0a1e44 0%, #1a3a6b 60%, #0f2547 100%);
   z-index: -1;
 }
 .login-escudo-wrap {
