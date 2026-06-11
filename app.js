@@ -600,7 +600,7 @@ function renderDirSidebar() {
       }).join("")}
     </div>
 
-    <!-- Filtro por unidad -->
+    <!-- Filtro por unidad (valores reales de las solicitudes cargadas) -->
     <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--borde);">
       <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#9ca3af;margin-bottom:5px;">🏢 Filtrar por Unidad</div>
       <select onchange="filtrarDirectorUnidad(this.value)"
@@ -608,7 +608,8 @@ function renderDirSidebar() {
                border-radius:7px;font-size:11px;color:var(--texto);cursor:pointer;
                background:${state.filtroUnidadDir!=='Todas'?'var(--azul-50)':'white'};">
         <option value="Todas">Todas las unidades</option>
-        ${CONFIG.unidades.map(u=>`<option value="${u}" ${state.filtroUnidadDir===u?'selected':''}>${u}</option>`).join("")}
+        ${[...new Set(state.solicitudes.map(s=>(s.UnidadDerivada||"").trim()).filter(u=>u))].sort()
+          .map(u=>`<option value="${u}" ${state.filtroUnidadDir===u?'selected':''}>${u}</option>`).join("")}
       </select>
       ${state.filtroUnidadDir!=='Todas'?`
       <div style="margin-top:4px;font-size:10px;color:var(--azul-claro);display:flex;align-items:center;justify-content:space-between;">
@@ -645,10 +646,42 @@ function filtrarDirectorUnidad(unidad) {
   if (det) det.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>🏛️</span><p style="text-align:center;">Selecciona una solicitud<br>para gestionar</p></div>`;
 }
 
+async function cerrarDirectoDirector(id) {
+  const sol = state.solicitudes.find(s => s.id === id);
+  if (!sol) return;
+  const obs = document.getElementById("dir-no-corresponde-obs")?.value.trim();
+  if (!obs) { showToast("error", "Ingresa el motivo del cierre."); return; }
+
+  const confirmar = confirm(`¿Cerrar la solicitud ${sol.NroSolicitud} como "No corresponde a DOM"?\n\nMotivo: ${obs}`);
+  if (!confirmar) return;
+
+  showLoading("Cerrando solicitud...");
+  try {
+    await actualizarSolicitud(sol.id, {
+      Estado: CONFIG.estados.CERRADA,
+      MotivoDevolucion: `No corresponde a DOM: ${obs}`
+    });
+    await registrarHistorial({
+      NroSolicitud: sol.NroSolicitud,
+      Accion: "Cierre directo por Director — No corresponde a DOM",
+      Observaciones: obs,
+      Usuario: state.usuario.NombreCompleto || state.usuario.displayName,
+      Unidad: "Director",
+      FechaAccion: new Date().toISOString()
+    });
+    showToast("ok", `Solicitud ${sol.NroSolicitud} cerrada.`);
+    await renderDirector();
+  } catch(e) {
+    showToast("error", "Error: " + e.message);
+  } finally {
+    hideLoading();
+  }
+}
+
 function getDirFiltradas() {
   return state.solicitudes.filter(s => {
     if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
-    if (state.filtroUnidadDir !== "Todas" && s.UnidadDerivada !== state.filtroUnidadDir) return false;
+    if (state.filtroUnidadDir !== "Todas" && (s.UnidadDerivada||"").trim() !== state.filtroUnidadDir) return false;
     if (state.filtroBuscar) {
       const q = state.filtroBuscar.toLowerCase();
       return s.NroSolicitud?.toLowerCase().includes(q) ||
@@ -917,6 +950,26 @@ function renderDetalleDirector(sol) {
       <div>
         <div style="font-size:13px;font-weight:700;color:#15803d;">Solicitud Cerrada Formalmente</div>
         <div style="font-size:11px;color:#16a34a;">Caso completado y archivado en el sistema</div>
+      </div>
+    </div>` : ""}
+
+    ${sol.Estado !== CONFIG.estados.CERRADA ? `
+    <!-- Cierre directo por Director -->
+    <div class="accion-panel">
+      <div class="accion-header" style="background:linear-gradient(90deg,#7f1d1d,#b91c1c);color:white;padding:8px 14px;font-size:12px;font-weight:700;">
+        🚫 Cierre Directo — No Corresponde a DOM
+      </div>
+      <div class="accion-body" style="background:#fff5f5;">
+        <p style="font-size:12px;color:#7f1d1d;margin:0 0 10px;">
+          Cierra la solicitud inmediatamente indicando que no corresponde a la Dirección de Obras. Queda registro en el historial.
+        </p>
+        <textarea id="dir-no-corresponde-obs" rows="2"
+          placeholder="Motivo (ej: Corresponde a DIDECO, solicitud duplicada, fuera de competencia DOM...)"
+          style="width:100%;padding:8px 10px;border:1.5px solid #fca5a5;border-radius:8px;font-size:12px;resize:vertical;box-sizing:border-box;margin-bottom:10px;"></textarea>
+        <button onclick="cerrarDirectoDirector('${sol.id}')"
+          style="width:100%;padding:11px;background:#b91c1c;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;letter-spacing:0.2px;">
+          🚫 Cerrar — No Corresponde a DOM
+        </button>
       </div>
     </div>` : ""}
 
