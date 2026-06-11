@@ -80,7 +80,7 @@ body {
   overflow: hidden;
   background: #0a1628;
 }
-/* Fondo fotográfico con overlay oscuro */
+/* Fondo fotográfico */
 #login-page::before {
   content: '';
   position: absolute;
@@ -88,16 +88,19 @@ body {
   background: url('img/fondo.png') center center / cover no-repeat;
   background-attachment: fixed;
   z-index: 0;
+  filter: brightness(1.08) saturate(1.1);
 }
+/* Overlay: oscuro a la izquierda (panel) → casi transparente a la derecha */
 #login-page::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    135deg,
-    rgba(5,15,40,0.92) 0%,
-    rgba(10,25,60,0.80) 40%,
-    rgba(15,37,71,0.70) 100%
+    100deg,
+    rgba(5,15,40,0.96) 0%,
+    rgba(8,20,50,0.82) 25%,
+    rgba(10,25,55,0.38) 55%,
+    rgba(5,15,40,0.18) 100%
   );
   z-index: 1;
 }
