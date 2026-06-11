@@ -6,6 +6,7 @@ const state = {
   filtroEstado: "Todos",
   filtroBuscar: "",
   filtroUnidad: "Todas",
+  filtroUnidadDir: "Todas",
   filtroDesde: "",
   filtroHasta: "",
   pagina: 1,
@@ -597,6 +598,24 @@ function renderDirSidebar() {
           ${urgente&&!activo?`<div style="font-size:8px;color:#b91c1c;font-weight:700;">⚠️</div>`:''}
         </div>`;
       }).join("")}
+    </div>
+
+    <!-- Filtro por unidad -->
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--borde);">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#9ca3af;margin-bottom:5px;">🏢 Filtrar por Unidad</div>
+      <select onchange="filtrarDirectorUnidad(this.value)"
+        style="width:100%;padding:5px 8px;border:1.5px solid ${state.filtroUnidadDir!=='Todas'?'var(--azul)':'var(--borde)'};
+               border-radius:7px;font-size:11px;color:var(--texto);cursor:pointer;
+               background:${state.filtroUnidadDir!=='Todas'?'var(--azul-50)':'white'};">
+        <option value="Todas">Todas las unidades</option>
+        ${CONFIG.unidades.map(u=>`<option value="${u}" ${state.filtroUnidadDir===u?'selected':''}>${u}</option>`).join("")}
+      </select>
+      ${state.filtroUnidadDir!=='Todas'?`
+      <div style="margin-top:4px;font-size:10px;color:var(--azul-claro);display:flex;align-items:center;justify-content:space-between;">
+        <span>📌 ${state.filtroUnidadDir}</span>
+        <button onclick="filtrarDirectorUnidad('Todas')"
+          style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:10px;font-weight:700;padding:0;">✕ limpiar</button>
+      </div>`:''}
     </div>`;
 }
 
@@ -614,9 +633,22 @@ function filtrarDirector(estado) {
   if (det) det.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>🏛️</span><p style="text-align:center;">Selecciona una solicitud<br>para gestionar</p></div>`;
 }
 
+function filtrarDirectorUnidad(unidad) {
+  state.filtroUnidadDir = unidad;
+  state.pagina = 1;
+  state.solicitudSeleccionada = null;
+  renderDirSidebar();
+  renderDirLista();
+  const pdf = document.getElementById("dir-pdf");
+  if (pdf) pdf.innerHTML = `<div class="pdf-visor-empty"><span>📄</span><p>Selecciona una solicitud</p></div>`;
+  const det = document.getElementById("dir-detalle");
+  if (det) det.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>🏛️</span><p style="text-align:center;">Selecciona una solicitud<br>para gestionar</p></div>`;
+}
+
 function getDirFiltradas() {
   return state.solicitudes.filter(s => {
     if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
+    if (state.filtroUnidadDir !== "Todas" && s.UnidadDerivada !== state.filtroUnidadDir) return false;
     if (state.filtroBuscar) {
       const q = state.filtroBuscar.toLowerCase();
       return s.NroSolicitud?.toLowerCase().includes(q) ||
