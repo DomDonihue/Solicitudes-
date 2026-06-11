@@ -32,7 +32,8 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-bg); c
   content: '';
   position: absolute;
   inset: 0;
-  background: url('img/fondo.png') center/cover no-repeat;
+  background: url('img/fondo.png') center center / cover no-repeat;
+  background-attachment: fixed;
   z-index: 0;
 }
 #login-page::after {
