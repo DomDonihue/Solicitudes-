@@ -17,29 +17,47 @@
 <!-- ===== LOGIN ===== -->
 <div id="login-page" style="display:none;flex-direction:column;min-height:100vh;">
 
-  <!-- Fila principal: panel izquierdo + panel derecho -->
-  <div style="display:flex;flex:1;">
+  <!-- Fondo animado: 3 imágenes rotantes -->
+  <div class="bg-scene">
+    <div class="bg-img active" id="bg0" style="background-image:url('img/hero.png')"></div>
+    <div class="bg-img"        id="bg1" style="background-image:url('img/fondo.png')"></div>
+    <div class="bg-img"        id="bg2" style="background-image:url('img/cuerpo.jpg')"></div>
+    <div class="bg-overlay"></div>
+    <div class="bg-stripe"></div>
+  </div>
 
-    <!-- Panel institucional izquierdo -->
-    <div class="login-left">
-      <div class="login-escudo-wrap">
+  <!-- Layout principal -->
+  <div class="login-layout">
+
+    <!-- Panel izquierdo institucional -->
+    <div class="left-panel">
+      <div class="brand-logo">
         <img src="img/logo.png" alt="Escudo Municipalidad de Doñihue">
       </div>
-      <div class="muni-label">I. Municipalidad de</div>
-      <div class="muni-nombre">Doñihue</div>
-      <div class="muni-slogan">Tradición y Progreso</div>
-      <hr>
-      <div class="dep-badge">🏛️ Dirección de Obras Municipales</div>
+      <div class="brand-label">I. Municipalidad de</div>
+      <div class="brand-name">Doñihue</div>
+      <div class="brand-slogan">Tradición y Progreso</div>
+
+      <!-- Miniaturas de fondo -->
+      <div class="thumb-strip">
+        <div class="thumb active" id="th0" style="background-image:url('img/hero.png')"  onclick="loginSetImg(0)"></div>
+        <div class="thumb"        id="th1" style="background-image:url('img/fondo.png')" onclick="loginSetImg(1)"></div>
+        <div class="thumb"        id="th2" style="background-image:url('img/cuerpo.jpg')"onclick="loginSetImg(2)"></div>
+      </div>
+      <div class="dots">
+        <span class="dot active" id="dot0" onclick="loginSetImg(0)"></span>
+        <span class="dot"        id="dot1" onclick="loginSetImg(1)"></span>
+        <span class="dot"        id="dot2" onclick="loginSetImg(2)"></span>
+      </div>
     </div>
 
     <!-- Panel derecho — acceso -->
-    <div class="login-right">
+    <div class="right-area">
       <div class="login-card">
 
-        <div class="login-card-header">
-          <h3>Acceso al Sistema</h3>
-          <p>Portal de Gestión de Solicitudes DOM</p>
-        </div>
+        <div class="card-eyebrow">⚡ Portal de Gestión</div>
+        <h2 class="card-title">Sistema DOM</h2>
+        <p class="card-subtitle">Dirección de Obras Municipales</p>
 
         <!-- Mensaje de error (oculto por defecto) -->
         <div class="login-error" id="login-error" style="display:none;">
@@ -52,18 +70,18 @@
           <div class="login-field">
             <label>Usuario autenticado</label>
             <div class="field-display">
-              <i>👤</i>
+              <span>👤</span>
               <span id="login-nombre" style="font-weight:600;"></span>
             </div>
           </div>
           <div class="login-field">
             <label>Correo institucional</label>
             <div class="field-display">
-              <i>✉️</i>
-              <span id="login-correo" style="color:#6b7280;"></span>
+              <span>✉️</span>
+              <span id="login-correo"></span>
             </div>
           </div>
-          <div class="login-divider">cuenta verificada</div>
+          <div class="login-divider" id="login-divider">cuenta verificada</div>
         </div>
 
         <button class="btn-login" id="btn-login">
@@ -73,8 +91,14 @@
           Ingresar con cuenta institucional
         </button>
 
+        <div class="card-tags">
+          <span class="tag">Solicitudes</span>
+          <span class="tag">Gestión</span>
+          <span class="tag">DOM</span>
+        </div>
+
         <div class="login-help">
-          Usa tu cuenta <strong>@mdonihue.cl</strong> de Office 365<br>
+          Usa tu cuenta <strong style="color:rgba(255,255,255,0.6)">@mdonihue.cl</strong> de Office 365<br>
           ¿Problemas para ingresar?
           <a href="mailto:enovo@mdonihue.cl?subject=Problema%20acceso%20Sistema%20Solicitudes%20DOM">Contacta a soporte DOM</a>
         </div>
@@ -82,10 +106,10 @@
       </div>
     </div>
 
-  </div><!-- /fila principal -->
+  </div><!-- /login-layout -->
 
   <!-- Footer login -->
-  <footer style="text-align:center;padding:8px 16px;font-size:11px;color:#9ca3af;border-top:1px solid rgba(255,255,255,0.08);background:rgba(5,15,40,0.85);flex-shrink:0;position:relative;z-index:2;">
+  <footer class="login-footer">
     © 2026 enovo · Dirección de Obras Municipales · Municipalidad de Doñihue. Todos los derechos reservados.
   </footer>
 </div>
@@ -264,5 +288,26 @@
 <script src="auth.js?v=20260610"></script>
 <script src="graph.js?v=20260610"></script>
 <script src="app.js?v=20260610"></script>
+
+<script>
+/* Rotación de fondo login */
+(function() {
+  var current = 0;
+  function loginSetImg(idx) {
+    var bgs  = [document.getElementById('bg0'),  document.getElementById('bg1'),  document.getElementById('bg2')];
+    var ths  = [document.getElementById('th0'),  document.getElementById('th1'),  document.getElementById('th2')];
+    var dots = [document.getElementById('dot0'), document.getElementById('dot1'), document.getElementById('dot2')];
+    bgs[current].classList.remove('active');
+    ths[current].classList.remove('active');
+    dots[current].classList.remove('active');
+    current = idx;
+    bgs[current].classList.add('active');
+    ths[current].classList.add('active');
+    dots[current].classList.add('active');
+  }
+  window.loginSetImg = loginSetImg;
+  setInterval(function() { loginSetImg((current + 1) % 3); }, 5000);
+})();
+</script>
 </body>
 </html>
