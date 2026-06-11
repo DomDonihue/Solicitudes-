@@ -85,7 +85,7 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: url('img/fondo.png') center center / 60% auto no-repeat;
+  background: url('img/fondo.png') center center / 50% auto no-repeat;
   z-index: 0;
   filter: brightness(1.08) saturate(1.1);
 }
