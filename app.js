@@ -1345,10 +1345,24 @@ function renderSidebarUnidad() {
   cont.innerHTML = `
     <div style="padding:12px 12px 0;">
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-        ${estados.map(e => `
-          <button onclick="filtrarUnidad('${e}')" style="padding:6px 12px;border-radius:16px;border:1.5px solid ${state.filtroEstado===e?'var(--azul)':'var(--borde)'};background:${state.filtroEstado===e?'var(--azul)':'white'};color:${state.filtroEstado===e?'white':'var(--texto)'};cursor:pointer;font-size:13px;">
+        ${estados.map(e => {
+          const colores = {
+            'Derivada':         { bg:'#fff7ed', border:'#f59e0b', text:'#92400e', actBg:'#f59e0b' },
+            'En Proceso':       { bg:'#eff6ff', border:'#3b82f6', text:'#1e40af', actBg:'#3b82f6' },
+            'Respondida':       { bg:'#f0fdf4', border:'#22c55e', text:'#14532d', actBg:'#22c55e' },
+            'Devuelta':         { bg:'#fff1f2', border:'#ef4444', text:'#991b1b', actBg:'#ef4444' },
+            'Pendiente de Cierre': { bg:'#fdf4ff', border:'#a855f7', text:'#6b21a8', actBg:'#a855f7' },
+            'Cerrada':          { bg:'#f3f4f6', border:'#6b7280', text:'#374151', actBg:'#6b7280' },
+            'Todos':            { bg:'#eff6ff', border:'var(--azul)', text:'var(--azul)', actBg:'var(--azul)' }
+          };
+          const c = colores[e] || colores['Todos'];
+          const activo = state.filtroEstado === e;
+          return `<button onclick="filtrarUnidad('${e}')"
+            style="padding:5px 11px;border-radius:16px;border:1.5px solid ${activo?c.actBg:c.border};
+            background:${activo?c.actBg:c.bg};color:${activo?'white':c.text};
+            cursor:pointer;font-size:12px;font-weight:600;">
             ${e} ${e!=='Todos'?`(${counts[e]||0})`:`(${state.solicitudes.length})`}
-          </button>`).join("")}
+          </button>`;}).join("")}
       </div>
       <input type="text" placeholder="🔍 Buscar..." style="width:100%;padding:9px;border:1.5px solid #dde3ee;border-radius:8px;font-size:13px;"
         oninput="state.filtroBuscar=this.value;state.pagina=1;renderSidebarUnidad()">
