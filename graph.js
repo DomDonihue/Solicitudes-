@@ -1,3 +1,34 @@
+// ===== Cache en memoria con TTL =====
+const _cache = {};
+const _cacheTTL = {
+  [CONFIG.lists?.usuarios]:     5 * 60 * 1000,  // 5 min — cambia poco
+  [CONFIG.lists?.unidades]:    10 * 60 * 1000,  // 10 min — muy estable
+  [CONFIG.lists?.solicitudes]:  1 * 60 * 1000,  //  1 min — cambia seguido
+  [CONFIG.lists?.historial]:    2 * 60 * 1000,  //  2 min
+  [CONFIG.lists?.evidencias]:   2 * 60 * 1000,  //  2 min
+};
+const TTL_DEFAULT = 60 * 1000; // 1 min para cualquier otra lista
+
+function _cacheKey(listName, filter) { return `${listName}||${filter||""}`; }
+
+function _cacheGet(listName, filter) {
+  const key = _cacheKey(listName, filter);
+  const entry = _cache[key];
+  if (!entry) return null;
+  if (Date.now() > entry.expires) { delete _cache[key]; return null; }
+  return entry.data;
+}
+
+function _cacheSet(listName, filter, data) {
+  const ttl = _cacheTTL[listName] ?? TTL_DEFAULT;
+  _cache[_cacheKey(listName, filter)] = { data, expires: Date.now() + ttl };
+}
+
+function _cacheInvalidate(listName) {
+  // Elimina todas las entradas de esa lista
+  Object.keys(_cache).forEach(k => { if (k.startsWith(listName + "||")) delete _cache[k]; });
+}
+
 // ===== SharePoint REST API =====
 const SP_BASE = `${CONFIG.sharePointSite}/_api`;
 
@@ -31,10 +62,11 @@ async function spFetch(url, options = {}) {
 // ===== CRUD listas SharePoint =====
 
 async function getListItems(listName, filter = "") {
+  // Revisar cache primero
+  const cached = _cacheGet(listName, filter);
+  if (cached) return cached;
+
   let url = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/items?$top=5000`;
-  // NO usar encodeURIComponent en el filtro completo: SharePoint necesita
-  // las comillas simples sin codificar para interpretar valores string OData.
-  // Solo codificamos los espacios y caracteres especiales que no son parte de OData.
   if (filter) url += `&$filter=${filter.replace(/ /g, '%20')}`;
 
   let items = [];
@@ -43,8 +75,9 @@ async function getListItems(listName, filter = "") {
     items = items.concat(Array.isArray(data?.value) ? data.value : []);
     url = data?.["odata.nextLink"] || null;
   }
-  // Normalizar: SharePoint devuelve Id (mayúscula), agregamos id minúscula para compatibilidad
-  return items.map(item => ({ id: String(item.Id || item.id || ""), ...item }));
+  const result = items.map(item => ({ id: String(item.Id || item.id || ""), ...item }));
+  _cacheSet(listName, filter, result);
+  return result;
 }
 
 async function createListItem(listName, fields) {
@@ -65,6 +98,7 @@ async function createListItem(listName, fields) {
   });
   if (!res.ok) throw new Error(`Error creando item: ${await res.text()}`);
   const data = await res.json();
+  _cacheInvalidate(listName); // invalidar cache al escribir
   return { id: String(data.Id || data.id || ""), ...data };
 }
 
@@ -87,6 +121,7 @@ async function updateListItem(listName, itemId, fields) {
     body
   });
   if (!res.ok && res.status !== 204) throw new Error(`Error actualizando: ${await res.text()}`);
+  _cacheInvalidate(listName); // invalidar cache al escribir
   return null;
 }
 
