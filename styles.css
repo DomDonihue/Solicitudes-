@@ -79,16 +79,10 @@ body {
   position: relative;
   overflow: hidden;
   background: #0a1628 url('img/hero.png') center center / cover no-repeat;
+  background-attachment: fixed;
 }
-/* Fondo fotográfico */
-#login-page::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: url('img/fondo.png') center center / 78% auto no-repeat;
-  z-index: 0;
-  filter: brightness(1.08) saturate(1.12);
-}
+/* sin imagen secundaria — solo hero de fondo */
+#login-page::before { display: none; }
 /* Overlay: oscuro a la izquierda (panel) → casi transparente a la derecha */
 #login-page::after {
   content: '';
