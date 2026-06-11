@@ -85,10 +85,9 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: url('img/fondo.png') center center / cover no-repeat;
-  background-attachment: fixed;
+  background: url('img/fondo.png') center center / 78% auto no-repeat;
   z-index: 0;
-  filter: brightness(1.08) saturate(1.1);
+  filter: brightness(1.08) saturate(1.12);
 }
 /* Overlay: oscuro a la izquierda (panel) → casi transparente a la derecha */
 #login-page::after {
