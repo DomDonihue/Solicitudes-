@@ -20,7 +20,7 @@ const CONFIG = {
     PENDIENTE_CIERRE: "Pendiente de Cierre",
     CERRADA: "Cerrada"
   },
-  unidades: ["Dirección de Obras", "Inspección", "Administración", "Aseo y Ornato"],
+  unidades: ["Dirección de Obras", "Inspección", "Administración", "Operaciones", "Aseo y Ornato"],
   roles: {
     ADMIN: "Administrador",
     DIRECTOR: "Director",
