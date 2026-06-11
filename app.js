@@ -516,8 +516,8 @@ async function guardarSolicitud() {
       Observaciones: desc
     }).catch(e => console.warn("Historial (no crítico):", e.message));
 
-    // Notificar director
-    await notificarDirector(item, "Nueva solicitud ingresada").catch(console.error);
+    // Notificar director (fire-and-forget)
+    notificarDirector(item, "Nueva solicitud ingresada");
 
     state.adjuntosNueva = [];
     showToast("success", `✅ Solicitud ${nro} guardada correctamente`);
@@ -1732,7 +1732,7 @@ async function responderSolicitud(solId) {
     }).catch(e => console.warn("Historial (no crítico):", e.message));
 
     const accionNotif = esPendienteCierre ? "2ª respuesta registrada — Pendiente de Cierre" : "Solicitud respondida por unidad";
-    await notificarDirector({ ...sol, Estado: nuevoEstado }, accionNotif).catch(console.error);
+    notificarDirector({ ...sol, Estado: nuevoEstado }, accionNotif);
     showToast("success", esPendienteCierre ? "📋 2ª respuesta registrada" : "✅ Solicitud respondida");
     await renderUnidad();
   } catch (e) {
@@ -1788,7 +1788,7 @@ async function devolverSolicitudUnidad(solId) {
       Observaciones: obs,
       Motivo: obs
     }).catch(e => console.warn("Historial (no crítico):", e.message));
-    await notificarDirector({ ...sol, Estado: CONFIG.estados.DEVUELTA }, "Solicitud devuelta por unidad").catch(console.error);
+    notificarDirector({ ...sol, Estado: CONFIG.estados.DEVUELTA }, "Solicitud devuelta por unidad");
     showToast("info", "↩️ Solicitud devuelta");
     await renderUnidad();
   } catch (e) {
@@ -2515,11 +2515,15 @@ function setPeriodo(meses) {
 }
 
 async function actualizarGraficos() {
-  showLoading("Generando reportes...");
+  showLoading("Cargando datos...");
   try {
     const desde = document.getElementById("graf-desde")?.value;
     const hasta = document.getElementById("graf-hasta")?.value;
-    const all = await getSolicitudes();
+    const all = await getSolicitudes(); // única llamada async (puede venir del cache)
+
+    // Ceder el hilo al browser para que pinte el loading antes del trabajo pesado
+    await new Promise(r => requestAnimationFrame(r));
+
     const filtradas = all.filter(s => {
       const f = new Date(s.FechaRecepcion);
       return (!desde || f >= new Date(desde)) && (!hasta || f <= new Date(hasta + "T23:59:59"));

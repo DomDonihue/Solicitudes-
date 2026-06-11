@@ -354,22 +354,36 @@ async function actualizarUsuario(itemId, fields) {
 
 // ===== Notificaciones =====
 
-async function notificarDirector(solicitud, accion) {
-  const directores = await getDirectores().catch(() => []);
-  for (const dir of directores) {
-    const asunto = `[SistemaDOM] Solicitud ${solicitud.NroSolicitud} — ${accion}`;
-    const cuerpo = emailTemplate(solicitud, accion);
-    await sendEmail(dir.Correo, asunto, cuerpo).catch(console.error);
-  }
+function notificarDirector(solicitud, accion) {
+  // Fire-and-forget: no bloquea el flujo principal
+  setTimeout(async () => {
+    try {
+      const directores = await getDirectores().catch(() => []);
+      await Promise.all(directores.map(dir =>
+        sendEmail(
+          dir.Correo,
+          `[SistemaDOM] Solicitud ${solicitud.NroSolicitud} — ${accion}`,
+          emailTemplate(solicitud, accion)
+        ).catch(e => console.warn("Email director:", e.message))
+      ));
+    } catch(e) { console.warn("notificarDirector:", e.message); }
+  }, 0);
 }
 
-async function notificarUnidad(solicitud, unidad) {
-  const usuarios = await getUsuariosByUnidad(unidad).catch(() => []);
-  for (const u of usuarios) {
-    const asunto = `[SistemaDOM] Solicitud derivada a ${unidad} — ${solicitud.NroSolicitud}`;
-    const cuerpo = emailTemplate(solicitud, `Derivada a ${unidad}`);
-    await sendEmail(u.Correo, asunto, cuerpo).catch(console.error);
-  }
+function notificarUnidad(solicitud, unidad) {
+  // Fire-and-forget: no bloquea el flujo principal
+  setTimeout(async () => {
+    try {
+      const usuarios = await getUsuariosByUnidad(unidad).catch(() => []);
+      await Promise.all(usuarios.map(u =>
+        sendEmail(
+          u.Correo,
+          `[SistemaDOM] Solicitud derivada a ${unidad} — ${solicitud.NroSolicitud}`,
+          emailTemplate(solicitud, `Derivada a ${unidad}`)
+        ).catch(e => console.warn("Email unidad:", e.message))
+      ));
+    } catch(e) { console.warn("notificarUnidad:", e.message); }
+  }, 0);
 }
 
 function emailTemplate(sol, accion) {
