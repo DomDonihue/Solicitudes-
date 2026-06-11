@@ -119,8 +119,7 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(160deg, rgba(26,58,107,0.55) 0%, rgba(8,18,45,0.65) 100%);
-  backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, #0a1e44 0%, #1a3a6b 60%, #0f2547 100%);
   z-index: -1;
 }
 .login-escudo-wrap {
