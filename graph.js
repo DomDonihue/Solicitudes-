@@ -238,24 +238,32 @@ async function getHistorialBySolicitud(nroSolicitud) {
   return getListItems(CONFIG.lists.historial, `NroSolicitud eq '${nroSolicitud}'`);
 }
 
-// solicitudId = ID numérico del item (para registros Power Apps que no tienen NroSolicitud)
 async function getEvidenciasBySolicitud(nroSolicitud, solicitudId = null) {
-  try {
-    // Cargar TODOS los items y filtrar en cliente (más robusto que OData)
-    const todas = await getListItems(CONFIG.lists.evidencias);
-    const nro = String(nroSolicitud || "").trim();
-    const idNum = solicitudId ? parseInt(solicitudId) : null;
+  const nro = String(nroSolicitud || "").trim();
+  const idNum = solicitudId ? parseInt(solicitudId) : null;
 
-    return todas.filter(ev => {
-      // Coincidencia por NroSolicitud (registros nuevos desde nuestro sistema)
-      if (nro && String(ev.NroSolicitud || "").trim() === nro) return true;
-      // Coincidencia por SolicitudID (registros Power Apps — solo tienen el ID numérico)
-      if (idNum && (parseInt(ev.SolicitudID) === idNum || parseInt(ev.SolicitudId) === idNum)) return true;
-      return false;
-    });
+  // Intentar filtro en servidor (requiere columnas indexadas en SharePoint)
+  try {
+    const partes = [];
+    if (nro) partes.push(`NroSolicitud eq '${nro.replace(/'/g, "''")}'`);
+    if (idNum) partes.push(`SolicitudID eq ${idNum}`);
+    if (!partes.length) return [];
+    const filter = partes.join(" or ");
+    return await getListItems(CONFIG.lists.evidencias, filter);
   } catch(e) {
-    console.warn("Error cargando evidencias:", e.message);
-    return [];
+    // Si falla (ej: columna no indexada), fallback a filtro en cliente
+    console.warn("Evidencias: filtro servidor falló, usando cliente:", e.message);
+    try {
+      const todas = await getListItems(CONFIG.lists.evidencias);
+      return todas.filter(ev => {
+        if (nro && String(ev.NroSolicitud || "").trim() === nro) return true;
+        if (idNum && (parseInt(ev.SolicitudID) === idNum || parseInt(ev.SolicitudId) === idNum)) return true;
+        return false;
+      });
+    } catch(e2) {
+      console.warn("Error cargando evidencias:", e2.message);
+      return [];
+    }
   }
 }
 
