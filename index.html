@@ -15,73 +15,77 @@
 <body>
 
 <!-- ===== LOGIN ===== -->
-<div id="login-page" style="display:none;flex-direction:column;">
+<div id="login-page" style="display:none;flex-direction:column;min-height:100vh;">
 
-  <!-- Panel institucional izquierdo -->
-  <div class="login-left">
-    <div class="login-escudo-wrap">
-      <img src="img/logo.png" alt="Escudo Municipalidad de Doñihue"
-           >
+  <!-- Fila principal: panel izquierdo + panel derecho -->
+  <div style="display:flex;flex:1;">
+
+    <!-- Panel institucional izquierdo -->
+    <div class="login-left">
+      <div class="login-escudo-wrap">
+        <img src="img/logo.png" alt="Escudo Municipalidad de Doñihue">
+      </div>
+      <div class="muni-label">I. Municipalidad de</div>
+      <div class="muni-nombre">Doñihue</div>
+      <div class="muni-slogan">Tradición y Progreso</div>
+      <hr>
+      <div class="dep-badge">🏛️ Dirección de Obras Municipales</div>
     </div>
-    <div class="muni-label">I. Municipalidad de</div>
-    <div class="muni-nombre">Doñihue</div>
-    <div class="muni-slogan">Tradición y Progreso</div>
-    <hr>
-    <div class="dep-badge">🏛️ Dirección de Obras Municipales</div>
-  </div>
 
-  <!-- Panel derecho — acceso -->
-  <div class="login-right">
-    <div class="login-card">
+    <!-- Panel derecho — acceso -->
+    <div class="login-right">
+      <div class="login-card">
 
-      <div class="login-card-header">
-        <h3>Acceso al Sistema</h3>
-        <p>Portal de Gestión de Solicitudes DOM</p>
-      </div>
-
-      <!-- Mensaje de error (oculto por defecto) -->
-      <div class="login-error" id="login-error" style="display:none;">
-        <span>⚠️</span>
-        <div id="login-error-msg">Usuario no autorizado.</div>
-      </div>
-
-      <!-- Campos de usuario (se llenan tras autenticación) -->
-      <div id="login-user-info" style="display:none;">
-        <div class="login-field">
-          <label>Usuario autenticado</label>
-          <div class="field-display">
-            <i>👤</i>
-            <span id="login-nombre" style="font-weight:600;"></span>
-          </div>
+        <div class="login-card-header">
+          <h3>Acceso al Sistema</h3>
+          <p>Portal de Gestión de Solicitudes DOM</p>
         </div>
-        <div class="login-field">
-          <label>Correo institucional</label>
-          <div class="field-display">
-            <i>✉️</i>
-            <span id="login-correo" style="color:#6b7280;"></span>
-          </div>
+
+        <!-- Mensaje de error (oculto por defecto) -->
+        <div class="login-error" id="login-error" style="display:none;">
+          <span>⚠️</span>
+          <div id="login-error-msg">Usuario no autorizado.</div>
         </div>
-        <div class="login-divider">cuenta verificada</div>
+
+        <!-- Campos de usuario (se llenan tras autenticación) -->
+        <div id="login-user-info" style="display:none;">
+          <div class="login-field">
+            <label>Usuario autenticado</label>
+            <div class="field-display">
+              <i>👤</i>
+              <span id="login-nombre" style="font-weight:600;"></span>
+            </div>
+          </div>
+          <div class="login-field">
+            <label>Correo institucional</label>
+            <div class="field-display">
+              <i>✉️</i>
+              <span id="login-correo" style="color:#6b7280;"></span>
+            </div>
+          </div>
+          <div class="login-divider">cuenta verificada</div>
+        </div>
+
+        <button class="btn-login" id="btn-login">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M15 3h6v18h-6M10 17l5-5-5-5M15 12H3"/>
+          </svg>
+          Ingresar con cuenta institucional
+        </button>
+
+        <div class="login-help">
+          Usa tu cuenta <strong>@mdonihue.cl</strong> de Office 365<br>
+          ¿Problemas para ingresar?
+          <a href="mailto:enovo@mdonihue.cl?subject=Problema%20acceso%20Sistema%20Solicitudes%20DOM">Contacta a soporte DOM</a>
+        </div>
+
       </div>
-
-      <button class="btn-login" id="btn-login">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M15 3h6v18h-6M10 17l5-5-5-5M15 12H3"/>
-        </svg>
-        Ingresar con cuenta institucional
-      </button>
-
-      <div class="login-help">
-        Usa tu cuenta <strong>@mdonihue.cl</strong> de Office 365<br>
-        ¿Problemas para ingresar?
-        <a href="mailto:enovo@mdonihue.cl?subject=Problema%20acceso%20Sistema%20Solicitudes%20DOM">Contacta a soporte DOM</a>
-      </div>
-
     </div>
-  </div>
+
+  </div><!-- /fila principal -->
 
   <!-- Footer login -->
-  <footer style="text-align:center;padding:8px 16px;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb;background:#f9fafb;flex-shrink:0;">
+  <footer style="text-align:center;padding:8px 16px;font-size:11px;color:#9ca3af;border-top:1px solid rgba(255,255,255,0.08);background:rgba(5,15,40,0.85);flex-shrink:0;position:relative;z-index:2;">
     © 2026 enovo · Dirección de Obras Municipales · Municipalidad de Doñihue. Todos los derechos reservados.
   </footer>
 </div>
