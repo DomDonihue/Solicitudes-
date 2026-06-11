@@ -1341,30 +1341,47 @@ function renderSidebarUnidad() {
   const pagina = filtradas.slice(inicio, inicio + state.pageSize);
   const totalPags = Math.ceil(filtradas.length / state.pageSize);
 
+  const uniStats = [
+    { e:"Derivada",            icon:"📤", bg:"#fef3c7", tc:"#b45309" },
+    { e:"En Proceso",          icon:"⚙️", bg:"#cffafe", tc:"#0e7490" },
+    { e:"Respondida",          icon:"✅", bg:"#dcfce7", tc:"#15803d" },
+    { e:"Devuelta",            icon:"↩️", bg:"#fee2e2", tc:"#b91c1c" },
+    { e:"Pendiente de Cierre", icon:"⏳", bg:"#fdf4ff", tc:"#7e22ce" },
+    { e:"Cerrada",             icon:"🔒", bg:"#f3f4f6", tc:"#4b5563" }
+  ];
+
   const cont = document.getElementById("uni-lista");
   cont.innerHTML = `
-    <div style="padding:12px 12px 0;">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-        ${estados.map(e => {
-          const colores = {
-            'Derivada':         { bg:'#fff7ed', border:'#f59e0b', text:'#92400e', actBg:'#f59e0b' },
-            'En Proceso':       { bg:'#eff6ff', border:'#3b82f6', text:'#1e40af', actBg:'#3b82f6' },
-            'Respondida':       { bg:'#f0fdf4', border:'#22c55e', text:'#14532d', actBg:'#22c55e' },
-            'Devuelta':         { bg:'#fff1f2', border:'#ef4444', text:'#991b1b', actBg:'#ef4444' },
-            'Pendiente de Cierre': { bg:'#fdf4ff', border:'#a855f7', text:'#6b21a8', actBg:'#a855f7' },
-            'Cerrada':          { bg:'#f3f4f6', border:'#6b7280', text:'#374151', actBg:'#6b7280' },
-            'Todos':            { bg:'#eff6ff', border:'var(--azul)', text:'var(--azul)', actBg:'var(--azul)' }
-          };
-          const c = colores[e] || colores['Todos'];
+    <div style="padding:8px 10px 0;">
+      <!-- Botón Todos -->
+      <button onclick="filtrarUnidad('Todos')"
+        style="width:100%;margin-bottom:6px;padding:6px 10px;border-radius:7px;border:1.5px solid ${state.filtroEstado==='Todos'?'var(--azul)':'var(--borde)'};
+               background:${state.filtroEstado==='Todos'?'var(--azul)':'white'};color:${state.filtroEstado==='Todos'?'white':'var(--texto)'};
+               font-size:11px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+        <span>📊 Todas</span>
+        <span style="background:${state.filtroEstado==='Todos'?'rgba(255,255,255,0.25)':'var(--gris-bg)'};padding:1px 7px;border-radius:10px;font-weight:700;">
+          ${state.solicitudes.length}
+        </span>
+      </button>
+      <!-- Grid 2x3 estados -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px;">
+        ${uniStats.map(({e,icon,bg,tc}) => {
+          const cnt = counts[e]||0;
           const activo = state.filtroEstado === e;
-          return `<button onclick="filtrarUnidad('${e}')"
-            style="padding:5px 11px;border-radius:16px;border:1.5px solid ${activo?c.actBg:c.border};
-            background:${activo?c.actBg:c.bg};color:${activo?'white':c.text};
-            cursor:pointer;font-size:12px;font-weight:600;">
-            ${e} ${e!=='Todos'?`(${counts[e]||0})`:`(${state.solicitudes.length})`}
-          </button>`;}).join("")}
+          return `
+          <div onclick="filtrarUnidad('${e}')"
+            style="background:${activo?tc:bg};border-radius:8px;padding:6px 4px;text-align:center;cursor:pointer;
+                   border:2px solid ${activo?tc:'transparent'};transition:all 0.18s;
+                   box-shadow:${activo?'0 2px 8px rgba(0,0,0,0.15)':'none'};"
+            onmouseenter="this.style.transform='translateY(-1px)'"
+            onmouseleave="this.style.transform=''">
+            <div style="font-size:13px;margin-bottom:1px;">${icon}</div>
+            <div style="font-size:17px;font-weight:800;color:${activo?'white':tc};line-height:1;">${cnt}</div>
+            <div style="font-size:9px;color:${activo?'rgba(255,255,255,0.85)':tc};margin-top:1px;font-weight:500;">${e}</div>
+          </div>`;
+        }).join("")}
       </div>
-      <input type="text" placeholder="🔍 Buscar..." style="width:100%;padding:9px;border:1.5px solid #dde3ee;border-radius:8px;font-size:13px;"
+      <input type="text" id="uni-buscar" placeholder="🔍 Buscar..." style="width:100%;padding:9px;border:1.5px solid #dde3ee;border-radius:8px;font-size:13px;box-sizing:border-box;"
         oninput="state.filtroBuscar=this.value;state.pagina=1;renderSidebarUnidad()">
     </div>
     <div style="flex:1;overflow-y:auto;padding:12px;">
