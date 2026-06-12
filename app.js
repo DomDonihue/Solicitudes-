@@ -39,6 +39,11 @@ async function initApp() {
     if (unidadesSP.length) {
       CONFIG.unidades = unidadesSP.map(u => u.Title).filter(Boolean);
     }
+    // Cargar configuración desde ConfiguracionDom
+    const cfgSP = await getConfiguracionDOM().catch(() => ({}));
+    CONFIG.plazoDerivacionDias = parseInt(cfgSP.PlazoDerivacionDias) || 15;
+    CONFIG.plazoAlertaDias     = parseInt(cfgSP.PlazoAlertaDias)     || 1;
+    CONFIG.correoSoporte       = cfgSP.CorreoSoporte                 || "enovo@mdonihue.cl";
     // Crear campo FechaDerivacion si aún no existe (idempotente, falla en silencio)
     crearCampoFechaDerivacion().catch(console.warn);
     hideLoading();
@@ -1595,9 +1600,10 @@ function filtrarUnidad(estado) {
 }
 
 function verificarVencimientosUnidad() {
+  const umbral = CONFIG.plazoAlertaDias ?? 1;
   const criticas = state.solicitudes.filter(s => {
     const sem = calcularSemaforo(s);
-    return sem && sem.dias <= 1;
+    return sem && sem.dias <= umbral;
   });
   if (!criticas.length) return;
   const hoy    = criticas.filter(s => calcularSemaforo(s).dias === 0);
@@ -1716,7 +1722,7 @@ async function renderDetalleUnidad(sol) {
             ? `Plazo: ${sem.dias === 1 ? "Vence mañana" : `${sem.dias} días restantes`}`
             : sem.dias === 0 ? "⚠️ Vence hoy" : `⚠️ Plazo vencido hace ${Math.abs(sem.dias)} día${Math.abs(sem.dias)>1?'s':''}`}
         </div>
-        <div style="font-size:11px;color:${sem.color};opacity:0.8;">Límite ${PLAZO_DERIVADA_DIAS} días · Vence el ${formatFecha(sem.vencimiento.toISOString())}</div>
+        <div style="font-size:11px;color:${sem.color};opacity:0.8;">Límite ${CONFIG.plazoDerivacionDias||15} días · Vence el ${formatFecha(sem.vencimiento.toISOString())}</div>
       </div>
     </div>` : "";
 
@@ -3475,13 +3481,13 @@ async function guardarEdicionSolicitud(solId) {
   } finally { hideLoading(); }
 }
 
-const PLAZO_DERIVADA_DIAS = 15;
 function calcularSemaforo(sol) {
   const activos = [CONFIG.estados.DERIVADA, CONFIG.estados.EN_PROCESO];
   if (!activos.includes(sol.Estado)) return null;
   const inicio      = new Date(sol.FechaDerivacion || sol.FechaRecepcion);
   if (isNaN(inicio)) return null;
-  const vencimiento = new Date(inicio.getTime() + PLAZO_DERIVADA_DIAS * 864e5);
+  const plazo       = CONFIG.plazoDerivacionDias || 15;
+  const vencimiento = new Date(inicio.getTime() + plazo * 864e5);
   const dias        = Math.ceil((vencimiento - new Date()) / 864e5);
   if (dias > 7)  return { color:"#16a34a", bg:"#dcfce7", emoji:"🟢", texto:`${dias}d`,        dias, vencimiento };
   if (dias > 3)  return { color:"#d97706", bg:"#fef3c7", emoji:"🟡", texto:`${dias}d`,        dias, vencimiento };

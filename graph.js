@@ -259,6 +259,13 @@ async function crearCampoFechaDerivacion() {
   }
 }
 
+async function getConfiguracionDOM() {
+  const items = await getListItems(CONFIG.lists.configuracion);
+  const cfg = {};
+  items.forEach(i => { if (i.Title && i.Valor !== undefined) cfg[i.Title] = i.Valor; });
+  return cfg;
+}
+
 async function getSolicitudes(extraFilter = "") {
   return getListItems(CONFIG.lists.solicitudes, extraFilter);
 }
