@@ -730,16 +730,23 @@ function renderDirLista() {
     cont.innerHTML = pagina.map(s => {
       const esUrgente = s.Estado === CONFIG.estados.DEVUELTA;
       const esAccion  = s.Estado === CONFIG.estados.INGRESADA || s.Estado === CONFIG.estados.DEVUELTA || s.Estado === CONFIG.estados.RESPONDIDA;
+      const sem       = calcularSemaforo(s);
+      const semBadge  = sem
+        ? `<span style="background:${sem.bg};color:${sem.color};border:1px solid ${sem.color}40;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;">${sem.emoji} ${sem.texto}</span>`
+        : "";
       return `
         <div class="sol-card ${state.solicitudSeleccionada?.id===s.id?'selected':''}"
-          style="border-left-color:${esUrgente?'#ef4444':esAccion?'var(--azul)':'var(--borde)'};"
+          style="border-left-color:${sem&&sem.dias<=1?'#dc2626':esUrgente?'#ef4444':esAccion?'var(--azul)':'var(--borde)'};"
           onclick="seleccionarSolicitudDirector('${s.id}')">
           <div class="sol-card-top">
             <span class="sol-nro">${s.NroSolicitud}</span>
             <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
           </div>
           <div class="sol-card-name">${s.Solicitante}</div>
-          <div class="sol-card-dir">📍 ${s.Direccion||""}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px;">
+            <div class="sol-card-dir" style="margin-top:0;">📍 ${s.Direccion||""}</div>
+            ${semBadge}
+          </div>
           ${s.UnidadDerivada?`<div style="font-size:11px;color:#888;margin-top:3px;">🏢 ${s.UnidadDerivada}</div>`:""}
           ${esUrgente?`<div style="font-size:11px;color:#b91c1c;margin-top:3px;font-weight:600;">⚠️ Requiere re-derivación</div>`:""}
         </div>`;
