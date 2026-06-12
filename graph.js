@@ -192,10 +192,46 @@ async function getAttachmentBlobUrl(downloadUrl, serverRelativeUrl) {
   return blobUrl;
 }
 
+function comprimirImagen(file, maxPx = 1200, quality = 0.82) {
+  const comprimibles = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+  if (!comprimibles.includes(file.type)) return Promise.resolve(file);
+
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      // Si ya es pequeña, no tocar
+      if (img.width <= maxPx && img.height <= maxPx && file.size < 300 * 1024) {
+        resolve(file); return;
+      }
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > maxPx) { h = Math.round(h * maxPx / w); w = maxPx; } }
+      else        { if (h > maxPx) { w = Math.round(w * maxPx / h); h = maxPx; } }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+
+      const outType = file.type === "image/png" ? "image/png" : "image/jpeg";
+      const ext     = file.type === "image/png" ? "png" : "jpg";
+      canvas.toBlob(blob => {
+        if (!blob || blob.size >= file.size) { resolve(file); return; }
+        const nombre = file.name.replace(/\.[^.]+$/, "") + "." + ext;
+        console.info(`[DOM] Compresión: ${(file.size/1024).toFixed(0)}KB → ${(blob.size/1024).toFixed(0)}KB (${nombre})`);
+        resolve(new File([blob], nombre, { type: outType }));
+      }, outType, quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 async function uploadAttachment(listName, itemId, file) {
+  const compressed = await comprimirImagen(file);
   const token = await getSharePointToken();
-  const url = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles/add(FileName='${encodeURIComponent(file.name)}')`;
-  const buf = await file.arrayBuffer();
+  const url = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles/add(FileName='${encodeURIComponent(compressed.name)}')`;
+  const buf = await compressed.arrayBuffer();
   const res = await fetch(url, {
     method: "POST",
     headers: {
