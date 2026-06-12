@@ -17,11 +17,8 @@
 <!-- ===== LOGIN ===== -->
 <div id="login-page" style="display:none;flex-direction:column;min-height:100vh;">
 
-  <!-- Fondo animado: 3 imágenes rotantes -->
   <div class="bg-scene">
-    <div class="bg-img active" id="bg0" style="background-image:url('img/hero.png')"></div>
-    <div class="bg-img"        id="bg1" style="background-image:url('img/fondo.webp')"></div>
-    <div class="bg-img"        id="bg2" style="background-image:url('img/cuerpo.jpg')"></div>
+    <div class="bg-img active" style="background-image:url('img/hero.png')"></div>
     <div class="bg-overlay"></div>
     <div class="bg-stripe"></div>
   </div>
@@ -40,17 +37,6 @@
         <div class="brand-slogan">Tradición y Progreso</div>
       </div>
 
-      <!-- Miniaturas de fondo -->
-      <div class="thumb-strip">
-        <div class="thumb active" id="th0" style="background-image:url('img/hero.png')"  onclick="loginSetImg(0)"></div>
-        <div class="thumb"        id="th1" style="background-image:url('img/fondo.webp')" onclick="loginSetImg(1)"></div>
-        <div class="thumb"        id="th2" style="background-image:url('img/cuerpo.jpg')"onclick="loginSetImg(2)"></div>
-      </div>
-      <div class="dots">
-        <span class="dot active" id="dot0" onclick="loginSetImg(0)"></span>
-        <span class="dot"        id="dot1" onclick="loginSetImg(1)"></span>
-        <span class="dot"        id="dot2" onclick="loginSetImg(2)"></span>
-      </div>
     </div>
 
     <!-- Panel derecho — acceso -->
@@ -291,25 +277,5 @@
 <script src="graph.js?v=20260610"></script>
 <script src="app.js?v=20260610"></script>
 
-<script>
-/* Rotación de fondo login */
-(function() {
-  var current = 0;
-  function loginSetImg(idx) {
-    var bgs  = [document.getElementById('bg0'),  document.getElementById('bg1'),  document.getElementById('bg2')];
-    var ths  = [document.getElementById('th0'),  document.getElementById('th1'),  document.getElementById('th2')];
-    var dots = [document.getElementById('dot0'), document.getElementById('dot1'), document.getElementById('dot2')];
-    bgs[current].classList.remove('active');
-    ths[current].classList.remove('active');
-    dots[current].classList.remove('active');
-    current = idx;
-    bgs[current].classList.add('active');
-    ths[current].classList.add('active');
-    dots[current].classList.add('active');
-  }
-  window.loginSetImg = loginSetImg;
-  setInterval(function() { loginSetImg((current + 1) % 3); }, 5000);
-})();
-</script>
 </body>
 </html>
