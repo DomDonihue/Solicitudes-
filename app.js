@@ -46,6 +46,8 @@ async function initApp() {
     CONFIG.correoSoporte       = cfgSP.CorreoSoporte                 || "enovo@mdonihue.cl";
     // Crear campo FechaDerivacion si aún no existe (idempotente, falla en silencio)
     crearCampoFechaDerivacion().catch(console.warn);
+    // Indexar columnas críticas (idempotente — no hace nada si ya están indexadas)
+    crearIndicesSharePoint().catch(console.warn);
     hideLoading();
     showApp();
   } catch (e) {

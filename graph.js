@@ -239,6 +239,45 @@ async function getUserByEmail(email) {
   return items[0] || null;
 }
 
+async function crearIndicesSharePoint() {
+  const indices = [
+    // Solicitud_Dom — filtros principales de la app
+    { list: CONFIG.lists.solicitudes, field: "Estado" },
+    { list: CONFIG.lists.solicitudes, field: "UnidadDerivada" },
+    { list: CONFIG.lists.solicitudes, field: "NroSolicitud" },
+    { list: CONFIG.lists.solicitudes, field: "FechaRecepcion" },
+    { list: CONFIG.lists.solicitudes, field: "FechaDerivacion" },
+    // HistorialSolicitud — consultado siempre por NroSolicitud
+    { list: CONFIG.lists.historial,   field: "NroSolicitud" },
+    // EvidenciaSolicitudes — consultado por NroSolicitud y SolicitudID
+    { list: CONFIG.lists.evidencias,  field: "NroSolicitud" },
+    { list: CONFIG.lists.evidencias,  field: "SolicitudID" },
+  ];
+  const token = await getSharePointToken();
+  let ok = 0;
+  for (const { list, field } of indices) {
+    try {
+      const url = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(list)}')/fields/getbytitle('${encodeURIComponent(field)}')`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json;odata=nometadata",
+          "Content-Type": "application/json;odata=verbose",
+          "IF-MATCH": "*",
+          "X-HTTP-Method": "MERGE"
+        },
+        body: JSON.stringify({ __metadata: { type: "SP.Field" }, Indexed: true })
+      });
+      if (res.ok || res.status === 204) ok++;
+      else console.warn(`[DOM] Índice ${list}.${field}: HTTP ${res.status}`);
+    } catch(e) {
+      console.warn(`[DOM] Índice ${list}.${field}:`, e.message);
+    }
+  }
+  console.info(`[DOM] Índices SharePoint: ${ok}/${indices.length} aplicados`);
+}
+
 async function crearCampoFechaDerivacion() {
   const url = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(CONFIG.lists.solicitudes)}')/fields`;
   try {
