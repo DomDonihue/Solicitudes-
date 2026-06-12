@@ -1601,8 +1601,23 @@ async function seleccionarSolicitudUnidad(id) {
       return;
     }
     const first = atts.find(a => a.name?.toLowerCase().endsWith('.pdf')) || atts[0];
-    if (pdfHeader) pdfHeader.textContent = `📄 ${sol.NroSolicitud} — ${first.name}`;
     const blobUrl = await getAttachmentBlobUrl(first.downloadUrl, first.serverRelativeUrl);
+    if (pdfHeader) {
+      pdfHeader.style.display = "flex";
+      pdfHeader.innerHTML = `
+        📄 <span style="font-weight:700;margin-left:4px;">${sol.NroSolicitud}</span>
+        <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">— ${first.name}</span>
+        <div style="display:flex;gap:5px;margin-left:8px;flex-shrink:0;">
+          <a href="${blobUrl}" download="${first.name}"
+            style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 10px;border-radius:6px;font-size:12px;text-decoration:none;white-space:nowrap;">
+            ⬇ Descargar
+          </a>
+          <button onclick="(function(){var w=window.open('${blobUrl}','_blank');if(w)setTimeout(function(){w.print();},800);})()"
+            style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;">
+            🖨 Imprimir
+          </button>
+        </div>`;
+    }
     pdfPanel.innerHTML = "";
     if (first.name?.toLowerCase().endsWith('.pdf') && typeof pdfjsLib !== "undefined") {
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
