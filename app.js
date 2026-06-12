@@ -208,24 +208,26 @@ function renderFiltrosCompact() {
 function renderStatsCompact() {
   const cont = document.getElementById("panel-stats");
   if (!cont) return;
+  const filtradas = getSolicitudesFiltradas();
   const counts = {};
-  getSolicitudesFiltradas().forEach(s => { counts[s.Estado] = (counts[s.Estado]||0)+1; });
-  const total = getSolicitudesFiltradas().length;
+  filtradas.forEach(s => { counts[s.Estado] = (counts[s.Estado]||0)+1; });
+  const total = filtradas.length;
   cont.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;">
       ${[
-        {e:"Ingresada",color:"#dbeafe",tc:"#1d4ed8",icon:"📥"},
-        {e:"Derivada",color:"#fef3c7",tc:"#b45309",icon:"📤"},
-        {e:"En Proceso",color:"#cffafe",tc:"#0e7490",icon:"⚙️"},
-        {e:"Respondida",color:"#dcfce7",tc:"#15803d",icon:"✅"},
-        {e:"Devuelta",color:"#fee2e2",tc:"#b91c1c",icon:"↩️"},
-        {e:"Cerrada",color:"#f3f4f6",tc:"#4b5563",icon:"🔒"}
-      ].map(({e,color,tc,icon})=>`
+        {e:"Ingresada",       lbl:"Ingresada",    color:"#dbeafe",tc:"#1d4ed8",icon:"📥"},
+        {e:"Derivada",        lbl:"Derivada",      color:"#fef3c7",tc:"#b45309",icon:"📤"},
+        {e:"En Proceso",      lbl:"En Proceso",    color:"#cffafe",tc:"#0e7490",icon:"⚙️"},
+        {e:"Respondida",      lbl:"Respondida",    color:"#dcfce7",tc:"#15803d",icon:"✅"},
+        {e:"Devuelta",        lbl:"Devuelta",      color:"#fee2e2",tc:"#b91c1c",icon:"↩️"},
+        {e:"Pendiente de Cierre", lbl:"Pend. Cierre", color:"#fef9c3",tc:"#854d0e",icon:"⏳"},
+        {e:"Cerrada",         lbl:"Cerrada",       color:"#f3f4f6",tc:"#4b5563",icon:"🔒"}
+      ].map(({e,lbl,color,tc,icon})=>`
         <div onclick="state.filtroEstado='${e}';state.pagina=1;renderListaSolicitudes();renderStatsCompact()"
           style="background:${color};border-radius:8px;padding:8px;text-align:center;cursor:pointer;">
           <div style="font-size:11px;">${icon}</div>
           <div style="font-size:18px;font-weight:700;color:${tc};line-height:1.2;">${counts[e]||0}</div>
-          <div style="font-size:10px;color:${tc};">${e}</div>
+          <div style="font-size:10px;color:${tc};">${lbl}</div>
         </div>`).join("")}
     </div>
     <div style="text-align:center;font-size:12px;color:#9ca3af;margin-top:6px;">Total: ${total}</div>`;
@@ -234,7 +236,7 @@ function renderStatsCompact() {
 function getSolicitudesFiltradas() {
   return state.solicitudes.filter(s => {
     if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
-    if (state.filtroUnidad !== "Todas" && s.UnidadDerivada !== state.filtroUnidad) return false;
+    if (state.filtroUnidad !== "Todas" && (s.UnidadDerivada||"").trim() !== state.filtroUnidad) return false;
     if (state.filtroBuscar) {
       const q = state.filtroBuscar.toLowerCase();
       if (!s.NroSolicitud?.toLowerCase().includes(q) &&
@@ -243,7 +245,7 @@ function getSolicitudesFiltradas() {
           !s.Solicitud?.toLowerCase().includes(q)) return false;
     }
     if (state.filtroDesde && new Date(s.FechaRecepcion) < new Date(state.filtroDesde)) return false;
-    if (state.filtroHasta && new Date(s.FechaRecepcion) > new Date(state.filtroHasta)) return false;
+    if (state.filtroHasta && new Date(s.FechaRecepcion) > new Date(state.filtroHasta + "T23:59:59")) return false;
     return true;
   });
 }
@@ -1487,7 +1489,7 @@ async function renderUnidad() {
   showLoading("Cargando...");
   try {
     const all = await getSolicitudes();
-    state.solicitudes = all.filter(s => s.UnidadDerivada === state.usuario.Unidad);
+    state.solicitudes = all.filter(s => (s.UnidadDerivada||"").trim() === (state.usuario.Unidad||"").trim());
     // Orden: Devuelta > Derivada > En Proceso > Respondida > Cerrada
     state.solicitudes = ordenarSolicitudes(state.solicitudes);
     renderSidebarUnidad();
@@ -1904,6 +1906,7 @@ async function responderSolicitud(solId) {
     const accionNotif = esPendienteCierre ? "2ª respuesta registrada — Pendiente de Cierre" : "Solicitud respondida por unidad";
     notificarDirector({ ...sol, Estado: nuevoEstado }, accionNotif);
     showToast("success", esPendienteCierre ? "📋 2ª respuesta registrada" : "✅ Solicitud respondida");
+    _evFiles.splice(0);
     await renderUnidad();
   } catch (e) {
     showToast("error", "Error: " + e.message);
@@ -2118,7 +2121,7 @@ function filtrarAdmin() {
   const unidad = document.getElementById("adm-filtro-unidad")?.value||"";
   const filtradas = _adminSolicitudes.filter(s => {
     if (estado && s.Estado !== estado) return false;
-    if (unidad && s.UnidadDerivada !== unidad) return false;
+    if (unidad && (s.UnidadDerivada||"").trim() !== unidad) return false;
     if (q) return (s.NroSolicitud||"").toLowerCase().includes(q) ||
                   (s.Solicitante||"").toLowerCase().includes(q) ||
                   (s.Direccion||"").toLowerCase().includes(q);
@@ -3425,10 +3428,13 @@ function formatFechaHora(iso) {
 function updateTabBadges() {
   const ingresadas = state.solicitudes.filter(s => s.Estado === "Ingresada").length;
   document.querySelectorAll(".tab-btn").forEach(b => {
-    if (b.dataset.tab === "solicitudes" && ingresadas > 0) {
-      const badge = b.querySelector(".badge") || Object.assign(document.createElement("span"), {className:"badge warn"});
+    if (b.dataset.tab !== "solicitudes") return;
+    let badge = b.querySelector(".badge");
+    if (ingresadas > 0) {
+      if (!badge) { badge = document.createElement("span"); badge.className = "badge warn"; b.appendChild(badge); }
       badge.textContent = ingresadas;
-      b.appendChild(badge);
+    } else if (badge) {
+      badge.remove();
     }
   });
 }
