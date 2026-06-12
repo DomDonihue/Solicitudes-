@@ -989,8 +989,8 @@ function renderDetalleDirector(sol) {
       </div>
     </div>` : ""}
 
-    ${sol.Estado !== CONFIG.estados.CERRADA ? `
-    <!-- Cierre directo por Director -->
+    ${sol.Estado === CONFIG.estados.INGRESADA ? `
+    <!-- Cierre directo por Director — solo disponible antes de derivar -->
     <div class="accion-panel">
       <div class="accion-header" style="background:linear-gradient(90deg,#7f1d1d,#b91c1c);color:white;padding:8px 14px;font-size:12px;font-weight:700;">
         🚫 Cierre Directo — No Corresponde a DOM
