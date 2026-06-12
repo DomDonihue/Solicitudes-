@@ -39,6 +39,8 @@ async function initApp() {
     if (unidadesSP.length) {
       CONFIG.unidades = unidadesSP.map(u => u.Title).filter(Boolean);
     }
+    // Crear campo FechaDerivacion si aún no existe (idempotente, falla en silencio)
+    crearCampoFechaDerivacion().catch(console.warn);
     hideLoading();
     showApp();
   } catch (e) {
@@ -1341,7 +1343,7 @@ async function derivarSolicitud(solId) {
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
     const esRederivar = sol.Estado === CONFIG.estados.DEVUELTA;
-    const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad };
+    const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad, FechaDerivacion:new Date().toISOString() };
     if (obs) updateFields.Acciones = obs;
     await actualizarSolicitud(solId, updateFields);
     registrarHistorial({
@@ -3476,8 +3478,9 @@ async function guardarEdicionSolicitud(solId) {
 const PLAZO_DERIVADA_DIAS = 15;
 function calcularSemaforo(sol) {
   const activos = [CONFIG.estados.DERIVADA, CONFIG.estados.EN_PROCESO];
-  if (!activos.includes(sol.Estado) || !sol.FechaRecepcion) return null;
-  const inicio      = new Date(sol.FechaRecepcion);
+  if (!activos.includes(sol.Estado)) return null;
+  const inicio      = new Date(sol.FechaDerivacion || sol.FechaRecepcion);
+  if (isNaN(inicio)) return null;
   const vencimiento = new Date(inicio.getTime() + PLAZO_DERIVADA_DIAS * 864e5);
   const dias        = Math.ceil((vencimiento - new Date()) / 864e5);
   if (dias > 7)  return { color:"#16a34a", bg:"#dcfce7", emoji:"🟢", texto:`${dias}d`,        dias, vencimiento };

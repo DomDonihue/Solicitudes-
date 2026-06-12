@@ -239,6 +239,26 @@ async function getUserByEmail(email) {
   return items[0] || null;
 }
 
+async function crearCampoFechaDerivacion() {
+  const url = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(CONFIG.lists.solicitudes)}')/fields`;
+  try {
+    await spFetch(url, {
+      method: "POST",
+      body: JSON.stringify({
+        __metadata: { type: "SP.FieldDateTime" },
+        Title: "FechaDerivacion",
+        FieldTypeKind: 4,
+        AddToDefaultView: true,
+        Required: false
+      })
+    });
+    console.info("[DOM] Campo FechaDerivacion creado en SharePoint.");
+  } catch(e) {
+    // 400 "duplicate" = ya existe → ignorar; cualquier otro error → solo advertencia
+    if (!e.message.includes("400")) console.warn("[DOM] FechaDerivacion:", e.message);
+  }
+}
+
 async function getSolicitudes(extraFilter = "") {
   return getListItems(CONFIG.lists.solicitudes, extraFilter);
 }
