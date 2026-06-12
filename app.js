@@ -1495,6 +1495,7 @@ async function renderUnidad() {
     renderSidebarUnidad();
     renderDetalleUnidad(null);
     updateTabBadges();
+    verificarVencimientosUnidad();
   } catch (e) {
     showToast("error", "Error: " + e.message);
   } finally {
@@ -1559,14 +1560,24 @@ function renderSidebarUnidad() {
     <div style="flex:1;overflow-y:auto;padding:12px;">
       ${pagina.length === 0 ? '<p style="text-align:center;color:#9ca3af;padding:40px">Sin solicitudes</p>' :
         pagina.map(s => `
+          ${(() => {
+            const sem = calcularSemaforo(s);
+            const semBadge = sem
+              ? `<span style="background:${sem.bg};color:${sem.color};border:1px solid ${sem.color}40;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;">${sem.emoji} ${sem.texto}</span>`
+              : "";
+            return `
           <div class="sol-card ${state.solicitudSeleccionada?.id === s.id ? 'selected' : ''}" onclick="seleccionarSolicitudUnidad('${s.id}')">
             <div class="sol-card-top">
               <span class="sol-nro">${s.NroSolicitud}</span>
               <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
             </div>
             <div class="sol-card-name">${s.Solicitante}</div>
-            <div class="sol-card-dir">📍 ${s.Direccion || ""}</div>
-          </div>`).join("")}
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px;">
+              <div class="sol-card-dir" style="margin-top:0;">📍 ${s.Direccion || ""}</div>
+              ${semBadge}
+            </div>
+          </div>`;
+          })()}`).join("")}
     </div>
     <div class="paginacion">
       <button onclick="cambiarPaginaUni(${state.pagina-1})" ${state.pagina<=1?'disabled':''}>‹</button>
@@ -1579,6 +1590,22 @@ function filtrarUnidad(estado) {
   state.filtroEstado = estado;
   state.pagina = 1;
   renderSidebarUnidad();
+}
+
+function verificarVencimientosUnidad() {
+  const criticas = state.solicitudes.filter(s => {
+    const sem = calcularSemaforo(s);
+    return sem && sem.dias <= 1;
+  });
+  if (!criticas.length) return;
+  const hoy    = criticas.filter(s => calcularSemaforo(s).dias === 0);
+  const manana = criticas.filter(s => calcularSemaforo(s).dias === 1);
+  const venc   = criticas.filter(s => calcularSemaforo(s).dias < 0);
+  const partes = [];
+  if (venc.length)   partes.push(`${venc.length} vencida${venc.length>1?'s':''}`);
+  if (hoy.length)    partes.push(`${hoy.length} vence hoy`);
+  if (manana.length) partes.push(`${manana.length} vence mañana`);
+  showToast("error", `⏰ Plazo crítico: ${partes.join(" · ")}`);
 }
 function cambiarPaginaUni(p) { state.pagina = p; renderSidebarUnidad(); }
 
@@ -1677,10 +1704,25 @@ async function renderDetalleUnidad(sol) {
   const placoBruto = sol.FechaCierre || null;
   const plazoCierreTexto = placoBruto ? formatFecha(placoBruto) : null;
 
+  const sem = calcularSemaforo(sol);
+  const semBanner = sem ? `
+    <div style="background:${sem.bg};border-bottom:2px solid ${sem.color};padding:8px 14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">${sem.emoji}</span>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:700;color:${sem.color};">
+          ${sem.dias > 0
+            ? `Plazo: ${sem.dias === 1 ? "Vence mañana" : `${sem.dias} días restantes`}`
+            : sem.dias === 0 ? "⚠️ Vence hoy" : `⚠️ Plazo vencido hace ${Math.abs(sem.dias)} día${Math.abs(sem.dias)>1?'s':''}`}
+        </div>
+        <div style="font-size:11px;color:${sem.color};opacity:0.8;">Límite ${PLAZO_DERIVADA_DIAS} días · Vence el ${formatFecha(sem.vencimiento.toISOString())}</div>
+      </div>
+    </div>` : "";
+
   cont.innerHTML = `
     <div style="overflow-y:auto;height:100%;display:flex;flex-direction:column;gap:0;">
       <button class="mobile-back-bar" onclick="volverAListaMovil('.uni-layout')">← Volver a lista</button>
       <div class="panel-header" style="background:#f8fafc;border-bottom:1px solid var(--borde);">📋 ${sol.NroSolicitud} — ${sol.Solicitante}</div>
+      ${semBanner}
 
       <!-- Datos generales -->
       <div style="padding:12px;background:#f8fafc;border-bottom:1px solid var(--borde);">
@@ -3429,6 +3471,20 @@ async function guardarEdicionSolicitud(solId) {
   } catch(e) {
     showToast("error","Error: "+e.message);
   } finally { hideLoading(); }
+}
+
+const PLAZO_DERIVADA_DIAS = 15;
+function calcularSemaforo(sol) {
+  const activos = [CONFIG.estados.DERIVADA, CONFIG.estados.EN_PROCESO];
+  if (!activos.includes(sol.Estado) || !sol.FechaRecepcion) return null;
+  const inicio      = new Date(sol.FechaRecepcion);
+  const vencimiento = new Date(inicio.getTime() + PLAZO_DERIVADA_DIAS * 864e5);
+  const dias        = Math.ceil((vencimiento - new Date()) / 864e5);
+  if (dias > 7)  return { color:"#16a34a", bg:"#dcfce7", emoji:"🟢", texto:`${dias}d`,        dias, vencimiento };
+  if (dias > 3)  return { color:"#d97706", bg:"#fef3c7", emoji:"🟡", texto:`${dias}d`,        dias, vencimiento };
+  if (dias > 0)  return { color:"#dc2626", bg:"#fee2e2", emoji:"🔴", texto:`${dias}d`,        dias, vencimiento };
+  if (dias === 0) return { color:"#dc2626", bg:"#fee2e2", emoji:"🔴", texto:"Hoy",            dias, vencimiento };
+  return           { color:"#7f1d1d",  bg:"#fecaca",  emoji:"⚫", texto:`+${Math.abs(dias)}d`, dias, vencimiento };
 }
 
 function formatFecha(iso) {
