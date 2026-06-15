@@ -1,3 +1,7 @@
+// ===== PDF VISOR STATE (unidad) =====
+let _uniPdfDoc  = null;
+let _uniPdfZoom = 1.0;
+
 // ===== STATE =====
 const state = {
   usuario: null,
@@ -852,7 +856,21 @@ function renderDetalleDirector(sol) {
       </div>`;
   }
 
-  cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;padding:14px;">
+  const sem = calcularSemaforo(sol);
+  const semBanner = sem ? `
+    <div style="background:${sem.bg};border-bottom:2px solid ${sem.color};padding:8px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <span style="font-size:20px;">${sem.emoji}</span>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:700;color:${sem.color};">
+          ${sem.dias > 0
+            ? `Plazo: ${sem.dias === 1 ? "Vence mañana" : `${sem.dias} días restantes`}`
+            : sem.dias === 0 ? "⚠️ Vence hoy" : `⚠️ Plazo vencido hace ${Math.abs(sem.dias)} día${Math.abs(sem.dias)>1?'s':''}`}
+        </div>
+        <div style="font-size:11px;color:${sem.color};opacity:0.8;">Límite ${CONFIG.plazoDerivacionDias||15} días · Vence el ${formatFecha(sem.vencimiento.toISOString())}</div>
+      </div>
+    </div>` : "";
+
+  cont.innerHTML = `${semBanner}<div style="display:flex;flex-direction:column;gap:12px;padding:14px;">
 
     <!-- Datos básicos: solicitante, fecha, nro -->
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;">
@@ -1637,6 +1655,8 @@ async function seleccionarSolicitudUnidad(id) {
   const pdfPanel = document.getElementById("uni-pdf");
   const pdfHeader = document.getElementById("uni-pdf-header");
   if (!pdfPanel || !sol) return;
+  _uniPdfDoc  = null;
+  _uniPdfZoom = 1.0;
   pdfPanel.innerHTML = `<div style="text-align:center;color:#9ca3af;padding:30px;"><div class="spinner" style="margin:0 auto 12px;"></div><p>Cargando documento...</p></div>`;
   try {
     const atts = await getListItemAttachments(CONFIG.lists.solicitudes, sol.id);
@@ -1646,12 +1666,20 @@ async function seleccionarSolicitudUnidad(id) {
     }
     const first = atts.find(a => a.name?.toLowerCase().endsWith('.pdf')) || atts[0];
     const blobUrl = await getAttachmentBlobUrl(first.downloadUrl, first.serverRelativeUrl);
+    const isPdf = first.name?.toLowerCase().endsWith('.pdf') && typeof pdfjsLib !== "undefined";
     if (pdfHeader) {
       pdfHeader.style.display = "flex";
       pdfHeader.innerHTML = `
         📄 <span style="font-weight:700;margin-left:4px;">${sol.NroSolicitud}</span>
         <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">— ${first.name}</span>
-        <div style="display:flex;gap:5px;margin-left:8px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:4px;margin-left:8px;flex-shrink:0;">
+          ${isPdf ? `
+          <button onclick="zoomUniPdf(-0.25)"
+            style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;" title="Alejar">−</button>
+          <span id="uni-pdf-zoom-label" style="font-size:11px;min-width:34px;text-align:center;opacity:0.85;">100%</span>
+          <button onclick="zoomUniPdf(0.25)"
+            style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;" title="Acercar">+</button>
+          <div style="width:1px;height:20px;background:rgba(255,255,255,0.25);margin:0 2px;"></div>` : ""}
           <a href="${blobUrl}" download="${first.name}"
             style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 10px;border-radius:6px;font-size:12px;text-decoration:none;white-space:nowrap;">
             ⬇ Descargar
@@ -1663,30 +1691,14 @@ async function seleccionarSolicitudUnidad(id) {
         </div>`;
     }
     pdfPanel.innerHTML = "";
-    if (first.name?.toLowerCase().endsWith('.pdf') && typeof pdfjsLib !== "undefined") {
+    if (isPdf) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
       const wrap = document.createElement("div");
+      wrap.id = "uni-pdf-wrap";
       wrap.style.cssText = "flex:1;overflow-y:auto;background:#525659;border-radius:8px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:0;";
       pdfPanel.appendChild(wrap);
-      const pdf = await pdfjsLib.getDocument(blobUrl).promise;
-      for (let p = 1; p <= pdf.numPages; p++) {
-        const page = await pdf.getPage(p);
-        const w = (wrap.clientWidth || 350) - 20;
-        const vp = page.getViewport({ scale: 1 });
-        const scale = w / vp.width;
-        const svp = page.getViewport({ scale });
-        const canvas = document.createElement("canvas");
-        canvas.width = svp.width; canvas.height = svp.height;
-        canvas.style.cssText = "width:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);";
-        await page.render({ canvasContext: canvas.getContext("2d"), viewport: svp }).promise;
-        wrap.appendChild(canvas);
-        if (p < pdf.numPages) {
-          const sep = document.createElement("div");
-          sep.style.cssText = "color:rgba(255,255,255,0.35);font-size:11px;";
-          sep.textContent = `— ${p} / ${pdf.numPages} —`;
-          wrap.appendChild(sep);
-        }
-      }
+      _uniPdfDoc = await pdfjsLib.getDocument(blobUrl).promise;
+      await _renderUniPdfPages();
     } else {
       const img = document.createElement("img");
       img.src = blobUrl;
@@ -1696,6 +1708,121 @@ async function seleccionarSolicitudUnidad(id) {
   } catch(e) {
     pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>⚠️</span><p style="color:#ef4444;font-size:13px;">No se pudo cargar el documento</p></div>`;
   }
+}
+
+async function _renderUniPdfPages() {
+  const wrap = document.getElementById("uni-pdf-wrap");
+  if (!wrap || !_uniPdfDoc) return;
+  wrap.innerHTML = `<div style="text-align:center;color:rgba(255,255,255,0.5);padding:12px;font-size:12px;">Renderizando...</div>`;
+  const baseW = (wrap.clientWidth || 350) - 20;
+  const frag = document.createDocumentFragment();
+  for (let p = 1; p <= _uniPdfDoc.numPages; p++) {
+    const page = await _uniPdfDoc.getPage(p);
+    const vp = page.getViewport({ scale: 1 });
+    const scale = (baseW / vp.width) * _uniPdfZoom;
+    const svp = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = svp.width; canvas.height = svp.height;
+    canvas.style.cssText = "max-width:100%;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:block;";
+    await page.render({ canvasContext: canvas.getContext("2d"), viewport: svp }).promise;
+    frag.appendChild(canvas);
+    if (p < _uniPdfDoc.numPages) {
+      const sep = document.createElement("div");
+      sep.style.cssText = "color:rgba(255,255,255,0.35);font-size:11px;text-align:center;padding:2px;";
+      sep.textContent = `— ${p} / ${_uniPdfDoc.numPages} —`;
+      frag.appendChild(sep);
+    }
+  }
+  wrap.innerHTML = "";
+  wrap.appendChild(frag);
+}
+
+function zoomUniPdf(delta) {
+  _uniPdfZoom = Math.max(0.5, Math.min(3.0, _uniPdfZoom + delta));
+  const label = document.getElementById("uni-pdf-zoom-label");
+  if (label) label.textContent = Math.round(_uniPdfZoom * 100) + "%";
+  _renderUniPdfPages();
+}
+
+function imprimirSolicitudUnidad(sol) {
+  if (!sol) return;
+  const sem = calcularSemaforo(sol);
+  const semTexto = sem
+    ? (sem.dias > 0
+        ? `${sem.emoji} ${sem.dias === 1 ? "Vence mañana" : `${sem.dias} días restantes`} (límite ${CONFIG.plazoDerivacionDias||15} días, vence ${formatFecha(sem.vencimiento.toISOString())})`
+        : sem.dias === 0
+          ? `${sem.emoji} Vence hoy`
+          : `${sem.emoji} Plazo vencido hace ${Math.abs(sem.dias)} día${Math.abs(sem.dias)>1?'s':''}`)
+    : "";
+  const w = window.open("", "_blank", "width=800,height=900");
+  if (!w) { showToast("error","El navegador bloqueó la ventana emergente. Permite ventanas emergentes para este sitio."); return; }
+  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Solicitud ${sol.NroSolicitud} — DOM Doñihue</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Segoe UI',Arial,sans-serif; font-size:13px; color:#1a202c; background:#fff; padding:28px; }
+  .header { display:flex; align-items:center; gap:16px; border-bottom:3px solid #1a3a6b; padding-bottom:14px; margin-bottom:18px; }
+  .header h1 { font-size:17px; color:#1a3a6b; font-weight:800; }
+  .header p  { font-size:11px; color:#6b7280; margin-top:2px; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;
+    background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+  table { width:100%; border-collapse:collapse; margin-bottom:14px; }
+  th { background:#f1f5f9; color:#475569; font-size:10px; font-weight:700; letter-spacing:0.5px;
+    text-transform:uppercase; padding:7px 10px; text-align:left; border:1px solid #e2e8f0; }
+  td { padding:8px 10px; border:1px solid #e2e8f0; vertical-align:top; line-height:1.5; }
+  .section-title { font-size:11px; font-weight:800; color:#1a3a6b; text-transform:uppercase;
+    letter-spacing:0.5px; margin:16px 0 6px; border-left:3px solid #1a3a6b; padding-left:8px; }
+  .descripcion { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px;
+    padding:12px; font-size:13px; line-height:1.7; margin-bottom:14px; white-space:pre-wrap; }
+  .semaforo { padding:8px 14px; border-radius:6px; font-size:12px; font-weight:700;
+    margin-bottom:14px; border:1px solid; }
+  .footer { margin-top:24px; border-top:1px solid #e2e8f0; padding-top:10px;
+    font-size:10px; color:#9ca3af; display:flex; justify-content:space-between; }
+  @media print {
+    body { padding:12px; }
+    .no-print { display:none !important; }
+  }
+</style></head><body>
+<div class="header">
+  <div>
+    <h1>Dirección de Obras — Municipalidad de Doñihue</h1>
+    <p>Registro de Solicitud · Sistema DOM</p>
+  </div>
+</div>
+<button class="no-print" onclick="window.print()"
+  style="margin-bottom:16px;padding:8px 18px;background:#1a3a6b;color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">
+  🖨 Imprimir / Guardar PDF
+</button>
+${sem ? `<div class="semaforo" style="background:${sem.bg};color:${sem.color};border-color:${sem.color}40;">${semTexto}</div>` : ""}
+<div class="section-title">Datos de la Solicitud</div>
+<table>
+  <tr><th>Nro Solicitud</th><td><strong>${sol.NroSolicitud||"-"}</strong></td><th>Estado</th><td><span class="badge">${sol.Estado||"-"}</span></td></tr>
+  <tr><th>Fecha Recepción</th><td>${formatFecha(sol.FechaRecepcion)}</td><th>Unidad</th><td>${sol.UnidadDerivada||"-"}</td></tr>
+  ${sol.FechaDerivacion?`<tr><th>Fecha Derivación</th><td colspan="3">${formatFecha(sol.FechaDerivacion)}</td></tr>`:""}
+</table>
+<div class="section-title">Solicitante</div>
+<table>
+  <tr><th>Nombre</th><td>${sol.Solicitante||"-"}</td><th>RUT</th><td>${sol.Rut||"-"}</td></tr>
+  <tr><th>Dirección</th><td colspan="3">${sol.Direccion||"-"}</td></tr>
+  ${sol.Correo?`<tr><th>Correo</th><td colspan="3">${sol.Correo}</td></tr>`:""}
+  ${sol.Telefono?`<tr><th>Teléfono</th><td colspan="3">${sol.Telefono}</td></tr>`:""}
+</table>
+<div class="section-title">Descripción</div>
+<div class="descripcion">${sol.Solicitud||"Sin descripción registrada"}</div>
+${sol.Acciones?`<div class="section-title">Instrucciones del Director</div><div class="descripcion">${sol.Acciones}</div>`:""}
+<div style="margin-top:20px;border:1px solid #e2e8f0;border-radius:6px;padding:14px;">
+  <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">Observaciones / Respuesta de la Unidad</div>
+  <div style="height:80px;border-bottom:1px dashed #d1d5db;"></div>
+  <div style="height:80px;border-bottom:1px dashed #d1d5db;"></div>
+  <div style="height:80px;"></div>
+</div>
+<div class="footer">
+  <span>DOM · Municipalidad de Doñihue</span>
+  <span>Impreso: ${new Date().toLocaleString("es-CL")}</span>
+</div>
+</body></html>`);
+  w.document.close();
+  w.focus();
 }
 
 async function renderDetalleUnidad(sol) {
@@ -1738,7 +1865,12 @@ async function renderDetalleUnidad(sol) {
   cont.innerHTML = `
     <div style="overflow-y:auto;height:100%;display:flex;flex-direction:column;gap:0;">
       <button class="mobile-back-bar" onclick="volverAListaMovil('.uni-layout')">← Volver a lista</button>
-      <div class="panel-header" style="background:#f8fafc;border-bottom:1px solid var(--borde);">📋 ${sol.NroSolicitud} — ${sol.Solicitante}</div>
+      <div class="panel-header" style="background:#f8fafc;border-bottom:1px solid var(--borde);display:flex;align-items:center;gap:8px;">
+        <span style="flex:1;">📋 ${sol.NroSolicitud} — ${sol.Solicitante}</span>
+        <button onclick="imprimirSolicitudUnidad(state.solicitudSeleccionada)"
+          style="background:#1a3a6b;color:white;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;"
+          title="Imprimir ficha de esta solicitud">🖨 Imprimir</button>
+      </div>
       ${semBanner}
 
       <!-- Datos generales -->
