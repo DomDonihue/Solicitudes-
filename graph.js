@@ -448,12 +448,22 @@ async function crearEvidencia(fields) {
   try {
     return await createListItem(CONFIG.lists.evidencias, fields);
   } catch(e) {
-    if (e.message.includes("InvalidClientQueryException") || e.message.includes("no es tipo") || e.message.includes("is not of type")) {
-      console.warn("[DOM] Columnas faltantes en EvidenciaSolicitudes — creando y reintentando...");
-      await crearCamposEvidencia();
+    const esFaltaColumna = e.message.includes("InvalidClientQueryException") || e.message.includes("no es tipo") || e.message.includes("is not of type");
+    if (!esFaltaColumna) throw e;
+
+    // Intentar crear columnas (solo funciona si el usuario tiene permisos admin)
+    await crearCamposEvidencia().catch(() => {});
+
+    // Reintentar con campos completos
+    try {
       return await createListItem(CONFIG.lists.evidencias, fields);
+    } catch(e2) {
+      // Fallback: guardar solo Title — el adjunto se sube igual como attachment
+      console.warn("[DOM] Evidencia sin columnas extra (permisos insuficientes). El administrador debe iniciar sesión para crear las columnas.", e2.message);
+      return await createListItem(CONFIG.lists.evidencias, {
+        Title: fields.Title || `Evidencia ${fields.SolicitudID || "?"}`
+      });
     }
-    throw e;
   }
 }
 

@@ -1265,8 +1265,8 @@ function abrirLightbox(blobUrl, nombre) {
   document.body.appendChild(overlay);
 }
 
-async function cargarHistorialDir(nroSolicitud) {
-  const hc = document.getElementById("dir-historial");
+async function cargarHistorialDir(nroSolicitud, containerId = "dir-historial") {
+  const hc = document.getElementById(containerId);
   if (!hc) return;
   hc.innerHTML = `<div style="text-align:center;color:#9ca3af;font-size:12px;padding:10px;"><div class="spinner" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>Cargando...</div>`;
   try {
@@ -1980,15 +1980,28 @@ async function renderDetalleUnidad(sol) {
           <button class="btn-primary" style="background:#0e7490;padding:10px;" onclick="enProcesoSolicitud('${sol.id}')">⚙️ En Proceso</button>
           <button class="btn-warning" style="padding:10px;" onclick="devolverSolicitudUnidad('${sol.id}')">↩️ Devolver</button>
         </div>` : ""}
-        <button onclick="verHistorial('${sol.NroSolicitud}')" style="width:100%;padding:9px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#6b7280;">🕐 Ver Historial</button>
       </div>` : `
       <div style="padding:14px;">
         <div style="background:#f3f4f6;border-radius:8px;padding:14px;text-align:center;color:#6b7280;font-size:13px;">
           🔒 Solicitud cerrada — solo lectura
         </div>
-        <button onclick="verHistorial('${sol.NroSolicitud}')" style="width:100%;margin-top:10px;padding:9px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#6b7280;">🕐 Ver Historial</button>
       </div>`}
+
+      <!-- Hilo de interacciones -->
+      <div style="border-top:2px solid #e2e8f0;">
+        <div style="background:linear-gradient(90deg,#1e3a5f,#1a3a6b);color:white;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:0.3px;">
+          💬 Historial de Interacciones
+        </div>
+        <div id="uni-hilo" style="padding:8px 12px;max-height:320px;overflow-y:auto;">
+          <div style="text-align:center;color:#9ca3af;font-size:12px;padding:16px;">
+            <div class="spinner" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>Cargando...
+          </div>
+        </div>
+      </div>
     </div>`;
+
+  // ── Hilo de interacciones (historial + evidencias) ──
+  cargarHistorialDir(sol.NroSolicitud, "uni-hilo");
 
   // ── Cargar imágenes adjuntas de cada evidencia registrada ──
   for (const ev of evidencias) {
