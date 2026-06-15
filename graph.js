@@ -419,11 +419,11 @@ async function getEvidenciasBySolicitud(nroSolicitud, solicitudId = null) {
   const nro = String(nroSolicitud || "").trim();
   const idNum = solicitudId ? parseInt(solicitudId) : null;
 
-  // Intentar filtro en servidor (requiere columnas indexadas en SharePoint)
+  // Filtrar por SolicitudID (número, siempre confiable) y como fallback por Title (= NroSolicitud)
   try {
     const partes = [];
-    if (nro) partes.push(`NroSolicitud eq '${nro.replace(/'/g, "''")}'`);
     if (idNum) partes.push(`SolicitudID eq ${idNum}`);
+    if (nro)   partes.push(`Title eq '${nro.replace(/'/g, "''")}'`);
     if (!partes.length) return [];
     const filter = partes.join(" or ");
     return await getListItems(CONFIG.lists.evidencias, filter);
@@ -433,8 +433,8 @@ async function getEvidenciasBySolicitud(nroSolicitud, solicitudId = null) {
     try {
       const todas = await getListItems(CONFIG.lists.evidencias);
       return todas.filter(ev => {
-        if (nro && String(ev.NroSolicitud || "").trim() === nro) return true;
         if (idNum && (parseInt(ev.SolicitudID) === idNum || parseInt(ev.SolicitudId) === idNum)) return true;
+        if (nro && (String(ev.Title || "").trim() === nro || String(ev.NroSolicitud || "").trim() === nro)) return true;
         return false;
       });
     } catch(e2) {
