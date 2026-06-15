@@ -334,27 +334,44 @@ async function crearCampoFechaDerivacion() {
   }
 }
 
-async function crearCamposEvidencia() {
-  const listUrl = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(CONFIG.lists.evidencias)}')/fields`;
-  const campos = [
-    { Title: "NroSolicitud",       FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
-    { Title: "SolicitudID",        FieldTypeKind: 9, __metadata: { type: "SP.FieldNumber" } },
-    { Title: "Unidad",             FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
-    { Title: "DescripcionEvidencia", FieldTypeKind: 3, __metadata: { type: "SP.FieldMultiLineText" } },
-    { Title: "FechaCarga",         FieldTypeKind: 4, __metadata: { type: "SP.FieldDateTime" } },
-    { Title: "Responsable",        FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
-  ];
+async function _crearCamposLista(listName, campos) {
+  const listUrl = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/fields`;
   for (const campo of campos) {
     try {
       await spFetch(listUrl, {
         method: "POST",
         body: JSON.stringify({ ...campo, AddToDefaultView: true, Required: false })
       });
-      console.info(`[DOM] Campo ${campo.Title} creado en EvidenciaSolicitudes.`);
+      console.info(`[DOM] Campo ${campo.Title} creado en ${listName}.`);
     } catch(e) {
-      if (!e.message.includes("400")) console.warn(`[DOM] EvidenciaSolicitudes.${campo.Title}:`, e.message);
+      if (!e.message.includes("400")) console.warn(`[DOM] ${listName}.${campo.Title}:`, e.message);
     }
   }
+}
+
+async function crearCamposEvidencia() {
+  await _crearCamposLista(CONFIG.lists.evidencias, [
+    { Title: "NroSolicitud",         FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "SolicitudID",          FieldTypeKind: 9, __metadata: { type: "SP.FieldNumber" } },
+    { Title: "Unidad",               FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "DescripcionEvidencia", FieldTypeKind: 3, __metadata: { type: "SP.FieldMultiLineText" } },
+    { Title: "FechaCarga",           FieldTypeKind: 4, __metadata: { type: "SP.FieldDateTime" } },
+    { Title: "Responsable",          FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+  ]);
+}
+
+async function crearCamposHistorial() {
+  await _crearCamposLista(CONFIG.lists.historial, [
+    { Title: "NroSolicitud",   FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "Accion",         FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "EstadoAnterior", FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "EstadoNuevo",    FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "UsuarioAccion",  FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "RolUsuario",     FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "Unidad",         FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "FechaAccion",    FieldTypeKind: 4, __metadata: { type: "SP.FieldDateTime" } },
+    { Title: "Observaciones",  FieldTypeKind: 3, __metadata: { type: "SP.FieldMultiLineText" } },
+  ]);
 }
 
 async function getConfiguracionDOM() {
@@ -377,19 +394,19 @@ async function actualizarSolicitud(itemId, fields) {
 }
 
 async function registrarHistorial(fields) {
-  // Nunca debe bloquear el flujo principal — si falla, solo log
+  const mapped = { ...fields };
+  if (mapped.Title !== undefined && mapped.Accion === undefined) mapped.Accion = mapped.Title;
+  if (!mapped.Title) mapped.Title = mapped.Accion || "Registro";
   try {
-    // El campo en SharePoint se llama "Accion" (no Title)
-    // Si viene Title lo mapeamos a Accion; SharePoint requiere Title también (campo obligatorio)
-    const mapped = { ...fields };
-    if (mapped.Title !== undefined && mapped.Accion === undefined) {
-      mapped.Accion = mapped.Title;
-    }
-    // Title es campo obligatorio en SharePoint — usar Accion como valor
-    if (!mapped.Title) mapped.Title = mapped.Accion || "Registro";
     return await createListItem(CONFIG.lists.historial, mapped);
   } catch(e) {
-    console.warn("registrarHistorial (no crítico):", e.message);
+    if (e.message.includes("InvalidClientQueryException") || e.message.includes("no es tipo") || e.message.includes("is not of type")) {
+      console.warn("[DOM] Columnas faltantes en HistorialSolicitud — creando y reintentando...");
+      await crearCamposHistorial();
+      try { return await createListItem(CONFIG.lists.historial, mapped); } catch(e2) { console.warn("registrarHistorial:", e2.message); }
+    } else {
+      console.warn("registrarHistorial (no crítico):", e.message);
+    }
     return null;
   }
 }
@@ -428,7 +445,16 @@ async function getEvidenciasBySolicitud(nroSolicitud, solicitudId = null) {
 }
 
 async function crearEvidencia(fields) {
-  return createListItem(CONFIG.lists.evidencias, fields);
+  try {
+    return await createListItem(CONFIG.lists.evidencias, fields);
+  } catch(e) {
+    if (e.message.includes("InvalidClientQueryException") || e.message.includes("no es tipo") || e.message.includes("is not of type")) {
+      console.warn("[DOM] Columnas faltantes en EvidenciaSolicitudes — creando y reintentando...");
+      await crearCamposEvidencia();
+      return await createListItem(CONFIG.lists.evidencias, fields);
+    }
+    throw e;
+  }
 }
 
 async function getDirectores() {

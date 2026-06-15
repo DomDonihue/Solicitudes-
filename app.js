@@ -51,6 +51,7 @@ async function initApp() {
     // Crear campo FechaDerivacion si aún no existe (idempotente, falla en silencio)
     crearCampoFechaDerivacion().catch(console.warn);
     crearCamposEvidencia().catch(console.warn);
+    crearCamposHistorial().catch(console.warn);
     // Indexar columnas críticas (idempotente — no hace nada si ya están indexadas)
     crearIndicesSharePoint().catch(console.warn);
     hideLoading();
