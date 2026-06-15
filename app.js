@@ -1675,17 +1675,17 @@ async function seleccionarSolicitudUnidad(id) {
         <div style="display:flex;align-items:center;gap:4px;margin-left:8px;flex-shrink:0;">
           ${isPdf ? `
           <button onclick="zoomUniPdf(-0.25)"
-            style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;" title="Alejar">−</button>
-          <span id="uni-pdf-zoom-label" style="font-size:11px;min-width:34px;text-align:center;opacity:0.85;">100%</span>
+            style="background:#1f2937;border:1px solid #374151;color:white;width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:700;" title="Alejar">−</button>
+          <span id="uni-pdf-zoom-label" style="font-size:11px;min-width:36px;text-align:center;font-weight:600;color:#1f2937;">100%</span>
           <button onclick="zoomUniPdf(0.25)"
-            style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;" title="Acercar">+</button>
-          <div style="width:1px;height:20px;background:rgba(255,255,255,0.25);margin:0 2px;"></div>` : ""}
+            style="background:#1f2937;border:1px solid #374151;color:white;width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:700;" title="Acercar">+</button>
+          <div style="width:1px;height:20px;background:#d1d5db;margin:0 2px;"></div>` : ""}
           <a href="${blobUrl}" download="${first.name}"
-            style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 10px;border-radius:6px;font-size:12px;text-decoration:none;white-space:nowrap;">
+            style="background:#1f2937;border:1px solid #374151;color:white;padding:4px 10px;border-radius:6px;font-size:12px;text-decoration:none;white-space:nowrap;font-weight:600;">
             ⬇ Descargar
           </a>
           <button onclick="(function(){var w=window.open('${blobUrl}','_blank');if(w)setTimeout(function(){w.print();},800);})()"
-            style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;">
+            style="background:#1f2937;border:1px solid #374151;color:white;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;font-weight:600;">
             🖨 Imprimir
           </button>
         </div>`;
