@@ -334,6 +334,29 @@ async function crearCampoFechaDerivacion() {
   }
 }
 
+async function crearCamposEvidencia() {
+  const listUrl = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(CONFIG.lists.evidencias)}')/fields`;
+  const campos = [
+    { Title: "NroSolicitud",       FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "SolicitudID",        FieldTypeKind: 9, __metadata: { type: "SP.FieldNumber" } },
+    { Title: "Unidad",             FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "DescripcionEvidencia", FieldTypeKind: 3, __metadata: { type: "SP.FieldMultiLineText" } },
+    { Title: "FechaCarga",         FieldTypeKind: 4, __metadata: { type: "SP.FieldDateTime" } },
+    { Title: "Responsable",        FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+  ];
+  for (const campo of campos) {
+    try {
+      await spFetch(listUrl, {
+        method: "POST",
+        body: JSON.stringify({ ...campo, AddToDefaultView: true, Required: false })
+      });
+      console.info(`[DOM] Campo ${campo.Title} creado en EvidenciaSolicitudes.`);
+    } catch(e) {
+      if (!e.message.includes("400")) console.warn(`[DOM] EvidenciaSolicitudes.${campo.Title}:`, e.message);
+    }
+  }
+}
+
 async function getConfiguracionDOM() {
   const items = await getListItems(CONFIG.lists.configuracion);
   const cfg = {};
