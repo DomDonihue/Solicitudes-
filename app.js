@@ -1544,8 +1544,15 @@ function renderSidebarUnidad() {
   state.solicitudes.forEach(s => { counts[s.Estado] = (counts[s.Estado] || 0) + 1; });
 
   const estados = ["Todos","Derivada","En Proceso","Respondida","Devuelta","Pendiente de Cierre","Cerrada"];
-  const filtradas = state.filtroEstado === "Todos" ? state.solicitudes :
-    state.solicitudes.filter(s => s.Estado === state.filtroEstado);
+  const q = (state.filtroBuscar || "").toLowerCase().trim();
+  const filtradas = state.solicitudes.filter(s => {
+    if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
+    if (q) return (s.NroSolicitud||"").toLowerCase().includes(q) ||
+                  (s.Solicitante||"").toLowerCase().includes(q) ||
+                  (s.Direccion||"").toLowerCase().includes(q) ||
+                  (s.Solicitud||"").toLowerCase().includes(q);
+    return true;
+  });
   const inicio = (state.pagina - 1) * state.pageSize;
   const pagina = filtradas.slice(inicio, inicio + state.pageSize);
   const totalPags = Math.ceil(filtradas.length / state.pageSize);
@@ -1756,7 +1763,7 @@ function imprimirSolicitudUnidad(sol) {
           ? `${sem.emoji} Vence hoy`
           : `${sem.emoji} Plazo vencido hace ${Math.abs(sem.dias)} día${Math.abs(sem.dias)>1?'s':''}`)
     : "";
-  const w = window.open("", "_blank", "width=800,height=900");
+  const w = window.open("", "_blank");
   if (!w) { showToast("error","El navegador bloqueó la ventana emergente. Permite ventanas emergentes para este sitio."); return; }
   w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
 <title>Solicitud ${sol.NroSolicitud} — DOM Doñihue</title>
