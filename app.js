@@ -1544,18 +1544,6 @@ function renderSidebarUnidad() {
   state.solicitudes.forEach(s => { counts[s.Estado] = (counts[s.Estado] || 0) + 1; });
 
   const estados = ["Todos","Derivada","En Proceso","Respondida","Devuelta","Pendiente de Cierre","Cerrada"];
-  const q = (state.filtroBuscar || "").toLowerCase().trim();
-  const filtradas = state.solicitudes.filter(s => {
-    if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
-    if (q) return (s.NroSolicitud||"").toLowerCase().includes(q) ||
-                  (s.Solicitante||"").toLowerCase().includes(q) ||
-                  (s.Direccion||"").toLowerCase().includes(q) ||
-                  (s.Solicitud||"").toLowerCase().includes(q);
-    return true;
-  });
-  const inicio = (state.pagina - 1) * state.pageSize;
-  const pagina = filtradas.slice(inicio, inicio + state.pageSize);
-  const totalPags = Math.ceil(filtradas.length / state.pageSize);
 
   const uniStats = [
     { e:"Derivada",            icon:"📤", bg:"#fef3c7", tc:"#b45309" },
@@ -1597,36 +1585,60 @@ function renderSidebarUnidad() {
           </div>`;
         }).join("")}
       </div>
-      <input type="text" id="uni-buscar" placeholder="🔍 Buscar..." style="width:100%;padding:9px;border:1.5px solid #dde3ee;border-radius:8px;font-size:13px;box-sizing:border-box;"
-        oninput="state.filtroBuscar=this.value;state.pagina=1;renderSidebarUnidad()">
+      <input type="text" id="uni-buscar" placeholder="🔍 Buscar..." value="${state.filtroBuscar||''}"
+        style="width:100%;padding:9px;border:1.5px solid #dde3ee;border-radius:8px;font-size:13px;box-sizing:border-box;"
+        oninput="state.filtroBuscar=this.value;state.pagina=1;_renderUniLista()">
     </div>
-    <div style="flex:1;overflow-y:auto;padding:12px;">
-      ${pagina.length === 0 ? '<p style="text-align:center;color:#9ca3af;padding:40px">Sin solicitudes</p>' :
-        pagina.map(s => `
-          ${(() => {
-            const sem = calcularSemaforo(s);
-            const semBadge = sem
-              ? `<span style="background:${sem.bg};color:${sem.color};border:1px solid ${sem.color}40;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;">${sem.emoji} ${sem.texto}</span>`
-              : "";
-            return `
-          <div class="sol-card ${state.solicitudSeleccionada?.id === s.id ? 'selected' : ''}" onclick="seleccionarSolicitudUnidad('${s.id}')">
-            <div class="sol-card-top">
-              <span class="sol-nro">${s.NroSolicitud}</span>
-              <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
-            </div>
-            <div class="sol-card-name">${s.Solicitante}</div>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px;">
-              <div class="sol-card-dir" style="margin-top:0;">📍 ${s.Direccion || ""}</div>
-              ${semBadge}
-            </div>
-          </div>`;
-          })()}`).join("")}
-    </div>
-    <div class="paginacion">
-      <button onclick="cambiarPaginaUni(${state.pagina-1})" ${state.pagina<=1?'disabled':''}>‹</button>
-      <span>${state.pagina}/${Math.max(1,totalPags)} (${filtradas.length})</span>
-      <button onclick="cambiarPaginaUni(${state.pagina+1})" ${state.pagina>=totalPags?'disabled':''}>›</button>
-    </div>`;
+    <div id="uni-lista-cards" style="flex:1;overflow-y:auto;padding:12px;"></div>
+    <div id="uni-lista-pag" class="paginacion"></div>`;
+
+  _renderUniLista();
+}
+}
+
+function _renderUniLista() {
+  const cards = document.getElementById("uni-lista-cards");
+  const pag   = document.getElementById("uni-lista-pag");
+  if (!cards) return;
+
+  const q = (state.filtroBuscar || "").toLowerCase().trim();
+  const filtradas = state.solicitudes.filter(s => {
+    if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
+    if (q) return (s.NroSolicitud||"").toLowerCase().includes(q) ||
+                  (s.Solicitante||"").toLowerCase().includes(q) ||
+                  (s.Direccion||"").toLowerCase().includes(q) ||
+                  (s.Solicitud||"").toLowerCase().includes(q);
+    return true;
+  });
+  const totalPags = Math.max(1, Math.ceil(filtradas.length / state.pageSize));
+  if (state.pagina > totalPags) state.pagina = 1;
+  const pagina = filtradas.slice((state.pagina - 1) * state.pageSize, state.pagina * state.pageSize);
+
+  cards.innerHTML = pagina.length === 0
+    ? '<p style="text-align:center;color:#9ca3af;padding:40px">Sin solicitudes</p>'
+    : pagina.map(s => {
+        const sem = calcularSemaforo(s);
+        const semBadge = sem
+          ? `<span style="background:${sem.bg};color:${sem.color};border:1px solid ${sem.color}40;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;">${sem.emoji} ${sem.texto}</span>`
+          : "";
+        return `
+        <div class="sol-card ${state.solicitudSeleccionada?.id === s.id ? 'selected' : ''}" onclick="seleccionarSolicitudUnidad('${s.id}')">
+          <div class="sol-card-top">
+            <span class="sol-nro">${s.NroSolicitud}</span>
+            <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
+          </div>
+          <div class="sol-card-name">${s.Solicitante}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px;">
+            <div class="sol-card-dir" style="margin-top:0;">📍 ${s.Direccion || ""}</div>
+            ${semBadge}
+          </div>
+        </div>`;
+      }).join("");
+
+  if (pag) pag.innerHTML = `
+    <button onclick="cambiarPaginaUni(${state.pagina-1})" ${state.pagina<=1?'disabled':''}>‹</button>
+    <span>${state.pagina}/${totalPags} (${filtradas.length})</span>
+    <button onclick="cambiarPaginaUni(${state.pagina+1})" ${state.pagina>=totalPags?'disabled':''}>›</button>`;
 }
 
 function filtrarUnidad(estado) {
@@ -1651,7 +1663,7 @@ function verificarVencimientosUnidad() {
   if (manana.length) partes.push(`${manana.length} vence mañana`);
   showToast("error", `⏰ Plazo crítico: ${partes.join(" · ")}`);
 }
-function cambiarPaginaUni(p) { state.pagina = p; renderSidebarUnidad(); }
+function cambiarPaginaUni(p) { state.pagina = p; _renderUniLista(); }
 
 async function seleccionarSolicitudUnidad(id) {
   state.solicitudSeleccionada = state.solicitudes.find(s => s.id === id);
