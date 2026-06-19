@@ -488,6 +488,8 @@ function removeFile(idx) {
 
 function limpiarFormNueva() {
   state.adjuntosNueva = [];
+  const pdfPanel = document.getElementById("pdf-visor-contenido");
+  if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>📄</span><p>Selecciona una solicitud para ver el documento adjunto</p></div>`;
   renderFormNueva();
 }
 
@@ -545,6 +547,8 @@ async function guardarSolicitud() {
     notificarDirector(item, "Nueva solicitud ingresada");
 
     state.adjuntosNueva = [];
+    const pdfPanel = document.getElementById("pdf-visor-contenido");
+    if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>📄</span><p>Selecciona una solicitud para ver el documento adjunto</p></div>`;
     showToast("success", `✅ Solicitud ${nro} guardada correctamente`);
     await renderSecretaria();
   } catch (e) {
