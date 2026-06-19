@@ -3949,7 +3949,44 @@ function mostrarFormMulta() {
         </div>
         <div class="form-group full">
           <label class="form-label">Artículo infringido (Ordenanza / Ley)</label>
-          <input class="form-input" id="m-articulo" placeholder="Ej: Art. 15 Ordenanza Municipal Nº 02/2018">
+          <select class="form-input" id="m-articulo-select" onchange="
+            const otro = document.getElementById('m-articulo-otro');
+            const hidden = document.getElementById('m-articulo');
+            if (this.value === '__otro__') { otro.style.display='block'; hidden.value=''; otro.focus(); }
+            else { otro.style.display='none'; hidden.value=this.value; }
+          ">
+            <option value="">— Seleccione artículo —</option>
+            <optgroup label="Ley General de Urbanismo y Construcciones (LGUC – DFL 458)">
+              <option>Art. 116 LGUC — Construcción sin permiso municipal</option>
+              <option>Art. 116 bis LGUC — Obra sin recepción final</option>
+              <option>Art. 116 ter LGUC — Modificación sin autorización</option>
+              <option>Art. 118 LGUC — Incumplimiento condiciones técnicas del permiso</option>
+              <option>Art. 136 LGUC — Infracción general a la Ley de Urbanismo</option>
+              <option>Art. 138 LGUC — Loteo o subdivisión no autorizada</option>
+              <option>Art. 161 LGUC — Obras de demolición sin permiso</option>
+            </optgroup>
+            <optgroup label="Ordenanza General de Urbanismo y Construcciones (OGUC – DS 47)">
+              <option>Art. 1.2.1 OGUC — Obras menores sin autorización</option>
+              <option>Art. 2.1.30 OGUC — Cierro o cerco sin permiso</option>
+              <option>Art. 5.1.1 OGUC — Normas de ocupación y uso de suelo</option>
+              <option>Art. 5.1.2 OGUC — Subdivisión predial no autorizada</option>
+              <option>Art. 5.4.1 OGUC — Ampliación sin permiso</option>
+              <option>Art. 5.9.1 OGUC — Publicidad y anuncios sin autorización</option>
+              <option>Art. 5.10.1 OGUC — Ocupación de vía pública sin permiso</option>
+            </optgroup>
+            <optgroup label="Ordenanza Municipal de Doñihue">
+              <option>Art. 15 Ordenanza Municipal Nº 02/2018 — Uso de espacio público</option>
+              <option>Art. 22 Ordenanza Municipal Nº 02/2018 — Publicidad no autorizada</option>
+              <option>Art. 30 Ordenanza Municipal Nº 02/2018 — Residuos y escombros</option>
+              <option>Art. 45 Ordenanza Municipal Nº 02/2018 — Faenas sin señalización</option>
+            </optgroup>
+            <optgroup label="Otro">
+              <option value="__otro__">Otro (especificar manualmente)...</option>
+            </optgroup>
+          </select>
+          <input class="form-input" id="m-articulo-otro" placeholder="Escriba el artículo infringido..." style="display:none;margin-top:6px;"
+            oninput="document.getElementById('m-articulo').value=this.value">
+          <input type="hidden" id="m-articulo">
         </div>
         <div class="form-group full">
           <label class="form-label">Fotografías (máx. 4)</label>
