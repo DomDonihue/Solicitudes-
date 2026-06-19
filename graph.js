@@ -560,6 +560,44 @@ async function getMultas(inspector = null) {
   }
 }
 
+// ===== Parque Automotriz DOM =====
+async function crearListaPatentes() {
+  try {
+    await spFetch(`${SP_BASE}/web/lists`, {
+      method: "POST",
+      body: JSON.stringify({
+        __metadata: { type: "SP.List" },
+        BaseTemplate: 100,
+        Title: CONFIG.lists.patentes,
+        Description: "Registro del parque automotriz de la comuna"
+      })
+    });
+    console.info("[DOM] Lista PatentesDOM creada.");
+  } catch(e) {
+    if (!e.message.includes("400") && !e.message.includes("already exists")) console.warn("[DOM] PatentesDOM lista:", e.message);
+  }
+  await _crearCamposLista(CONFIG.lists.patentes, [
+    { Title: "RutPropietario",    FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "NombrePropietario", FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "Marca",             FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "Modelo",            FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "TipoVehiculo",      FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "Direccion",         FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "Comuna",            FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+  ]);
+}
+
+async function getVehiculo(patente) {
+  try {
+    const normalized = patente.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const items = await getListItems(CONFIG.lists.patentes, `Title eq '${normalized}'`);
+    return items[0] || null;
+  } catch(e) {
+    console.warn("getVehiculo:", e.message);
+    return null;
+  }
+}
+
 // ===== Usuarios (SharePoint list UsuarioDom) =====
 async function getTodosUsuarios() {
   return getListItems(CONFIG.lists.usuarios);

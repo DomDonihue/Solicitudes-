@@ -53,6 +53,7 @@ async function initApp() {
     crearCamposEvidencia().catch(console.warn);
     crearCamposHistorial().catch(console.warn);
     crearListaMultas().catch(console.warn);
+    crearListaPatentes().catch(console.warn);
     // Indexar columnas críticas (idempotente — no hace nada si ya están indexadas)
     crearIndicesSharePoint().catch(console.warn);
     hideLoading();
@@ -3812,6 +3813,44 @@ function showToast(type, msg) {
 // ===== MULTAS =====
 let _multaFotosFiles = [];
 let _multaSeleccionada = null;
+let _patenteTimer = null;
+
+function _buscarPatente(val) {
+  clearTimeout(_patenteTimer);
+  const status = document.getElementById("m-patente-status");
+  const info   = document.getElementById("m-patente-info");
+  if (!val || val.length < 4) {
+    if (status) status.textContent = "";
+    if (info)   info.style.display = "none";
+    return;
+  }
+  if (status) status.textContent = "🔍";
+  _patenteTimer = setTimeout(async () => {
+    try {
+      const v = await getVehiculo(val);
+      if (v) {
+        const nombre = document.getElementById("m-nombre");
+        const rut    = document.getElementById("m-rut");
+        if (nombre && !nombre.value) nombre.value = v.NombrePropietario || "";
+        if (rut    && !rut.value)    rut.value    = v.RutPropietario    || "";
+        if (status) status.textContent = "✅";
+        if (info) {
+          info.style.cssText = "display:block;margin-top:5px;padding:8px 10px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;font-size:12px;color:#15803d;";
+          info.innerHTML = `<strong>${[v.Marca, v.Modelo].filter(Boolean).join(" ")}</strong>${v.TipoVehiculo ? " · " + v.TipoVehiculo : ""}<br>
+            <span style="color:#6b7280;">${v.NombrePropietario || ""} · ${v.RutPropietario || ""}</span>`;
+        }
+      } else {
+        if (status) status.textContent = "⚠️";
+        if (info) {
+          info.style.cssText = "display:block;margin-top:5px;padding:8px 10px;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;font-size:12px;color:#92400e;";
+          info.textContent = "Patente no encontrada en el registro municipal";
+        }
+      }
+    } catch(e) {
+      if (status) status.textContent = "";
+    }
+  }, 700);
+}
 
 async function renderMultas() {
   const cont = document.getElementById("view-multas");
@@ -3922,8 +3961,14 @@ function mostrarFormMulta() {
           <input class="form-input" id="m-rut" placeholder="12.345.678-9">
         </div>
         <div class="form-group">
-          <label class="form-label">Patente / Vehículo</label>
-          <input class="form-input" id="m-patente" placeholder="ABCD12 / Marca Modelo">
+          <label class="form-label">Patente</label>
+          <div style="position:relative;">
+            <input class="form-input" id="m-patente" placeholder="ABCD12"
+              style="text-transform:uppercase;letter-spacing:1px;padding-right:32px;"
+              oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');_buscarPatente(this.value)">
+            <span id="m-patente-status" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none;"></span>
+          </div>
+          <div id="m-patente-info" style="display:none;"></div>
         </div>
         <div class="form-group full">
           <label class="form-label">Dirección de Infracción *</label>
