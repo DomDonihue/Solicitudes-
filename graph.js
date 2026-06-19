@@ -500,6 +500,66 @@ async function eliminarUnidad(itemId) {
   await spFetch(url, { method: "DELETE" });
 }
 
+// ===== Multas DOM =====
+async function crearListaMultas() {
+  // Crear la lista si no existe
+  try {
+    await spFetch(`${SP_BASE}/web/lists`, {
+      method: "POST",
+      body: JSON.stringify({
+        __metadata: { type: "SP.List" },
+        BaseTemplate: 100,
+        Title: CONFIG.lists.multas,
+        Description: "Registro de actas de infracción DOM"
+      })
+    });
+    console.info("[DOM] Lista MultasDOM creada.");
+  } catch(e) {
+    if (!e.message.includes("400") && !e.message.includes("already exists")) console.warn("[DOM] MultasDOM lista:", e.message);
+  }
+  // Crear columnas (nombres deben coincidir exactamente con los campos enviados desde app.js)
+  await _crearCamposLista(CONFIG.lists.multas, [
+    { Title: "Inspector",           FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "FechaInfraccion",    FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "HoraInfraccion",     FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "NombreInfractor",    FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "RutInfractor",       FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "Patente",            FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "DireccionInfraccion",FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "TipoInfraccion",     FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "ArticuloInfringido", FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },
+    { Title: "Descripcion",        FieldTypeKind: 3, __metadata: { type: "SP.FieldMultiLineText" } },
+    { Title: "Foto1",              FieldTypeKind: 3, __metadata: { type: "SP.FieldMultiLineText" } },
+    { Title: "Foto2",              FieldTypeKind: 3, __metadata: { type: "SP.FieldMultiLineText" } },
+    { Title: "Foto3",              FieldTypeKind: 3, __metadata: { type: "SP.FieldMultiLineText" } },
+    { Title: "Foto4",              FieldTypeKind: 3, __metadata: { type: "SP.FieldMultiLineText" } },
+  ]);
+}
+
+async function crearMulta(fields) {
+  try {
+    return await createListItem(CONFIG.lists.multas, fields);
+  } catch(e) {
+    if (e.message.includes("InvalidClientQueryException") || e.message.includes("no es tipo") || e.message.includes("is not of type")) {
+      console.warn("[DOM] Columnas MultasDOM faltantes — creando y reintentando...");
+      await crearListaMultas().catch(() => {});
+      return await createListItem(CONFIG.lists.multas, fields);
+    }
+    throw e;
+  }
+}
+
+async function getMultas(inspector = null) {
+  try {
+    const filter = inspector ? `Inspector eq '${inspector.replace(/'/g, "''")}'` : "";
+    const items = await getListItems(CONFIG.lists.multas, filter);
+    return items.sort((a, b) => new Date(b.FechaInfraccion || b.Created) - new Date(a.FechaInfraccion || a.Created));
+  } catch(e) {
+    console.warn("getMultas:", e.message);
+    return [];
+  }
+}
+
 // ===== Usuarios (SharePoint list UsuarioDom) =====
 async function getTodosUsuarios() {
   return getListItems(CONFIG.lists.usuarios);

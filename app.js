@@ -52,6 +52,7 @@ async function initApp() {
     crearCampoFechaDerivacion().catch(console.warn);
     crearCamposEvidencia().catch(console.warn);
     crearCamposHistorial().catch(console.warn);
+    crearListaMultas().catch(console.warn);
     // Indexar columnas críticas (idempotente — no hace nada si ya están indexadas)
     crearIndicesSharePoint().catch(console.warn);
     hideLoading();
@@ -123,6 +124,7 @@ function buildTabs() {
     tabs.push({ id: "admin",     icon: "🛡️", label: "Administración" });
     tabs.push({ id: "gestion",   icon: "⚙️", label: "Gestión" });
     tabs.push({ id: "graficos",  icon: "📊", label: "Reportes" });
+    tabs.push({ id: "multas",    icon: "🚨", label: "Multas" });
   }
   if (rol === CONFIG.roles.SECRETARIA) {
     tabs.push({ id: "solicitudes", icon: "📋", label: "Ingreso Solicitudes" });
@@ -130,10 +132,14 @@ function buildTabs() {
   if (rol === CONFIG.roles.DIRECTOR) {
     tabs.push({ id: "gestion", icon: "⚙️", label: "Gestión" });
     tabs.push({ id: "graficos", icon: "📊", label: "Reportes" });
+    tabs.push({ id: "multas",  icon: "🚨", label: "Multas" });
   }
   if (rol === CONFIG.roles.UNIDAD) {
     tabs.push({ id: "unidad", icon: "🏢", label: "Mis Solicitudes" });
     tabs.push({ id: "graficos", icon: "📊", label: "Reportes" });
+    if (state.usuario.Unidad === "Inspección") {
+      tabs.push({ id: "multas", icon: "🚨", label: "Multas" });
+    }
   }
 
   tabs.forEach(t => {
@@ -158,6 +164,7 @@ function navigateTab(tabId) {
   if (tabId === "unidad")     renderUnidad();
   if (tabId === "graficos")   renderGraficos();
   if (tabId === "admin")      renderAdmin();
+  if (tabId === "multas")     renderMultas();
 }
 
 // ===== SECRETARIA VIEW =====
@@ -1593,7 +1600,6 @@ function renderSidebarUnidad() {
     <div id="uni-lista-pag" class="paginacion"></div>`;
 
   _renderUniLista();
-}
 }
 
 function _renderUniLista() {
@@ -3797,6 +3803,373 @@ function showToast(type, msg) {
   toast.textContent = msg;
   cont.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
+}
+
+// ===== MULTAS =====
+let _multaFotosFiles = [];
+let _multaSeleccionada = null;
+
+async function renderMultas() {
+  const cont = document.getElementById("view-multas");
+  if (!cont) return;
+  cont.innerHTML = `
+    <div class="multas-wrap">
+      <div class="multas-sidebar">
+        <div class="multas-sidebar-header">
+          <h3>🚨 Registro de Multas</h3>
+          ${state.usuario.Unidad === "Inspección" ? `<button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="mostrarFormMulta()">+ Nueva Acta</button>` : ""}
+        </div>
+        <div class="multas-lista" id="multas-lista">
+          <div style="text-align:center;padding:24px;color:var(--texto-suave)">Cargando...</div>
+        </div>
+      </div>
+      <div class="multas-main" id="multas-main">
+        <div class="multas-main-header">
+          <h3 id="multas-main-title">Selecciona o crea una acta</h3>
+        </div>
+        <div class="multas-main-body" id="multas-main-body">
+          <div style="text-align:center;padding:48px;color:var(--texto-suave);">
+            <div style="font-size:48px;margin-bottom:12px;">🚨</div>
+            <p>Selecciona una acta de la lista o crea una nueva.</p>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  await _renderMultasLista();
+}
+
+function _multaInspectorFiltro() {
+  const rol = state.usuario.Rol;
+  if (rol === CONFIG.roles.ADMIN || rol === CONFIG.roles.DIRECTOR) return null;
+  return state.usuario.Title || state.usuario.displayName;
+}
+
+async function _renderMultasLista() {
+  const lista = document.getElementById("multas-lista");
+  if (!lista) return;
+  try {
+    const multas = await getMultas(_multaInspectorFiltro());
+    if (!multas.length) {
+      lista.innerHTML = `<div style="text-align:center;padding:24px;color:var(--texto-suave);font-size:13px">No hay actas registradas.</div>`;
+      return;
+    }
+    lista.innerHTML = multas.map(m => {
+      const fecha = m.FechaInfraccion ? new Date(m.FechaInfraccion).toLocaleDateString("es-CL") : "—";
+      const sel = _multaSeleccionada && _multaSeleccionada.Id === m.Id ? "selected" : "";
+      return `<div class="multa-card ${sel}" onclick="seleccionarMulta(${m.Id})">
+        <div class="multa-card-top">
+          <span class="multa-card-id">#${String(m.Id).padStart(5,"0")}</span>
+          <span class="multa-card-fecha">${fecha}</span>
+        </div>
+        <div class="multa-card-infractor">${m.NombreInfractor || "Sin nombre"}</div>
+        <div class="multa-card-dir">${m.DireccionInfraccion || "Sin dirección"}</div>
+      </div>`;
+    }).join("");
+  } catch(e) {
+    lista.innerHTML = `<div style="color:var(--error);padding:12px;font-size:13px">Error cargando multas: ${e.message}</div>`;
+  }
+}
+
+async function seleccionarMulta(id) {
+  try {
+    const multas = await getMultas(_multaInspectorFiltro());
+    const m = multas.find(x => x.Id === id);
+    if (!m) return;
+    _multaSeleccionada = m;
+    await _renderMultasLista();
+    mostrarDetalleMulta(m);
+  } catch(e) {
+    showToast("error", "Error cargando acta: " + e.message);
+  }
+}
+
+function mostrarFormMulta() {
+  _multaFotosFiles = [];
+  _multaSeleccionada = null;
+  const title = document.getElementById("multas-main-title");
+  const body  = document.getElementById("multas-main-body");
+  if (title) title.textContent = "Nueva Acta de Infracción";
+  if (!body) return;
+
+  const hoy = new Date().toISOString().split("T")[0];
+  const inspector = state.usuario.Title || state.usuario.displayName;
+
+  body.innerHTML = `
+    <div style="max-width:720px">
+      <div class="multa-form-grid">
+        <div class="form-group full">
+          <label class="form-label">Inspector</label>
+          <input class="form-input" id="m-inspector" value="${inspector}" readonly>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha de Infracción *</label>
+          <input class="form-input" type="date" id="m-fecha" value="${hoy}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hora</label>
+          <input class="form-input" type="time" id="m-hora" value="${new Date().toTimeString().slice(0,5)}">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Nombre Infractor *</label>
+          <input class="form-input" id="m-nombre" placeholder="Nombre completo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">RUT Infractor</label>
+          <input class="form-input" id="m-rut" placeholder="12.345.678-9">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Patente / Vehículo</label>
+          <input class="form-input" id="m-patente" placeholder="ABCD12 / Marca Modelo">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Dirección de Infracción *</label>
+          <input class="form-input" id="m-direccion" placeholder="Calle, número, referencia">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Tipo de Infracción *</label>
+          <select class="form-input" id="m-tipo">
+            <option value="">Selecciona...</option>
+            <option>Estacionamiento indebido</option>
+            <option>Obstaculización de vía pública</option>
+            <option>Construcción sin permiso</option>
+            <option>Publicidad no autorizada</option>
+            <option>Ruidos molestos</option>
+            <option>Residuos en vía pública</option>
+            <option>Animales sueltos</option>
+            <option>Otra infracción</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Descripción / Observaciones</label>
+          <textarea class="form-input" id="m-descripcion" rows="3" placeholder="Detalles de la infracción..."></textarea>
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Artículo infringido (Ordenanza / Ley)</label>
+          <input class="form-input" id="m-articulo" placeholder="Ej: Art. 15 Ordenanza Municipal Nº 02/2018">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Fotografías (máx. 4)</label>
+          <input type="file" id="m-fotos-input" accept="image/*" multiple style="display:none" onchange="_multaFotos(this)">
+          <button class="btn btn-secondary" onclick="document.getElementById('m-fotos-input').click()">📷 Agregar fotos</button>
+          <div class="multa-fotos-grid" id="m-fotos-preview"></div>
+        </div>
+      </div>
+      <div style="margin-top:20px;display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="guardarActa()" style="min-width:160px">💾 Guardar Acta</button>
+        <button class="btn btn-secondary" onclick="renderMultas()">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+function _multaFotos(input) {
+  const files = Array.from(input.files).slice(0, 4);
+  _multaFotosFiles = files;
+  const prev = document.getElementById("m-fotos-preview");
+  if (!prev) return;
+  prev.innerHTML = "";
+  files.forEach(f => {
+    const url = URL.createObjectURL(f);
+    const img = document.createElement("img");
+    img.src = url;
+    img.className = "multa-foto-thumb";
+    prev.appendChild(img);
+  });
+}
+
+async function guardarActa() {
+  const get = id => (document.getElementById(id) || {}).value || "";
+  const fecha     = get("m-fecha");
+  const hora      = get("m-hora");
+  const nombre    = get("m-nombre").trim();
+  const direccion = get("m-direccion").trim();
+  const tipo      = get("m-tipo");
+
+  if (!fecha || !nombre || !direccion || !tipo) {
+    showToast("error", "Completa los campos obligatorios (*)");
+    return;
+  }
+
+  showLoading("Guardando acta...");
+  try {
+    // Comprimir y convertir fotos a base64
+    const fotosB64 = [];
+    for (const file of _multaFotosFiles.slice(0, 4)) {
+      const b64 = await _comprimirFotoMulta(file, 800, 0.75);
+      fotosB64.push(b64);
+    }
+
+    const inspector = state.usuario.Title || state.usuario.displayName;
+    const fields = {
+      Title: `MULTA-${Date.now()}`,
+      Inspector: inspector,
+      FechaInfraccion: fecha,
+      HoraInfraccion: hora,
+      NombreInfractor: nombre,
+      RutInfractor: get("m-rut").trim(),
+      Patente: get("m-patente").trim(),
+      DireccionInfraccion: direccion,
+      TipoInfraccion: tipo,
+      Descripcion: get("m-descripcion").trim(),
+      ArticuloInfringido: get("m-articulo").trim(),
+      Foto1: fotosB64[0] || "",
+      Foto2: fotosB64[1] || "",
+      Foto3: fotosB64[2] || "",
+      Foto4: fotosB64[3] || "",
+    };
+
+    const result = await crearMulta(fields);
+    hideLoading();
+    showToast("success", "Acta guardada correctamente");
+    _multaFotosFiles = [];
+    _multaSeleccionada = result;
+
+    await _renderMultasLista();
+    mostrarDetalleMulta({ ...fields, Id: result.Id || result.id });
+    document.getElementById("multas-main-title").textContent = "Detalle del Acta";
+  } catch(e) {
+    hideLoading();
+    showToast("error", "Error guardando acta: " + e.message);
+  }
+}
+
+function _comprimirFotoMulta(file, maxSize, quality) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else       { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function mostrarDetalleMulta(m) {
+  const title = document.getElementById("multas-main-title");
+  const body  = document.getElementById("multas-main-body");
+  if (title) title.textContent = `Acta #${String(m.Id || "?").padStart(5,"0")}`;
+  if (!body) return;
+
+  const fecha = m.FechaInfraccion ? new Date(m.FechaInfraccion).toLocaleDateString("es-CL") : "—";
+  const campos = [
+    ["Inspector",        m.Inspector],
+    ["Fecha",            fecha + (m.HoraInfraccion ? " " + m.HoraInfraccion : "")],
+    ["Nombre Infractor", m.NombreInfractor],
+    ["RUT",              m.RutInfractor || "—"],
+    ["Patente / Vehículo", m.Patente || "—"],
+    ["Dirección",        m.DireccionInfraccion],
+    ["Tipo de Infracción", m.TipoInfraccion],
+    ["Artículo Infringido", m.ArticuloInfringido || "—"],
+  ];
+
+  const fotos = [m.Foto1, m.Foto2, m.Foto3, m.Foto4].filter(f => f && f.length > 10);
+
+  body.innerHTML = `
+    <div style="max-width:720px">
+      <div style="display:flex;gap:10px;margin-bottom:20px">
+        <button class="btn btn-primary" onclick="imprimirActa(${JSON.stringify(m).replace(/"/g,'&quot;')})">🖨 Imprimir Acta</button>
+        <button class="btn btn-secondary" onclick="mostrarFormMulta()">+ Nueva Acta</button>
+      </div>
+      <div class="multa-detalle-grid" style="margin-bottom:18px">
+        ${campos.map(([lbl, val]) => `
+          <div class="multa-detalle-field">
+            <label>${lbl}</label>
+            <span>${val || "—"}</span>
+          </div>`).join("")}
+      </div>
+      ${m.Descripcion ? `<div style="margin-bottom:18px"><div style="font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Descripción</div><p style="font-size:13px;color:var(--texto);margin:0;line-height:1.6">${m.Descripcion}</p></div>` : ""}
+      ${fotos.length ? `
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--texto-suave);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Fotografías</div>
+          <div class="multa-fotos-grid">${fotos.map(f => `<img src="${f}" class="multa-foto-thumb" onclick="window.open('${f}','_blank')">`).join("")}</div>
+        </div>` : ""}
+    </div>`;
+}
+
+function imprimirActa(m) {
+  if (typeof m === "string") {
+    try { m = JSON.parse(m); } catch { return; }
+  }
+  const fecha = m.FechaInfraccion ? new Date(m.FechaInfraccion).toLocaleDateString("es-CL") : "—";
+  const hora  = m.HoraInfraccion || "";
+  const fotos = [m.Foto1, m.Foto2, m.Foto3, m.Foto4].filter(f => f && f.length > 10);
+  const fotosTags = fotos.map(f => `<img src="${f}" style="width:180px;height:140px;object-fit:cover;border:1px solid #ddd;border-radius:6px">`).join("");
+
+  const w = window.open("", "_blank");
+  if (!w) return;
+  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <title>Acta de Infracción #${String(m.Id||"").padStart(5,"0")}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #111; background: #fff; }
+    .page { width: 210mm; min-height: 297mm; margin: auto; padding: 16mm 18mm; }
+    .header { text-align: center; border-bottom: 2px solid #1a3a6b; padding-bottom: 10px; margin-bottom: 14px; }
+    .header h1 { font-size: 16px; color: #1a3a6b; letter-spacing: 1px; }
+    .header h2 { font-size: 13px; color: #333; margin-top: 4px; }
+    .header p  { font-size: 11px; color: #666; margin-top: 3px; }
+    .acta-num  { font-size: 22px; font-weight: 900; color: #b8960a; text-align: right; margin-bottom: 10px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; margin-bottom: 14px; }
+    .field label { font-size: 10px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .04em; display: block; margin-bottom: 1px; }
+    .field span  { font-size: 12px; font-weight: 500; color: #111; display: block; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
+    .field.full { grid-column: 1 / -1; }
+    .desc-box { border: 1px solid #ccc; border-radius: 4px; padding: 8px 10px; min-height: 50px; margin-bottom: 14px; font-size: 12px; color: #222; line-height: 1.6; }
+    .section-title { font-size: 11px; font-weight: 700; color: #1a3a6b; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #1a3a6b; padding-bottom: 3px; margin-bottom: 8px; }
+    .fotos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .firma-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
+    .firma-box { border-top: 1px solid #333; padding-top: 6px; text-align: center; font-size: 11px; color: #444; }
+    .badge { display: inline-block; background: #1a3a6b; color: white; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: .06em; margin-top: 6px; }
+    @media print { .page { padding: 10mm 14mm; } }
+  </style></head><body>
+  <div class="page">
+    <div class="header">
+      <h1>MUNICIPALIDAD DE DOÑIHUE</h1>
+      <h2>Dirección de Obras Municipales — Unidad de Inspección</h2>
+      <p>Dom Doñihue · Inspecciones y Fiscalización Municipal</p>
+    </div>
+    <div class="acta-num">ACTA N° ${String(m.Id||"").padStart(5,"0")}</div>
+    <div class="section-title">Datos de la Infracción</div>
+    <div class="grid">
+      <div class="field"><label>Fecha</label><span>${fecha}${hora ? " " + hora : ""}</span></div>
+      <div class="field"><label>Inspector</label><span>${m.Inspector || "—"}</span></div>
+      <div class="field"><label>Tipo de Infracción</label><span>${m.TipoInfraccion || "—"}</span></div>
+      <div class="field"><label>Artículo Infringido</label><span>${m.ArticuloInfringido || "—"}</span></div>
+      <div class="field full"><label>Dirección</label><span>${m.DireccionInfraccion || "—"}</span></div>
+    </div>
+    <div class="section-title">Datos del Infractor</div>
+    <div class="grid">
+      <div class="field"><label>Nombre</label><span>${m.NombreInfractor || "—"}</span></div>
+      <div class="field"><label>RUT</label><span>${m.RutInfractor || "—"}</span></div>
+      <div class="field full"><label>Patente / Vehículo</label><span>${m.Patente || "—"}</span></div>
+    </div>
+    ${m.Descripcion ? `<div class="section-title">Descripción / Observaciones</div><div class="desc-box">${m.Descripcion}</div>` : ""}
+    ${fotos.length ? `<div class="section-title">Registro Fotográfico</div><div class="fotos">${fotosTags}</div>` : ""}
+    <div class="firma-row">
+      <div class="firma-box">
+        <div>${m.Inspector || "Inspector Municipal"}</div>
+        <div class="badge">INSPECTOR</div>
+      </div>
+      <div class="firma-box">
+        <div>Notificado / Infractor</div>
+        <div class="badge">FIRMA</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:18px;font-size:10px;color:#888">
+      Documento emitido por Sistema de Gestión DOM · Municipalidad de Doñihue · ${new Date().toLocaleString("es-CL")}
+    </div>
+  </div>
+  <script>window.onload = () => { window.print(); }<\/script>
+  </body></html>`);
+  w.document.close();
 }
 
 // ===== BOOTSTRAP =====
