@@ -1,4 +1,4 @@
-﻿// ===== PDF VISOR STATE (unidad) =====
+// ===== PDF VISOR STATE (unidad) =====
 let _uniPdfDoc  = null;
 let _uniPdfZoom = 1.0;
 
@@ -21,7 +21,7 @@ const state = {
 
 // ===== INIT =====
 async function initApp() {
-  showLoading("Iniciando sesiÃ³n...");
+  showLoading("Iniciando sesi\u00F3n...");
   try {
     const loggedIn = await initAuth();
     if (!loggedIn) {
@@ -43,14 +43,16 @@ async function initApp() {
     if (unidadesSP.length) {
       CONFIG.unidades = unidadesSP.map(u => u.Title).filter(Boolean);
     }
-    // Cargar configuraciÃ³n desde ConfiguracionDom
+    // Cargar configuraci\u00F3n desde ConfiguracionDom
     const cfgSP = await getConfiguracionDOM().catch(() => ({}));
     CONFIG.plazoDerivacionDias = parseInt(cfgSP.PlazoDerivacionDias) || 15;
     CONFIG.plazoAlertaDias     = parseInt(cfgSP.PlazoAlertaDias)     || 1;
     CONFIG.correoSoporte       = cfgSP.CorreoSoporte                 || "enovo@mdonihue.cl";
+    // Crear campo FechaDerivacion si a\u00FAn no existe (idempotente, falla en silencio)
+    crearCampoFechaDerivacion().catch(console.warn);
     crearCamposEvidencia().catch(console.warn);
     crearCamposHistorial().catch(console.warn);
-    // Indexar columnas crÃ­ticas (idempotente â€” no hace nada si ya estÃ¡n indexadas)
+    // Indexar columnas cr\u00EDticas (idempotente \u2014 no hace nada si ya est\u00E1n indexadas)
     crearIndicesSharePoint().catch(console.warn);
     hideLoading();
     showApp();
@@ -75,7 +77,7 @@ function showLoginPage(msUser, errorMsg) {
     errEl.style.display = "none";
   }
 
-  // Mostrar datos del usuario si ya autenticÃ³
+  // Mostrar datos del usuario si ya autentic\u00F3
   const userInfo = document.getElementById("login-user-info");
   if (msUser && userInfo) {
     document.getElementById("login-nombre").textContent = msUser.displayName || "";
@@ -97,7 +99,7 @@ function showApp() {
   const u = state.usuario;
   const nombre = u.NombreCompleto || u.displayName || "";
   document.getElementById("topbar-nombre").textContent = nombre;
-  document.getElementById("topbar-rol").textContent = `${u.Rol}${u.Unidad ? ' â€” ' + u.Unidad : ''}`;
+  document.getElementById("topbar-rol").textContent = `${u.Rol}${u.Unidad ? ' \u2014 ' + u.Unidad : ''}`;
   const av = document.getElementById("topbar-avatar");
   if (av) av.textContent = nombre.charAt(0).toUpperCase();
   document.getElementById("btn-logout-app").onclick = logout;
@@ -118,20 +120,20 @@ function buildTabs() {
 
   const tabs = [];
   if (rol === CONFIG.roles.ADMIN) {
-    tabs.push({ id: "admin",     icon: "ðŸ›¡ï¸", label: "AdministraciÃ³n" });
-    tabs.push({ id: "gestion",   icon: "âš™ï¸", label: "GestiÃ³n" });
-    tabs.push({ id: "graficos",  icon: "ðŸ“Š", label: "Reportes" });
+    tabs.push({ id: "admin",     icon: "\uD83D\uDEE1\uFE0F", label: "Administraci\u00F3n" });
+    tabs.push({ id: "gestion",   icon: "\u2699\uFE0F", label: "Gesti\u00F3n" });
+    tabs.push({ id: "graficos",  icon: "\uD83D\uDCCA", label: "Reportes" });
   }
   if (rol === CONFIG.roles.SECRETARIA) {
-    tabs.push({ id: "solicitudes", icon: "ðŸ“‹", label: "Ingreso Solicitudes" });
+    tabs.push({ id: "solicitudes", icon: "\uD83D\uDCCB", label: "Ingreso Solicitudes" });
   }
   if (rol === CONFIG.roles.DIRECTOR) {
-    tabs.push({ id: "gestion", icon: "âš™ï¸", label: "GestiÃ³n" });
-    tabs.push({ id: "graficos", icon: "ðŸ“Š", label: "Reportes" });
+    tabs.push({ id: "gestion", icon: "\u2699\uFE0F", label: "Gesti\u00F3n" });
+    tabs.push({ id: "graficos", icon: "\uD83D\uDCCA", label: "Reportes" });
   }
   if (rol === CONFIG.roles.UNIDAD) {
-    tabs.push({ id: "unidad", icon: "ðŸ¢", label: "Mis Solicitudes" });
-    tabs.push({ id: "graficos", icon: "ðŸ“Š", label: "Reportes" });
+    tabs.push({ id: "unidad", icon: "\uD83C\uDFE2", label: "Mis Solicitudes" });
+    tabs.push({ id: "graficos", icon: "\uD83D\uDCCA", label: "Reportes" });
   }
 
   tabs.forEach(t => {
@@ -181,11 +183,11 @@ function toggleFiltros() {
   const toggle = document.getElementById("filtros-toggle");
   if (panel.style.display === "none") {
     panel.style.display = "block";
-    toggle.textContent = "â–² ocultar";
+    toggle.textContent = "\u25B2 ocultar";
     renderFiltrosCompact();
   } else {
     panel.style.display = "none";
-    toggle.textContent = "â–¼ ver";
+    toggle.textContent = "\u25BC ver";
   }
 }
 
@@ -194,7 +196,7 @@ function renderFiltrosCompact() {
   if (!cont) return;
   cont.innerHTML = `
     <div style="padding:10px;display:flex;flex-direction:column;gap:8px;">
-      <input type="text" placeholder="ðŸ” Buscar..." value="${state.filtroBuscar}"
+      <input type="text" placeholder="\uD83D\uDD0D Buscar..." value="${state.filtroBuscar}"
         style="padding:8px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;"
         oninput="state.filtroBuscar=this.value;state.pagina=1;renderListaSolicitudes();renderStatsCompact()">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
@@ -228,13 +230,13 @@ function renderStatsCompact() {
   cont.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;">
       ${[
-        {e:"Ingresada",       lbl:"Ingresada",    color:"#dbeafe",tc:"#1d4ed8",icon:"ðŸ“¥"},
-        {e:"Derivada",        lbl:"Derivada",      color:"#fef3c7",tc:"#b45309",icon:"ðŸ“¤"},
-        {e:"En Proceso",      lbl:"En Proceso",    color:"#cffafe",tc:"#0e7490",icon:"âš™ï¸"},
-        {e:"Respondida",      lbl:"Respondida",    color:"#dcfce7",tc:"#15803d",icon:"âœ…"},
-        {e:"Devuelta",        lbl:"Devuelta",      color:"#fee2e2",tc:"#b91c1c",icon:"â†©ï¸"},
-        {e:"Pendiente de Cierre", lbl:"Pend. Cierre", color:"#fef9c3",tc:"#854d0e",icon:"â³"},
-        {e:"Cerrada",         lbl:"Cerrada",       color:"#f3f4f6",tc:"#4b5563",icon:"ðŸ”’"}
+        {e:"Ingresada",       lbl:"Ingresada",    color:"#dbeafe",tc:"#1d4ed8",icon:"\uD83D\uDCE5"},
+        {e:"Derivada",        lbl:"Derivada",      color:"#fef3c7",tc:"#b45309",icon:"\uD83D\uDCE4"},
+        {e:"En Proceso",      lbl:"En Proceso",    color:"#cffafe",tc:"#0e7490",icon:"\u2699\uFE0F"},
+        {e:"Respondida",      lbl:"Respondida",    color:"#dcfce7",tc:"#15803d",icon:"\u2705"},
+        {e:"Devuelta",        lbl:"Devuelta",      color:"#fee2e2",tc:"#b91c1c",icon:"\u21A9\uFE0F"},
+        {e:"Pendiente de Cierre", lbl:"Pend. Cierre", color:"#fef9c3",tc:"#854d0e",icon:"\u23F3"},
+        {e:"Cerrada",         lbl:"Cerrada",       color:"#f3f4f6",tc:"#4b5563",icon:"\uD83D\uDD12"}
       ].map(({e,lbl,color,tc,icon})=>`
         <div onclick="state.filtroEstado='${e}';state.pagina=1;renderListaSolicitudes();renderStatsCompact()"
           style="background:${color};border-radius:8px;padding:8px;text-align:center;cursor:pointer;">
@@ -278,7 +280,7 @@ function renderListaSolicitudes() {
           <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
         </div>
         <div class="sol-card-name">${s.Solicitante}</div>
-        <div class="sol-card-dir">ðŸ“ ${s.Direccion || ""}</div>
+        <div class="sol-card-dir">\uD83D\uDCCD ${s.Direccion || ""}</div>
       </div>`).join("");
 
   const counter = document.getElementById("sec-lista-count");
@@ -288,9 +290,9 @@ function renderListaSolicitudes() {
   if (pag) {
     const totalPags = Math.ceil(total / state.pageSize);
     pag.innerHTML = `
-      <button onclick="cambiarPagina(${state.pagina - 1})" ${state.pagina <= 1 ? 'disabled' : ''}>â€¹ Anterior</button>
+      <button onclick="cambiarPagina(${state.pagina - 1})" ${state.pagina <= 1 ? 'disabled' : ''}>\u2039 Anterior</button>
       <span>${state.pagina}/${Math.max(1, totalPags)}</span>
-      <button onclick="cambiarPagina(${state.pagina + 1})" ${state.pagina >= totalPags ? 'disabled' : ''}>Siguiente â€º</button>`;
+      <button onclick="cambiarPagina(${state.pagina + 1})" ${state.pagina >= totalPags ? 'disabled' : ''}>Siguiente \u203A</button>`;
   }
 }
 
@@ -308,7 +310,7 @@ function renderFiltros() {
     <div class="filtros-grid">
       <div class="form-group full">
         <label>Buscar</label>
-        <input type="text" placeholder="Nro, solicitante, direcciÃ³n..." value="${state.filtroBuscar}"
+        <input type="text" placeholder="Nro, solicitante, direcci\u00F3n..." value="${state.filtroBuscar}"
           oninput="state.filtroBuscar=this.value;state.pagina=1;renderListaSolicitudes()">
       </div>
       <div class="form-group">
@@ -336,12 +338,12 @@ function renderFiltros() {
     </div>
     <div class="stats-grid">
       ${[
-        {e:"Ingresada",icon:"ðŸ“¥",color:"#dbeafe",num:"#1d4ed8"},
-        {e:"Derivada",icon:"ðŸ“¤",color:"#fef3c7",num:"#b45309"},
-        {e:"En Proceso",icon:"âš™ï¸",color:"#cffafe",num:"#0e7490"},
-        {e:"Respondida",icon:"âœ…",color:"#dcfce7",num:"#15803d"},
-        {e:"Devuelta",icon:"â†©ï¸",color:"#fee2e2",num:"#b91c1c"},
-        {e:"Cerrada",icon:"ðŸ”’",color:"#f3f4f6",num:"#4b5563"}
+        {e:"Ingresada",icon:"\uD83D\uDCE5",color:"#dbeafe",num:"#1d4ed8"},
+        {e:"Derivada",icon:"\uD83D\uDCE4",color:"#fef3c7",num:"#b45309"},
+        {e:"En Proceso",icon:"\u2699\uFE0F",color:"#cffafe",num:"#0e7490"},
+        {e:"Respondida",icon:"\u2705",color:"#dcfce7",num:"#15803d"},
+        {e:"Devuelta",icon:"\u21A9\uFE0F",color:"#fee2e2",num:"#b91c1c"},
+        {e:"Cerrada",icon:"\uD83D\uDD12",color:"#f3f4f6",num:"#4b5563"}
       ].map(({e,icon,color,num}) => `
         <div class="stat-card" onclick="state.filtroEstado='${e}';state.pagina=1;renderListaSolicitudes()" title="Filtrar por ${e}">
           <div class="stat-icon" style="background:${color};">${icon}</div>
@@ -358,9 +360,9 @@ function renderFormNueva() {
   cont.innerHTML = `
     <div class="form-nueva">
 
-      <!-- SecciÃ³n datos -->
+      <!-- Secci\u00F3n datos -->
       <div class="form-section">
-        <div class="form-section-header">ðŸ“‹ Datos de la Solicitud</div>
+        <div class="form-section-header">\uD83D\uDCCB Datos de la Solicitud</div>
         <div class="form-section-body">
         <div class="form-row">
           <div class="form-group">
@@ -368,7 +370,7 @@ function renderFormNueva() {
             <input type="text" id="nueva-nro" placeholder="Ej: 16-157" style="font-weight:600;">
           </div>
           <div class="form-group">
-            <label>* Fecha RecepciÃ³n</label>
+            <label>* Fecha Recepci\u00F3n</label>
             <input type="date" id="nueva-fecha" value="${new Date().toISOString().split('T')[0]}">
           </div>
         </div>
@@ -377,28 +379,28 @@ function renderFormNueva() {
           <input type="text" id="nueva-solicitante" placeholder="Nombre completo del solicitante">
         </div>
         <div class="form-group">
-          <label>* DirecciÃ³n</label>
-          <input type="text" id="nueva-dir" placeholder="Calle, nÃºmero, villa/sector">
+          <label>* Direcci\u00F3n</label>
+          <input type="text" id="nueva-dir" placeholder="Calle, n\u00FAmero, villa/sector">
         </div>
         <div class="form-group">
-          <label>DescripciÃ³n de la solicitud</label>
+          <label>Descripci\u00F3n de la solicitud</label>
           <textarea id="nueva-solicitud" rows="3" placeholder="Resumen del motivo de la solicitud..."></textarea>
         </div>
         </div><!-- /form-section-body -->
       </div><!-- /form-section -->
 
-      <!-- SecciÃ³n adjunto -->
+      <!-- Secci\u00F3n adjunto -->
       <div class="form-section">
-        <div class="form-section-header naranja">ðŸ“Ž Documento Adjunto</div>
+        <div class="form-section-header naranja">\uD83D\uDCCE Documento Adjunto</div>
         <div class="form-section-body">
         <div id="drop-area" class="upload-area"
           onclick="document.getElementById('nueva-files').click()"
           ondragover="event.preventDefault();this.style.background='#fef3c7'"
           ondragleave="this.style.background=''"
           ondrop="event.preventDefault();handleFiles(event.dataTransfer.files)">
-          <div style="font-size:36px;margin-bottom:8px;">ðŸ“„</div>
-          <div style="font-weight:600;margin-bottom:4px;">Arrastra el PDF aquÃ­</div>
-          <div style="font-size:12px;color:#9ca3af;">o haz clic para seleccionar â€” PDF, JPG, PNG</div>
+          <div style="font-size:36px;margin-bottom:8px;">\uD83D\uDCC4</div>
+          <div style="font-weight:600;margin-bottom:4px;">Arrastra el PDF aqu\u00ED</div>
+          <div style="font-size:12px;color:#9ca3af;">o haz clic para seleccionar \u2014 PDF, JPG, PNG</div>
         </div>
         <input type="file" id="nueva-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFiles(this.files)">
         <div id="file-list" class="file-list"></div>
@@ -409,10 +411,10 @@ function renderFormNueva() {
       <!-- Botones centrados -->
       <div style="display:flex;justify-content:center;gap:12px;padding:4px 0 8px;">
         <button class="btn-primary" onclick="guardarSolicitud()" style="width:220px;padding:13px;">
-          ðŸ’¾ Guardar Solicitud
+          \uD83D\uDCBE Guardar Solicitud
         </button>
         <button onclick="limpiarFormNueva()" style="padding:10px 20px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#666;">
-          ðŸ—‘ Limpiar
+          \uD83D\uDDD1 Limpiar
         </button>
       </div>
     </div>`;
@@ -440,11 +442,11 @@ function updateFileList() {
   list.innerHTML = state.adjuntosNueva.map((f, i) => {
     const isPdf = f.name.toLowerCase().endsWith('.pdf');
     const isImg = /\.(jpg|jpeg|png)$/i.test(f.name);
-    const icon = isPdf ? 'ðŸ“„' : isImg ? 'ðŸ–¼ï¸' : 'ðŸ“Ž';
+    const icon = isPdf ? '\uD83D\uDCC4' : isImg ? '\uD83D\uDDBC\uFE0F' : '\uD83D\uDCCE';
     return `
     <div class="file-item" style="border-left:3px solid ${isPdf?'#ef4444':isImg?'#3b82f6':'#6b7280'};">
       <span>${icon} <strong>${f.name}</strong> <span style="color:#9ca3af">(${(f.size/1024).toFixed(0)} KB)</span></span>
-      <button onclick="removeFile(${i})" title="Quitar">âœ•</button>
+      <button onclick="removeFile(${i})" title="Quitar">\u2715</button>
     </div>`;
   }).join("");
 
@@ -461,7 +463,7 @@ function updateFileList() {
       preview.innerHTML = "";
       // Limpiar visor si no hay archivos
       const pdfPanel = document.getElementById("pdf-visor-contenido");
-      if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>ðŸ“„</span><p>Selecciona una solicitud para ver el documento adjunto</p></div>`;
+      if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>\uD83D\uDCC4</span><p>Selecciona una solicitud para ver el documento adjunto</p></div>`;
     }
   }
 
@@ -479,8 +481,6 @@ function removeFile(idx) {
 
 function limpiarFormNueva() {
   state.adjuntosNueva = [];
-  const pdfPanel = document.getElementById("pdf-visor-contenido");
-  if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>ðŸ“„</span><p>Selecciona una solicitud para ver el documento adjunto</p></div>`;
   renderFormNueva();
 }
 
@@ -532,15 +532,13 @@ async function guardarSolicitud() {
       Unidad: state.usuario.Unidad,
       FechaAccion: new Date().toISOString(),
       Observaciones: desc
-    }).catch(e => console.warn("Historial (no crÃ­tico):", e.message));
+    }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
 
     // Notificar director (fire-and-forget)
     notificarDirector(item, "Nueva solicitud ingresada");
 
     state.adjuntosNueva = [];
-    const pdfPanel = document.getElementById("pdf-visor-contenido");
-    if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>ðŸ“„</span><p>Selecciona una solicitud para ver el documento adjunto</p></div>`;
-    showToast("success", `âœ… Solicitud ${nro} guardada correctamente`);
+    showToast("success", `\u2705 Solicitud ${nro} guardada correctamente`);
     await renderSecretaria();
   } catch (e) {
     showToast("error", "Error al guardar: " + e.message);
@@ -576,23 +574,23 @@ function renderDirSidebar() {
   state.solicitudes.forEach(s => { counts[s.Estado] = (counts[s.Estado]||0)+1; });
 
   const stats = [
-    { e:"Ingresada",          icon:"ðŸ“¥", bg:"#dbeafe", tc:"#1d4ed8" },
-    { e:"Derivada",           icon:"ðŸ“¤", bg:"#fef3c7", tc:"#b45309" },
-    { e:"En Proceso",         icon:"âš™ï¸", bg:"#cffafe", tc:"#0e7490" },
-    { e:"Respondida",         icon:"âœ…", bg:"#dcfce7", tc:"#15803d" },
-    { e:"Devuelta",           icon:"â†©ï¸", bg:"#fee2e2", tc:"#b91c1c" },
-    { e:"Pendiente de Cierre",icon:"â³", bg:"#fdf4ff", tc:"#7e22ce" },
-    { e:"Cerrada",            icon:"ðŸ”’", bg:"#f3f4f6", tc:"#4b5563" }
+    { e:"Ingresada",          icon:"\uD83D\uDCE5", bg:"#dbeafe", tc:"#1d4ed8" },
+    { e:"Derivada",           icon:"\uD83D\uDCE4", bg:"#fef3c7", tc:"#b45309" },
+    { e:"En Proceso",         icon:"\u2699\uFE0F", bg:"#cffafe", tc:"#0e7490" },
+    { e:"Respondida",         icon:"\u2705", bg:"#dcfce7", tc:"#15803d" },
+    { e:"Devuelta",           icon:"\u21A9\uFE0F", bg:"#fee2e2", tc:"#b91c1c" },
+    { e:"Pendiente de Cierre",icon:"\u23F3", bg:"#fdf4ff", tc:"#7e22ce" },
+    { e:"Cerrada",            icon:"\uD83D\uDD12", bg:"#f3f4f6", tc:"#4b5563" }
   ];
 
   const sidebar = document.getElementById("dir-sidebar");
   sidebar.innerHTML = `
-    <!-- BotÃ³n Todos -->
+    <!-- Bot\u00F3n Todos -->
     <button onclick="filtrarDirector('Todos')"
       style="width:100%;margin-bottom:6px;padding:6px 10px;border-radius:7px;border:1.5px solid ${state.filtroEstado==='Todos'?'var(--azul)':'var(--borde)'};
              background:${state.filtroEstado==='Todos'?'var(--azul)':'white'};color:${state.filtroEstado==='Todos'?'white':'var(--texto)'};
              font-size:11px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-      <span>ðŸ“Š Todas</span>
+      <span>\uD83D\uDCCA Todas</span>
       <span style="background:${state.filtroEstado==='Todos'?'rgba(255,255,255,0.25)':'var(--gris-bg)'};padding:1px 7px;border-radius:10px;font-weight:700;">
         ${state.solicitudes.length}
       </span>
@@ -614,14 +612,14 @@ function renderDirSidebar() {
           <div style="font-size:13px;margin-bottom:1px;">${icon}</div>
           <div style="font-size:17px;font-weight:800;color:${activo?'white':tc};line-height:1;">${cnt}</div>
           <div style="font-size:9px;color:${activo?'rgba(255,255,255,0.85)':tc};margin-top:1px;font-weight:500;">${e}</div>
-          ${urgente&&!activo?`<div style="font-size:8px;color:#b91c1c;font-weight:700;">âš ï¸</div>`:''}
+          ${urgente&&!activo?`<div style="font-size:8px;color:#b91c1c;font-weight:700;">\u26A0\uFE0F</div>`:''}
         </div>`;
       }).join("")}
     </div>
 
     <!-- Filtro por unidad (valores reales de las solicitudes cargadas) -->
     <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--borde);">
-      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#9ca3af;margin-bottom:5px;">ðŸ¢ Filtrar por Unidad</div>
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#9ca3af;margin-bottom:5px;">\uD83C\uDFE2 Filtrar por Unidad</div>
       <select onchange="filtrarDirectorUnidad(this.value)"
         style="width:100%;padding:5px 8px;border:1.5px solid ${state.filtroUnidadDir!=='Todas'?'var(--azul)':'var(--borde)'};
                border-radius:7px;font-size:11px;color:var(--texto);cursor:pointer;
@@ -632,9 +630,9 @@ function renderDirSidebar() {
       </select>
       ${state.filtroUnidadDir!=='Todas'?`
       <div style="margin-top:4px;font-size:10px;color:var(--azul-claro);display:flex;align-items:center;justify-content:space-between;">
-        <span>ðŸ“Œ ${state.filtroUnidadDir}</span>
+        <span>\uD83D\uDCCC ${state.filtroUnidadDir}</span>
         <button onclick="filtrarDirectorUnidad('Todas')"
-          style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:10px;font-weight:700;padding:0;">âœ• limpiar</button>
+          style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:10px;font-weight:700;padding:0;">\u2715 limpiar</button>
       </div>`:''}
     </div>`;
 }
@@ -648,9 +646,9 @@ function filtrarDirector(estado) {
   renderDirLista();
   // Limpiar visor y detalle
   const pdf = document.getElementById("dir-pdf");
-  if (pdf) pdf.innerHTML = `<div class="pdf-visor-empty"><span>ðŸ“„</span><p>Selecciona una solicitud</p></div>`;
+  if (pdf) pdf.innerHTML = `<div class="pdf-visor-empty"><span>\uD83D\uDCC4</span><p>Selecciona una solicitud</p></div>`;
   const det = document.getElementById("dir-detalle");
-  if (det) det.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>ðŸ›ï¸</span><p style="text-align:center;">Selecciona una solicitud<br>para gestionar</p></div>`;
+  if (det) det.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>\uD83C\uDFDB\uFE0F</span><p style="text-align:center;">Selecciona una solicitud<br>para gestionar</p></div>`;
 }
 
 function filtrarDirectorUnidad(unidad) {
@@ -660,9 +658,9 @@ function filtrarDirectorUnidad(unidad) {
   renderDirSidebar();
   renderDirLista();
   const pdf = document.getElementById("dir-pdf");
-  if (pdf) pdf.innerHTML = `<div class="pdf-visor-empty"><span>ðŸ“„</span><p>Selecciona una solicitud</p></div>`;
+  if (pdf) pdf.innerHTML = `<div class="pdf-visor-empty"><span>\uD83D\uDCC4</span><p>Selecciona una solicitud</p></div>`;
   const det = document.getElementById("dir-detalle");
-  if (det) det.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>ðŸ›ï¸</span><p style="text-align:center;">Selecciona una solicitud<br>para gestionar</p></div>`;
+  if (det) det.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>\uD83C\uDFDB\uFE0F</span><p style="text-align:center;">Selecciona una solicitud<br>para gestionar</p></div>`;
 }
 
 async function cerrarDirectoDirector(id) {
@@ -671,7 +669,7 @@ async function cerrarDirectoDirector(id) {
   const obs = document.getElementById("dir-no-corresponde-obs")?.value.trim();
   if (!obs) { showToast("error", "Ingresa el motivo del cierre."); return; }
 
-  const confirmar = confirm(`Â¿Cerrar la solicitud ${sol.NroSolicitud} como "No corresponde a DOM"?\n\nMotivo: ${obs}`);
+  const confirmar = confirm(`\u00BFCerrar la solicitud ${sol.NroSolicitud} como "No corresponde a DOM"?\n\nMotivo: ${obs}`);
   if (!confirmar) return;
 
   showLoading("Cerrando solicitud...");
@@ -682,7 +680,7 @@ async function cerrarDirectoDirector(id) {
     });
     await registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Accion: "Cierre directo por Director â€” No corresponde a DOM",
+      Accion: "Cierre directo por Director \u2014 No corresponde a DOM",
       Observaciones: obs,
       Usuario: state.usuario.NombreCompleto || state.usuario.displayName,
       Unidad: "Director",
@@ -721,7 +719,7 @@ function renderDirLista() {
   const count = document.getElementById("dir-lista-count");
   if (count) count.textContent = `(${total})`;
 
-  // Actualizar input de bÃºsqueda sin re-renderizar
+  // Actualizar input de b\u00FAsqueda sin re-renderizar
   const buscarInput = document.getElementById("dir-buscar");
   if (buscarInput) buscarInput.oninput = e => {
     state.filtroBuscar = e.target.value;
@@ -752,20 +750,20 @@ function renderDirLista() {
           </div>
           <div class="sol-card-name">${s.Solicitante}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px;">
-            <div class="sol-card-dir" style="margin-top:0;">ðŸ“ ${s.Direccion||""}</div>
+            <div class="sol-card-dir" style="margin-top:0;">\uD83D\uDCCD ${s.Direccion||""}</div>
             ${semBadge}
           </div>
-          ${s.UnidadDerivada?`<div style="font-size:11px;color:#888;margin-top:3px;">ðŸ¢ ${s.UnidadDerivada}</div>`:""}
-          ${esUrgente?`<div style="font-size:11px;color:#b91c1c;margin-top:3px;font-weight:600;">âš ï¸ Requiere re-derivaciÃ³n</div>`:""}
+          ${s.UnidadDerivada?`<div style="font-size:11px;color:#888;margin-top:3px;">\uD83C\uDFE2 ${s.UnidadDerivada}</div>`:""}
+          ${esUrgente?`<div style="font-size:11px;color:#b91c1c;margin-top:3px;font-weight:600;">\u26A0\uFE0F Requiere re-derivaci\u00F3n</div>`:""}
         </div>`;
     }).join("");
   }
 
   const pag = document.getElementById("dir-paginacion");
   if (pag) pag.innerHTML = `
-    <button onclick="cambiarPaginaDir(${state.pagina-1})" ${state.pagina<=1?'disabled':''}>â€¹</button>
+    <button onclick="cambiarPaginaDir(${state.pagina-1})" ${state.pagina<=1?'disabled':''}>\u2039</button>
     <span>${state.pagina}/${Math.max(1,totalPags)} (${total})</span>
-    <button onclick="cambiarPaginaDir(${state.pagina+1})" ${state.pagina>=totalPags?'disabled':''}>â€º</button>`;
+    <button onclick="cambiarPaginaDir(${state.pagina+1})" ${state.pagina>=totalPags?'disabled':''}>\u203A</button>`;
 }
 
 function cambiarPaginaDir(p) { state.pagina=p; renderDirLista(); }
@@ -786,14 +784,14 @@ async function seleccionarSolicitudDirector(id) {
   try {
     const atts = await getListItemAttachments(CONFIG.lists.solicitudes, sol.id);
     if (!atts.length) {
-      if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>ðŸ“­</span><p>Sin documentos adjuntos</p></div>`;
+      if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>\uD83D\uDCED</span><p>Sin documentos adjuntos</p></div>`;
       return;
     }
     const first = atts.find(a=>a.name?.toLowerCase().endsWith('.pdf'))||atts[0];
     // Reusar mostrarEnVisor pero apuntando al panel del director
     const tempPanel = document.getElementById("pdf-visor-contenido");
     // Temporalmente redirigir al panel del director
-    if (pdfHeader) pdfHeader.textContent = `ðŸ“„ ${sol.NroSolicitud} â€” ${first.name}`;
+    if (pdfHeader) pdfHeader.textContent = `\uD83D\uDCC4 ${sol.NroSolicitud} \u2014 ${first.name}`;
     const blobUrl = await getAttachmentBlobUrl(first.downloadUrl, first.serverRelativeUrl);
     if (pdfPanel) {
       pdfPanel.innerHTML = "";
@@ -817,7 +815,7 @@ async function seleccionarSolicitudDirector(id) {
           if (p<pdf.numPages) {
             const sep=document.createElement("div");
             sep.style.cssText="color:rgba(255,255,255,0.35);font-size:11px;";
-            sep.textContent=`â€” ${p} / ${pdf.numPages} â€”`;
+            sep.textContent=`\u2014 ${p} / ${pdf.numPages} \u2014`;
             wrap.appendChild(sep);
           }
         }
@@ -829,7 +827,7 @@ async function seleccionarSolicitudDirector(id) {
       }
     }
   } catch(e) {
-    if (pdfPanel) pdfPanel.innerHTML=`<div class="pdf-visor-empty"><span>âš ï¸</span><p style="color:#ef4444;font-size:13px;">No se pudo cargar el documento</p></div>`;
+    if (pdfPanel) pdfPanel.innerHTML=`<div class="pdf-visor-empty"><span>\u26A0\uFE0F</span><p style="color:#ef4444;font-size:13px;">No se pudo cargar el documento</p></div>`;
   }
 }
 
@@ -837,7 +835,7 @@ function renderDetalleDirector(sol) {
   const cont = document.getElementById("dir-detalle");
   const header = document.getElementById("dir-detalle-header");
   if (!sol) {
-    if (cont) cont.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>ðŸ›ï¸</span><p>Selecciona una solicitud</p></div>`;
+    if (cont) cont.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>\uD83C\uDFDB\uFE0F</span><p>Selecciona una solicitud</p></div>`;
     return;
   }
 
@@ -851,10 +849,10 @@ function renderDetalleDirector(sol) {
     header.style.cssText = `background:${esDerivable?'linear-gradient(90deg,#1e3a5f,#1a3a6b)':esPendienteCierre?'linear-gradient(90deg,#4a1772,#7e22ce)':esCerrable?'linear-gradient(90deg,#14532d,#15803d)':'linear-gradient(90deg,#374151,#6b7280)'};color:white;display:flex;flex-direction:column;padding:0;`;
     header.innerHTML = `
       <button class="mobile-back-bar" onclick="volverAListaMovil('.dir-layout')" style="font-size:13px;padding:8px 12px;">
-        â† Volver a lista
+        \u2190 Volver a lista
       </button>
       <div style="display:flex;align-items:center;gap:8px;flex:1;padding:10px 14px;">
-        <span>${esDerivable?'ðŸ“¤':esPendienteCierre?'â³':esCerrable?'âœ…':'ðŸ“‹'}</span>
+        <span>${esDerivable?'\uD83D\uDCE4':esPendienteCierre?'\u23F3':esCerrable?'\u2705':'\uD83D\uDCCB'}</span>
         <span style="font-weight:700;">${sol.NroSolicitud}</span>
         <span class="estado-badge estado-${sol.Estado}" style="font-size:11px;">${sol.Estado}</span>
       </div>`;
@@ -867,55 +865,55 @@ function renderDetalleDirector(sol) {
       <div style="flex:1;">
         <div style="font-size:12px;font-weight:700;color:${sem.color};">
           ${sem.dias > 0
-            ? `Plazo: ${sem.dias === 1 ? "Vence maÃ±ana" : `${sem.dias} dÃ­as restantes`}`
-            : sem.dias === 0 ? "âš ï¸ Vence hoy" : `âš ï¸ Plazo vencido hace ${Math.abs(sem.dias)} dÃ­a${Math.abs(sem.dias)>1?'s':''}`}
+            ? `Plazo: ${sem.dias === 1 ? "Vence ma\u00F1ana" : `${sem.dias} d\u00EDas restantes`}`
+            : sem.dias === 0 ? "\u26A0\uFE0F Vence hoy" : `\u26A0\uFE0F Plazo vencido hace ${Math.abs(sem.dias)} d\u00EDa${Math.abs(sem.dias)>1?'s':''}`}
         </div>
-        <div style="font-size:11px;color:${sem.color};opacity:0.8;">LÃ­mite ${CONFIG.plazoDerivacionDias||15} dÃ­as Â· Vence el ${formatFecha(sem.vencimiento.toISOString())}</div>
+        <div style="font-size:11px;color:${sem.color};opacity:0.8;">L\u00EDmite ${CONFIG.plazoDerivacionDias||15} d\u00EDas \u00B7 Vence el ${formatFecha(sem.vencimiento.toISOString())}</div>
       </div>
     </div>` : "";
 
   cont.innerHTML = `${semBanner}<div style="display:flex;flex-direction:column;gap:12px;padding:14px;">
 
-    <!-- Datos bÃ¡sicos: solicitante, fecha, nro -->
+    <!-- Datos b\u00E1sicos: solicitante, fecha, nro -->
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;margin-bottom:6px;">
         <div><span style="color:#888;font-size:11px;display:block;">Nro Solicitud</span><strong>${sol.NroSolicitud}</strong></div>
         <div><span style="color:#888;font-size:11px;display:block;">Fecha</span>${formatFecha(sol.FechaRecepcion)}</div>
       </div>
       <div style="font-size:13px;margin-bottom:4px;"><span style="color:#888;font-size:11px;display:block;">Solicitante</span>${sol.Solicitante}</div>
-      <div style="font-size:13px;"><span style="color:#888;font-size:11px;display:block;">DirecciÃ³n</span>${sol.Direccion||"-"}</div>
-      ${sol.UnidadDerivada?`<div style="margin-top:8px;padding:5px 10px;background:#fef3c7;border-radius:6px;font-size:12px;color:#b45309;">ðŸ¢ Derivada a: <strong>${sol.UnidadDerivada}</strong></div>`:""}
+      <div style="font-size:13px;"><span style="color:#888;font-size:11px;display:block;">Direcci\u00F3n</span>${sol.Direccion||"-"}</div>
+      ${sol.UnidadDerivada?`<div style="margin-top:8px;padding:5px 10px;background:#fef3c7;border-radius:6px;font-size:12px;color:#b45309;">\uD83C\uDFE2 Derivada a: <strong>${sol.UnidadDerivada}</strong></div>`:""}
     </div>
 
-    <!-- DESCRIPCIÃ“N DE LA SOLICITUD â€” siempre visible y prominente -->
+    <!-- DESCRIPCI\u00D3N DE LA SOLICITUD \u2014 siempre visible y prominente -->
     <div style="background:white;border:2px solid var(--azul);border-radius:10px;overflow:hidden;">
       <div style="background:linear-gradient(90deg,#1e3a5f,#1a3a6b);color:white;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:0.3px;">
-        ðŸ“‹ DescripciÃ³n de la Solicitud
+        \uD83D\uDCCB Descripci\u00F3n de la Solicitud
       </div>
       <div style="padding:12px 14px;font-size:13px;color:#374151;line-height:1.7;min-height:48px;">
-        ${sol.Solicitud ? sol.Solicitud : '<span style="color:#9ca3af;font-style:italic;">Sin descripciÃ³n registrada</span>'}
+        ${sol.Solicitud ? sol.Solicitud : '<span style="color:#9ca3af;font-style:italic;">Sin descripci\u00F3n registrada</span>'}
       </div>
     </div>
 
     ${esDevuelta ? `
-    <!-- Motivo devoluciÃ³n -->
+    <!-- Motivo devoluci\u00F3n -->
     <div class="accion-panel">
-      <div class="accion-header devuelta">â†©ï¸ Motivo de DevoluciÃ³n</div>
+      <div class="accion-header devuelta">\u21A9\uFE0F Motivo de Devoluci\u00F3n</div>
       <div class="accion-body" style="background:#fff5f5;">
         <p style="font-size:13px;color:#b91c1c;margin:0;">${sol.MotivoDevolucion||"Sin motivo registrado"}</p>
       </div>
     </div>` : ""}
 
     ${tieneEvidencia ? `
-    <!-- SOLUCIÃ“N EJECUTADA POR LA UNIDAD -->
+    <!-- SOLUCI\u00D3N EJECUTADA POR LA UNIDAD -->
     <div style="background:white;border:2px solid #15803d;border-radius:10px;overflow:hidden;">
       <div style="background:linear-gradient(90deg,#14532d,#15803d);color:white;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">
-        ðŸ¢ SoluciÃ³n Ejecutada por la Unidad
+        \uD83C\uDFE2 Soluci\u00F3n Ejecutada por la Unidad
       </div>
       <div id="dir-evidencia-panel" style="padding:0;">
         <div style="text-align:center;color:#9ca3af;font-size:12px;padding:16px;">
           <div class="spinner" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>
-          Cargando soluciÃ³n...
+          Cargando soluci\u00F3n...
         </div>
       </div>
     </div>` : ""}
@@ -923,76 +921,76 @@ function renderDetalleDirector(sol) {
     ${esDerivable ? `
     <!-- Panel derivar -->
     <div class="accion-panel">
-      <div class="accion-header derivar">ðŸ“¤ ${esDevuelta?"Re-derivar":"Derivar"} Solicitud</div>
+      <div class="accion-header derivar">\uD83D\uDCE4 ${esDevuelta?"Re-derivar":"Derivar"} Solicitud</div>
       <div class="accion-body">
         <label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Unidad de destino</label>
         <select id="dir-unidad-derivar">
-          <option value="">â€” Seleccionar unidad â€”</option>
+          <option value="">\u2014 Seleccionar unidad \u2014</option>
           ${CONFIG.unidades.map(u=>`<option ${sol.UnidadDerivada===u?'selected':''}>${u}</option>`).join("")}
         </select>
         <label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Instrucciones / Acciones</label>
-        <textarea id="dir-accion-obs" rows="3" placeholder="Instrucciones especÃ­ficas para la unidad..."></textarea>
+        <textarea id="dir-accion-obs" rows="3" placeholder="Instrucciones espec\u00EDficas para la unidad..."></textarea>
         <button class="btn-primary" onclick="derivarSolicitud('${sol.id}')" style="width:100%;padding:12px;">
-          ðŸ“¤ ${esDevuelta?"Re-derivar Solicitud":"Derivar Solicitud"}
+          \uD83D\uDCE4 ${esDevuelta?"Re-derivar Solicitud":"Derivar Solicitud"}
         </button>
       </div>
     </div>` : ""}
 
     ${esCerrable ? `
-    <!-- Panel resoluciÃ³n -->
+    <!-- Panel resoluci\u00F3n -->
     <div class="accion-panel">
-      <div class="accion-header cerrar" style="background:linear-gradient(90deg,#14532d,#15803d);">ðŸ“‹ ResoluciÃ³n de Solicitud</div>
+      <div class="accion-header cerrar" style="background:linear-gradient(90deg,#14532d,#15803d);">\uD83D\uDCCB Resoluci\u00F3n de Solicitud</div>
       <div class="accion-body">
 
         ${!esPendienteCierre ? `
         <!-- Desde Respondida: marcar pendiente o cerrar directo -->
         <div style="background:#fdf4ff;border:1.5px solid #d8b4fe;border-radius:10px;padding:12px;margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:700;color:#7e22ce;margin-bottom:6px;">â³ Marcar Pendiente de Cierre</div>
-          <p style="font-size:11px;color:#6b21a8;margin:0 0 8px;">Queda en evaluaciÃ³n hasta generar el parte final (inspecciÃ³n, multa o soluciÃ³n).</p>
+          <div style="font-size:12px;font-weight:700;color:#7e22ce;margin-bottom:6px;">\u23F3 Marcar Pendiente de Cierre</div>
+          <p style="font-size:11px;color:#6b21a8;margin:0 0 8px;">Queda en evaluaci\u00F3n hasta generar el parte final (inspecci\u00F3n, multa o soluci\u00F3n).</p>
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
             <label style="font-size:11px;font-weight:600;color:#7e22ce;white-space:nowrap;">Plazo hasta:</label>
             <input type="date" id="dir-plazo-cierre" style="flex:1;padding:5px 8px;border:1.5px solid #d8b4fe;border-radius:6px;font-size:12px;">
           </div>
           <button onclick="pendienteCierreSolicitud('${sol.id}')"
             style="width:100%;padding:9px;background:#7e22ce;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">
-            â³ Marcar Pendiente de Cierre
+            \u23F3 Marcar Pendiente de Cierre
           </button>
         </div>
         <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;">
-          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">ðŸ”’ Cierre Directo</div>
+          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">\uD83D\uDD12 Cierre Directo</div>
           <p style="font-size:11px;color:#166534;margin:0 0 8px;">Cierra formalmente sin pasar por pendiente.</p>
           <textarea id="dir-cierre-obs" rows="2" placeholder="Observaciones (opcional)..." style="width:100%;padding:7px 9px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;resize:vertical;box-sizing:border-box;margin-bottom:8px;"></textarea>
           <button class="btn-success" onclick="cerrarSolicitud('${sol.id}')" style="width:100%;padding:9px;">
-            ðŸ”’ Cerrar Solicitud Formalmente
+            \uD83D\uDD12 Cerrar Solicitud Formalmente
           </button>
         </div>` : `
 
-        <!-- Desde Pendiente de Cierre: SoluciÃ³n o Multa -->
-        <p style="font-size:12px;color:#555;margin:0 0 12px;">â³ En plazo de evaluaciÃ³n. Selecciona cÃ³mo se resolviÃ³:</p>
+        <!-- Desde Pendiente de Cierre: Soluci\u00F3n o Multa -->
+        <p style="font-size:12px;color:#555;margin:0 0 12px;">\u23F3 En plazo de evaluaci\u00F3n. Selecciona c\u00F3mo se resolvi\u00F3:</p>
 
-        <!-- OPCIÃ“N A: SoluciÃ³n ejecutada -->
+        <!-- OPCI\u00D3N A: Soluci\u00F3n ejecutada -->
         <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:8px;">âœ… Se SolucionÃ³</div>
-          <label style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">NÂ° Parte / Informe <span style="color:#ef4444;">*</span></label>
+          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:8px;">\u2705 Se Solucion\u00F3</div>
+          <label style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">N\u00B0 Parte / Informe <span style="color:#ef4444;">*</span></label>
           <input type="text" id="dir-cierre-parte"
-            placeholder="Ej: Parte NÂ° 123-2026"
+            placeholder="Ej: Parte N\u00B0 123-2026"
             style="width:100%;padding:7px 9px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;box-sizing:border-box;margin-bottom:8px;">
-          <label style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">DescripciÃ³n de la soluciÃ³n <span style="color:#ef4444;">*</span></label>
+          <label style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Descripci\u00F3n de la soluci\u00F3n <span style="color:#ef4444;">*</span></label>
           <textarea id="dir-cierre-solucion-obs" rows="2"
-            placeholder="Detalla cÃ³mo se resolviÃ³ (obra ejecutada, inspecciÃ³n realizada, etc.)"
+            placeholder="Detalla c\u00F3mo se resolvi\u00F3 (obra ejecutada, inspecci\u00F3n realizada, etc.)"
             style="width:100%;padding:7px 9px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;resize:vertical;box-sizing:border-box;margin-bottom:8px;"></textarea>
           <button onclick="cerrarPorSolucion('${sol.id}')"
             style="width:100%;padding:10px;background:#15803d;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">
-            âœ… Cerrar â€” SoluciÃ³n Ejecutada
+            \u2705 Cerrar \u2014 Soluci\u00F3n Ejecutada
           </button>
         </div>
 
-        <!-- OPCIÃ“N B: Multa aplicada -->
+        <!-- OPCI\u00D3N B: Multa aplicada -->
         <div style="background:#fefce8;border:1.5px solid #fde047;border-radius:10px;padding:12px;">
-          <div style="font-size:12px;font-weight:700;color:#854d0e;margin-bottom:8px;">ðŸ“‹ Se AplicÃ³ Multa</div>
-          <label style="font-size:10px;font-weight:700;color:#854d0e;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">NÂ° Informe de Multa <span style="color:#ef4444;">*</span></label>
+          <div style="font-size:12px;font-weight:700;color:#854d0e;margin-bottom:8px;">\uD83D\uDCCB Se Aplic\u00F3 Multa</div>
+          <label style="font-size:10px;font-weight:700;color:#854d0e;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">N\u00B0 Informe de Multa <span style="color:#ef4444;">*</span></label>
           <input type="text" id="dir-multa-nro"
-            placeholder="Ej: Informe NÂ° 045-2026"
+            placeholder="Ej: Informe N\u00B0 045-2026"
             style="width:100%;padding:7px 9px;border:1.5px solid #fde047;border-radius:7px;font-size:12px;box-sizing:border-box;margin-bottom:8px;">
           <label style="font-size:10px;font-weight:700;color:#854d0e;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Monto de la multa (UTM)</label>
           <input type="text" id="dir-multa-monto"
@@ -1004,7 +1002,7 @@ function renderDetalleDirector(sol) {
             style="width:100%;padding:7px 9px;border:1.5px solid #fde047;border-radius:7px;font-size:12px;resize:vertical;box-sizing:border-box;margin-bottom:8px;"></textarea>
           <button onclick="cerrarPorMulta('${sol.id}')"
             style="width:100%;padding:10px;background:#b45309;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">
-            ðŸ“‹ Cerrar â€” Multa Aplicada
+            \uD83D\uDCCB Cerrar \u2014 Multa Aplicada
           </button>
         </div>`}
 
@@ -1013,16 +1011,16 @@ function renderDetalleDirector(sol) {
 
     ${esPendienteCierre ? `
     <div style="background:#fdf4ff;border:1.5px solid #d8b4fe;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <span style="font-size:20px;">â³</span>
+      <span style="font-size:20px;">\u23F3</span>
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:700;color:#7e22ce;">Pendiente de Cierre</div>
-        <div style="font-size:11px;color:#6b21a8;">Aguardando parte final${sol.FechaCierre ? ' â€” Plazo: ' + formatFecha(sol.FechaCierre) : ''}</div>
+        <div style="font-size:11px;color:#6b21a8;">Aguardando parte final${sol.FechaCierre ? ' \u2014 Plazo: ' + formatFecha(sol.FechaCierre) : ''}</div>
       </div>
     </div>` : ""}
 
     ${sol.Estado === CONFIG.estados.CERRADA ? `
     <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
-      <span style="font-size:20px;">ðŸ”’</span>
+      <span style="font-size:20px;">\uD83D\uDD12</span>
       <div>
         <div style="font-size:13px;font-weight:700;color:#15803d;">Solicitud Cerrada Formalmente</div>
         <div style="font-size:11px;color:#16a34a;">Caso completado y archivado en el sistema</div>
@@ -1030,21 +1028,21 @@ function renderDetalleDirector(sol) {
     </div>` : ""}
 
     ${sol.Estado === CONFIG.estados.INGRESADA ? `
-    <!-- Cierre directo por Director â€” solo disponible antes de derivar -->
+    <!-- Cierre directo por Director \u2014 solo disponible antes de derivar -->
     <div class="accion-panel">
       <div class="accion-header" style="background:linear-gradient(90deg,#7f1d1d,#b91c1c);color:white;padding:8px 14px;font-size:12px;font-weight:700;">
-        ðŸš« Cierre Directo â€” No Corresponde a DOM
+        \uD83D\uDEAB Cierre Directo \u2014 No Corresponde a DOM
       </div>
       <div class="accion-body" style="background:#fff5f5;">
         <p style="font-size:12px;color:#7f1d1d;margin:0 0 10px;">
-          Cierra la solicitud inmediatamente indicando que no corresponde a la DirecciÃ³n de Obras. Queda registro en el historial.
+          Cierra la solicitud inmediatamente indicando que no corresponde a la Direcci\u00F3n de Obras. Queda registro en el historial.
         </p>
         <textarea id="dir-no-corresponde-obs" rows="2"
           placeholder="Motivo (ej: Corresponde a DIDECO, solicitud duplicada, fuera de competencia DOM...)"
           style="width:100%;padding:8px 10px;border:1.5px solid #fca5a5;border-radius:8px;font-size:12px;resize:vertical;box-sizing:border-box;margin-bottom:10px;"></textarea>
         <button onclick="cerrarDirectoDirector('${sol.id}')"
           style="width:100%;padding:11px;background:#b91c1c;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;letter-spacing:0.2px;">
-          ðŸš« Cerrar â€” No Corresponde a DOM
+          \uD83D\uDEAB Cerrar \u2014 No Corresponde a DOM
         </button>
       </div>
     </div>` : ""}
@@ -1052,7 +1050,7 @@ function renderDetalleDirector(sol) {
     <!-- Historial -->
     <div class="form-section">
       <div class="form-section-header verde" style="font-size:11px;cursor:pointer;" onclick="cargarHistorialDir('${sol.NroSolicitud}')">
-        ðŸ• Historial de Movimientos <span style="float:right;font-weight:400;">ver â–¼</span>
+        \uD83D\uDD50 Historial de Movimientos <span style="float:right;font-weight:400;">ver \u25BC</span>
       </div>
       <div class="form-section-body" id="dir-historial" style="max-height:200px;overflow-y:auto;padding:8px;">
         <div style="text-align:center;color:#9ca3af;font-size:12px;padding:10px;">Clic en "ver" para cargar</div>
@@ -1061,14 +1059,14 @@ function renderDetalleDirector(sol) {
 
   </div>`;
 
-  // Setear fecha plazo siempre en tiempo real (evita cachÃ© del template)
+  // Setear fecha plazo siempre en tiempo real (evita cach\u00E9 del template)
   const inputPlazo = document.getElementById("dir-plazo-cierre");
   if (inputPlazo) inputPlazo.value = new Date().toISOString().split('T')[0];
 
-  // Cargar historial automÃ¡ticamente
+  // Cargar historial autom\u00E1ticamente
   cargarHistorialDir(sol.NroSolicitud);
 
-  // Cargar evidencia si estÃ¡ Respondida o Cerrada
+  // Cargar evidencia si est\u00E1 Respondida o Cerrada
   if (tieneEvidencia) cargarEvidenciaDir(sol);
 }
 
@@ -1081,7 +1079,7 @@ async function cargarEvidenciaDir(sol) {
     if (!evidencias.length) {
       panel.innerHTML = `
         <div style="text-align:center;padding:20px;color:#9ca3af;">
-          <div style="font-size:32px;margin-bottom:8px;">ðŸ“­</div>
+          <div style="font-size:32px;margin-bottom:8px;">\uD83D\uDCED</div>
           <p style="font-size:13px;">Sin evidencia registrada por la unidad</p>
         </div>`;
       return;
@@ -1092,27 +1090,27 @@ async function cargarEvidenciaDir(sol) {
       evWrap.style.cssText = "border-bottom:2px solid #e2e8f0;padding-bottom:14px;margin-bottom:14px;";
       evWrap.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
-          <div style="width:32px;height:32px;border-radius:50%;background:var(--azul);color:white;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">ðŸ¢</div>
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--azul);color:white;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">\uD83C\uDFE2</div>
           <div>
             <div style="font-size:13px;font-weight:700;color:#1a3a6b;">${ev.Unidad||"Unidad"}</div>
-            <div style="font-size:11px;color:#888;">ðŸ‘¤ ${ev.Responsable||""} &nbsp;Â·&nbsp; ðŸ“… ${formatFecha(ev.FechaCarga)}</div>
+            <div style="font-size:11px;color:#888;">\uD83D\uDC64 ${ev.Responsable||""} &nbsp;\u00B7&nbsp; \uD83D\uDCC5 ${formatFecha(ev.FechaCarga)}</div>
           </div>
         </div>
         <div style="padding:12px 14px 8px;">
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">ðŸ“ DescripciÃ³n de la soluciÃ³n</div>
-          <div style="font-size:13px;color:#374151;line-height:1.7;background:#f9fafb;border-left:3px solid var(--azul);padding:10px 12px;border-radius:0 8px 8px 0;">${ev.DescripcionEvidencia||"Sin descripciÃ³n."}</div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">\uD83D\uDCDD Descripci\u00F3n de la soluci\u00F3n</div>
+          <div style="font-size:13px;color:#374151;line-height:1.7;background:#f9fafb;border-left:3px solid var(--azul);padding:10px 12px;border-radius:0 8px 8px 0;">${ev.DescripcionEvidencia||"Sin descripci\u00F3n."}</div>
         </div>
         <div id="ev-media-${ev.id}" style="padding:0 14px 4px;"></div>`;
       panel.appendChild(evWrap);
 
-      // Cargar adjuntos (imÃ¡genes y PDFs de la evidencia)
+      // Cargar adjuntos (im\u00E1genes y PDFs de la evidencia)
       const mediaCont = evWrap.querySelector(`#ev-media-${ev.id}`);
       getListItemAttachments(CONFIG.lists.evidencias, ev.id).then(async atts => {
         if (!atts.length) {
           mediaCont.innerHTML = `<p style="font-size:12px;color:#d1d5db;margin:0;padding:4px 0;">Sin archivos adjuntos</p>`;
           return;
         }
-        mediaCont.innerHTML = `<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">ðŸ“Ž Archivos adjuntos (${atts.length})</div>`;
+        mediaCont.innerHTML = `<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">\uD83D\uDCCE Archivos adjuntos (${atts.length})</div>`;
 
         const pdfs = atts.filter(a => a.name?.toLowerCase().endsWith('.pdf'));
         const imgs = atts.filter(a => /\.(jpg|jpeg|png|gif)$/i.test(a.name||''));
@@ -1121,7 +1119,7 @@ async function cargarEvidenciaDir(sol) {
         for (const pdf of pdfs) {
           const pdfBlock = document.createElement("div");
           pdfBlock.style.cssText = "margin-bottom:10px;";
-          pdfBlock.innerHTML = `<div style="font-size:11px;color:#888;margin-bottom:4px;display:flex;align-items:center;gap:4px;">ðŸ“„ <strong>${pdf.name}</strong></div>`;
+          pdfBlock.innerHTML = `<div style="font-size:11px;color:#888;margin-bottom:4px;display:flex;align-items:center;gap:4px;">\uD83D\uDCC4 <strong>${pdf.name}</strong></div>`;
           mediaCont.appendChild(pdfBlock);
           try {
             const blobUrl = await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl);
@@ -1146,11 +1144,11 @@ async function cargarEvidenciaDir(sol) {
           } catch {}
         }
 
-        // Grid de imÃ¡genes (fotos de la ejecuciÃ³n)
+        // Grid de im\u00E1genes (fotos de la ejecuci\u00F3n)
         if (imgs.length) {
           const gridLabel = document.createElement("div");
           gridLabel.style.cssText = "font-size:11px;color:#888;margin-bottom:6px;display:flex;align-items:center;gap:4px;";
-          gridLabel.innerHTML = `ðŸ“¸ <strong>${imgs.length} foto${imgs.length>1?'s':''} de la ejecuciÃ³n</strong>`;
+          gridLabel.innerHTML = `\uD83D\uDCF8 <strong>${imgs.length} foto${imgs.length>1?'s':''} de la ejecuci\u00F3n</strong>`;
           mediaCont.appendChild(gridLabel);
 
           const grid = document.createElement("div");
@@ -1178,10 +1176,10 @@ async function cargarEvidenciaDir(sol) {
               // Badge zoom
               const badge = document.createElement("div");
               badge.style.cssText = "position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.5);color:white;border-radius:4px;padding:2px 6px;font-size:10px;";
-              badge.textContent = "ðŸ” ver";
+              badge.textContent = "\uD83D\uDD0D ver";
               box.appendChild(badge);
             }).catch(() => {
-              box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#fca5a5;font-size:11px;">âš ï¸ Error</div>`;
+              box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#fca5a5;font-size:11px;">\u26A0\uFE0F Error</div>`;
             });
           }
         }
@@ -1197,18 +1195,18 @@ async function cargarEvidenciaDir(sol) {
       if (esErrorLista) {
         panel.innerHTML = `
           <div style="text-align:center;padding:20px;color:#9ca3af;">
-            <div style="font-size:32px;margin-bottom:8px;">ðŸ“­</div>
+            <div style="font-size:32px;margin-bottom:8px;">\uD83D\uDCED</div>
             <p style="font-size:13px;">Sin evidencia registrada por la unidad</p>
           </div>`;
       } else {
         panel.innerHTML = `
           <div style="padding:14px;text-align:center;">
-            <div style="font-size:28px;margin-bottom:8px;">âš ï¸</div>
+            <div style="font-size:28px;margin-bottom:8px;">\u26A0\uFE0F</div>
             <p style="color:#b45309;font-size:13px;margin-bottom:10px;">No se pudo cargar la respuesta de la unidad</p>
             <p style="color:#9ca3af;font-size:11px;margin-bottom:12px;word-break:break-all;">${e?.message||""}</p>
             <button onclick="cargarEvidenciaDir(window._solDir)"
               style="padding:7px 18px;border:1.5px solid var(--azul);border-radius:7px;background:white;color:var(--azul);cursor:pointer;font-size:13px;font-weight:600;">
-              ðŸ”„ Reintentar
+              \uD83D\uDD04 Reintentar
             </button>
           </div>`;
       }
@@ -1226,7 +1224,7 @@ async function abrirAdjuntoUnidad(downloadUrl, serverRelativeUrl, nombre, isPdf)
       const pdfPanel = document.getElementById("uni-pdf");
       const pdfHeader = document.getElementById("uni-pdf-header");
       if (pdfPanel) {
-        if (pdfHeader) pdfHeader.textContent = `ðŸ“„ ${nombre}`;
+        if (pdfHeader) pdfHeader.textContent = `\uD83D\uDCC4 ${nombre}`;
         pdfPanel.innerHTML = "";
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
         const wrap = document.createElement("div");
@@ -1260,7 +1258,7 @@ function abrirLightbox(blobUrl, nombre) {
   const overlay = document.createElement("div");
   overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:zoom-out;";
   overlay.innerHTML = `
-    <div style="position:absolute;top:16px;right:20px;color:white;font-size:24px;cursor:pointer;opacity:0.7;" onclick="this.closest('div').remove()">âœ•</div>
+    <div style="position:absolute;top:16px;right:20px;color:white;font-size:24px;cursor:pointer;opacity:0.7;" onclick="this.closest('div').remove()">\u2715</div>
     <img src="${blobUrl}" style="max-width:90vw;max-height:85vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
     <div style="margin-top:12px;color:rgba(255,255,255,0.6);font-size:13px;">${nombre}</div>`;
   overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
@@ -1279,12 +1277,12 @@ async function cargarHistorialDir(nroSolicitud, containerId = "dir-historial") {
       sol ? getEvidenciasBySolicitud(nroSolicitud, sol.id).catch(()=>[]) : Promise.resolve([])
     ]);
 
-    // Unificar en lÃ­nea de tiempo: historial + respuestas de unidad
+    // Unificar en l\u00EDnea de tiempo: historial + respuestas de unidad
     const eventos = [
       ...hist.map(h => ({
         tipo: 'historial',
         fecha: h.FechaAccion || h.Modified || "",
-        accion: h.Accion || h.Title || "â€”",
+        accion: h.Accion || h.Title || "\u2014",
         usuario: h.UsuarioAccion || "",
         rol: h.RolUsuario || "",
         unidad: h.Unidad || "",
@@ -1320,12 +1318,12 @@ async function cargarHistorialDir(nroSolicitud, containerId = "dir-historial") {
         <div style="width:9px;height:9px;border-radius:50%;background:${dot(ev.tipo,ev.accion)};margin-top:4px;flex-shrink:0;"></div>
         <div style="flex:1;">
           <div style="font-size:12px;font-weight:700;color:${ev.tipo==='respuesta'?'#15803d':'#1a1a1a'};">
-            ${ev.tipo==='respuesta'?'ðŸ¢ ':''}${ev.accion}
+            ${ev.tipo==='respuesta'?'\uD83C\uDFE2 ':''}${ev.accion}
           </div>
           <div style="font-size:11px;color:#888;">
-            ${formatFechaHora(ev.fecha)}${ev.usuario?' Â· '+ev.usuario:''}${ev.unidad?' Â· <strong>'+ev.unidad+'</strong>':''}
+            ${formatFechaHora(ev.fecha)}${ev.usuario?' \u00B7 '+ev.usuario:''}${ev.unidad?' \u00B7 <strong>'+ev.unidad+'</strong>':''}
           </div>
-          ${ev.estAnt?`<div style="font-size:10px;color:#aaa;margin-top:1px;">${ev.estAnt} â†’ ${ev.estNuevo}</div>`:""}
+          ${ev.estAnt?`<div style="font-size:10px;color:#aaa;margin-top:1px;">${ev.estAnt} \u2192 ${ev.estNuevo}</div>`:""}
           ${ev.obs?`<div style="font-size:12px;color:#374151;background:${ev.tipo==='respuesta'?'#f0fdf4':'#f8fafc'};border-left:3px solid ${dot(ev.tipo,ev.accion)};padding:6px 8px;border-radius:0 6px 6px 0;margin-top:4px;line-height:1.5;">${ev.obs}</div>`:""}
           ${ev.tipo==='respuesta'?`<div id="dir-ev-atts-${ev.evId}" style="margin-top:4px;font-size:11px;color:#9ca3af;">Cargando adjuntos...</div>`:""}
         </div>
@@ -1339,7 +1337,7 @@ async function cargarHistorialDir(nroSolicitud, containerId = "dir-historial") {
         if (!atts.length) { cont.remove(); return; }
         const imgs = atts.filter(a=>/\.(jpg|jpeg|png|gif)$/i.test(a.name||''));
         const pdfs = atts.filter(a=>a.name?.toLowerCase().endsWith('.pdf'));
-        cont.innerHTML = `<div style="font-weight:600;color:#6b7280;margin-bottom:4px;">ðŸ“Ž ${atts.length} adjunto${atts.length>1?'s':''}</div>`;
+        cont.innerHTML = `<div style="font-weight:600;color:#6b7280;margin-bottom:4px;">\uD83D\uDCCE ${atts.length} adjunto${atts.length>1?'s':''}</div>`;
         if (imgs.length) {
           const grid = document.createElement("div");
           grid.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(imgs.length,3)},1fr);gap:4px;margin-bottom:4px;`;
@@ -1354,13 +1352,13 @@ async function cargarHistorialDir(nroSolicitud, containerId = "dir-historial") {
               el.src = url; el.style.cssText = "width:100%;height:100%;object-fit:cover;";
               el.onclick = () => abrirLightbox(url, img.name);
               box.innerHTML = ""; box.appendChild(el);
-            }).catch(()=>{ box.innerHTML=`<div style="font-size:10px;color:#fca5a5;text-align:center;padding:4px;">âš ï¸</div>`; });
+            }).catch(()=>{ box.innerHTML=`<div style="font-size:10px;color:#fca5a5;text-align:center;padding:4px;">\u26A0\uFE0F</div>`; });
           });
         }
         pdfs.forEach(pdf => {
           const row = document.createElement("div");
           row.style.cssText = "font-size:11px;padding:4px 6px;background:#f8fafc;border:1px solid var(--borde);border-radius:4px;margin-bottom:3px;cursor:pointer;color:var(--azul);";
-          row.innerHTML = `ðŸ“„ ${pdf.name}`;
+          row.innerHTML = `\uD83D\uDCC4 ${pdf.name}`;
           row.onclick = async () => { try { window.open(await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl),"_blank"); } catch{} };
           cont.appendChild(row);
         });
@@ -1379,7 +1377,7 @@ async function derivarSolicitud(solId) {
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
     const esRederivar = sol.Estado === CONFIG.estados.DEVUELTA;
-    const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad };
+    const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad, FechaDerivacion:new Date().toISOString() };
     if (obs) updateFields.Acciones = obs;
     await actualizarSolicitud(solId, updateFields);
     registrarHistorial({
@@ -1388,9 +1386,9 @@ async function derivarSolicitud(solId) {
       EstadoAnterior:sol.Estado, EstadoNuevo:CONFIG.estados.DERIVADA,
       UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
       Unidad:unidad, FechaAccion:new Date().toISOString(), Observaciones:obs
-    }).catch(e => console.warn("Historial (no crÃ­tico):", e.message));
+    }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
     notificarUnidad({...sol,Estado:CONFIG.estados.DERIVADA},unidad).catch(console.error);
-    showToast("success",`âœ… Derivada a ${unidad}`);
+    showToast("success",`\u2705 Derivada a ${unidad}`);
     await renderDirector();
   } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }
@@ -1399,7 +1397,7 @@ async function derivarSolicitud(solId) {
 async function pendienteCierreSolicitud(solId) {
   const obs   = document.getElementById("dir-cierre-obs")?.value.trim();
   const plazo = document.getElementById("dir-plazo-cierre")?.value;
-  if (!confirm("Â¿Confirmas marcar esta solicitud como Pendiente de Cierre?\nQuedarÃ¡ en evaluaciÃ³n hasta que se genere el parte final.")) return;
+  if (!confirm("\u00BFConfirmas marcar esta solicitud como Pendiente de Cierre?\nQuedar\u00E1 en evaluaci\u00F3n hasta que se genere el parte final.")) return;
   showLoading("Actualizando estado...");
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
@@ -1407,13 +1405,13 @@ async function pendienteCierreSolicitud(solId) {
     if (plazo) pcFields.FechaCierre = new Date(plazo + "T12:00:00").toISOString();
     await actualizarSolicitud(solId, pcFields);
     registrarHistorial({
-      NroSolicitud:sol.NroSolicitud, Title:"Pendiente de Cierre â€” en plazo de evaluaciÃ³n",
+      NroSolicitud:sol.NroSolicitud, Title:"Pendiente de Cierre \u2014 en plazo de evaluaci\u00F3n",
       EstadoAnterior:sol.Estado, EstadoNuevo:CONFIG.estados.PENDIENTE_CIERRE,
       UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
       Unidad:state.usuario.Unidad, FechaAccion:new Date().toISOString(),
       Observaciones: (obs ? obs + (plazo ? ` | Plazo: ${plazo}` : "") : (plazo ? `Plazo: ${plazo}` : ""))
-    }).catch(e => console.warn("Historial (no crÃ­tico):", e.message));
-    showToast("success","â³ Solicitud marcada como Pendiente de Cierre");
+    }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
+    showToast("success","\u23F3 Solicitud marcada como Pendiente de Cierre");
     await renderDirector();
   } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }
@@ -1421,7 +1419,7 @@ async function pendienteCierreSolicitud(solId) {
 
 async function cerrarSolicitud(solId) {
   const obs = document.getElementById("dir-cierre-obs")?.value.trim();
-  if (!confirm("Â¿Confirmas el cierre formal de esta solicitud?")) return;
+  if (!confirm("\u00BFConfirmas el cierre formal de esta solicitud?")) return;
   showLoading("Cerrando solicitud...");
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
@@ -1431,8 +1429,8 @@ async function cerrarSolicitud(solId) {
       EstadoAnterior:sol.Estado, EstadoNuevo:CONFIG.estados.CERRADA,
       UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
       Unidad:state.usuario.Unidad, FechaAccion:new Date().toISOString(), Observaciones:obs
-    }).catch(e => console.warn("Historial (no crÃ­tico):", e.message));
-    showToast("success","ðŸ”’ Solicitud cerrada formalmente");
+    }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
+    showToast("success","\uD83D\uDD12 Solicitud cerrada formalmente");
     await renderDirector();
   } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }
@@ -1441,22 +1439,22 @@ async function cerrarSolicitud(solId) {
 async function cerrarPorSolucion(solId) {
   const parte = document.getElementById("dir-cierre-parte")?.value.trim();
   const obs   = document.getElementById("dir-cierre-solucion-obs")?.value.trim();
-  if (!parte) { showToast("error", "Ingresa el NÂ° de Parte o Informe."); return; }
-  if (!obs)   { showToast("error", "Describe la soluciÃ³n ejecutada."); return; }
-  if (!confirm(`Â¿Cerrar solicitud como "SoluciÃ³n Ejecutada"?\nParte: ${parte}`)) return;
+  if (!parte) { showToast("error", "Ingresa el N\u00B0 de Parte o Informe."); return; }
+  if (!obs)   { showToast("error", "Describe la soluci\u00F3n ejecutada."); return; }
+  if (!confirm(`\u00BFCerrar solicitud como "Soluci\u00F3n Ejecutada"?\nParte: ${parte}`)) return;
   showLoading("Cerrando solicitud...");
   try {
     const sol = state.solicitudes.find(s => s.id === solId);
     await actualizarSolicitud(solId, { Estado: CONFIG.estados.CERRADA });
     await registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Title: `Cierre por SoluciÃ³n â€” ${parte}`,
+      Title: `Cierre por Soluci\u00F3n \u2014 ${parte}`,
       EstadoAnterior: sol.Estado, EstadoNuevo: CONFIG.estados.CERRADA,
       UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
       Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(),
       Observaciones: `Parte/Informe: ${parte} | ${obs}`
     });
-    showToast("success", `âœ… Solicitud ${sol.NroSolicitud} cerrada â€” SoluciÃ³n ejecutada`);
+    showToast("success", `\u2705 Solicitud ${sol.NroSolicitud} cerrada \u2014 Soluci\u00F3n ejecutada`);
     await renderDirector();
   } catch(e) { showToast("error", "Error: " + e.message); }
   finally { hideLoading(); }
@@ -1466,22 +1464,22 @@ async function cerrarPorMulta(solId) {
   const nro   = document.getElementById("dir-multa-nro")?.value.trim();
   const monto = document.getElementById("dir-multa-monto")?.value.trim();
   const obs   = document.getElementById("dir-multa-obs")?.value.trim();
-  if (!nro) { showToast("error", "Ingresa el NÂ° de Informe de Multa."); return; }
+  if (!nro) { showToast("error", "Ingresa el N\u00B0 de Informe de Multa."); return; }
   if (!obs) { showToast("error", "Ingresa las observaciones de la multa."); return; }
-  if (!confirm(`Â¿Cerrar solicitud como "Multa Aplicada"?\nInforme: ${nro}${monto ? ' | ' + monto : ''}`)) return;
+  if (!confirm(`\u00BFCerrar solicitud como "Multa Aplicada"?\nInforme: ${nro}${monto ? ' | ' + monto : ''}`)) return;
   showLoading("Cerrando solicitud...");
   try {
     const sol = state.solicitudes.find(s => s.id === solId);
     await actualizarSolicitud(solId, { Estado: CONFIG.estados.CERRADA });
     await registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Title: `Cierre por Multa â€” ${nro}`,
+      Title: `Cierre por Multa \u2014 ${nro}`,
       EstadoAnterior: sol.Estado, EstadoNuevo: CONFIG.estados.CERRADA,
       UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
       Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(),
       Observaciones: `Informe multa: ${nro}${monto ? ' | Monto: ' + monto : ''} | ${obs}`
     });
-    showToast("success", `ðŸ“‹ Solicitud ${sol.NroSolicitud} cerrada â€” Multa aplicada`);
+    showToast("success", `\uD83D\uDCCB Solicitud ${sol.NroSolicitud} cerrada \u2014 Multa aplicada`);
     await renderDirector();
   } catch(e) { showToast("error", "Error: " + e.message); }
   finally { hideLoading(); }
@@ -1492,26 +1490,26 @@ async function reabrirSolicitud(solId) {
   const obs         = document.getElementById("dir-reabrir-obs")?.value.trim();
   if (!nuevoEstado) { showToast("error", "Selecciona el estado al que deseas cambiar"); return; }
   if (!obs)         { showToast("error", "Ingresa el motivo de reapertura"); return; }
-  if (!confirm(`Â¿Confirmas cambiar el estado a "${nuevoEstado}"?\nMotivo: ${obs}`)) return;
+  if (!confirm(`\u00BFConfirmas cambiar el estado a "${nuevoEstado}"?\nMotivo: ${obs}`)) return;
   showLoading("Actualizando estado...");
   try {
     const sol = state.solicitudes.find(s => s.id === solId);
     await actualizarSolicitud(solId, { Estado: nuevoEstado });
     registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Title: `Reabierta â€” cambiada a ${nuevoEstado}`,
+      Title: `Reabierta \u2014 cambiada a ${nuevoEstado}`,
       EstadoAnterior: sol.Estado, EstadoNuevo: nuevoEstado,
       UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
       Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(), Observaciones: obs
-    }).catch(e => console.warn("Historial (no crÃ­tico):", e.message));
-    showToast("success", `ðŸ”„ Estado cambiado a "${nuevoEstado}"`);
+    }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
+    showToast("success", `\uD83D\uDD04 Estado cambiado a "${nuevoEstado}"`);
     await renderDirector();
   } catch(e) { showToast("error", "Error: " + e.message); }
   finally { hideLoading(); }
 }
 
 // ===== UNIDAD VIEW =====
-// Orden de estados para mostrar mÃ¡s urgentes primero
+// Orden de estados para mostrar m\u00E1s urgentes primero
 const ORDEN_ESTADO = { "Devuelta": 0, "Derivada": 1, "En Proceso": 2, "Respondida": 3, "Pendiente de Cierre": 5, "Cerrada": 6, "Ingresada": 4 };
 
 function ordenarSolicitudes(lista) {
@@ -1546,25 +1544,37 @@ function renderSidebarUnidad() {
   state.solicitudes.forEach(s => { counts[s.Estado] = (counts[s.Estado] || 0) + 1; });
 
   const estados = ["Todos","Derivada","En Proceso","Respondida","Devuelta","Pendiente de Cierre","Cerrada"];
+  const q = (state.filtroBuscar || "").toLowerCase().trim();
+  const filtradas = state.solicitudes.filter(s => {
+    if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
+    if (q) return (s.NroSolicitud||"").toLowerCase().includes(q) ||
+                  (s.Solicitante||"").toLowerCase().includes(q) ||
+                  (s.Direccion||"").toLowerCase().includes(q) ||
+                  (s.Solicitud||"").toLowerCase().includes(q);
+    return true;
+  });
+  const inicio = (state.pagina - 1) * state.pageSize;
+  const pagina = filtradas.slice(inicio, inicio + state.pageSize);
+  const totalPags = Math.ceil(filtradas.length / state.pageSize);
 
   const uniStats = [
-    { e:"Derivada",            icon:"ðŸ“¤", bg:"#fef3c7", tc:"#b45309" },
-    { e:"En Proceso",          icon:"âš™ï¸", bg:"#cffafe", tc:"#0e7490" },
-    { e:"Respondida",          icon:"âœ…", bg:"#dcfce7", tc:"#15803d" },
-    { e:"Devuelta",            icon:"â†©ï¸", bg:"#fee2e2", tc:"#b91c1c" },
-    { e:"Pendiente de Cierre", icon:"â³", bg:"#fdf4ff", tc:"#7e22ce" },
-    { e:"Cerrada",             icon:"ðŸ”’", bg:"#f3f4f6", tc:"#4b5563" }
+    { e:"Derivada",            icon:"\uD83D\uDCE4", bg:"#fef3c7", tc:"#b45309" },
+    { e:"En Proceso",          icon:"\u2699\uFE0F", bg:"#cffafe", tc:"#0e7490" },
+    { e:"Respondida",          icon:"\u2705", bg:"#dcfce7", tc:"#15803d" },
+    { e:"Devuelta",            icon:"\u21A9\uFE0F", bg:"#fee2e2", tc:"#b91c1c" },
+    { e:"Pendiente de Cierre", icon:"\u23F3", bg:"#fdf4ff", tc:"#7e22ce" },
+    { e:"Cerrada",             icon:"\uD83D\uDD12", bg:"#f3f4f6", tc:"#4b5563" }
   ];
 
   const cont = document.getElementById("uni-lista");
   cont.innerHTML = `
     <div style="padding:8px 10px 0;">
-      <!-- BotÃ³n Todos -->
+      <!-- Bot\u00F3n Todos -->
       <button onclick="filtrarUnidad('Todos')"
         style="width:100%;margin-bottom:6px;padding:6px 10px;border-radius:7px;border:1.5px solid ${state.filtroEstado==='Todos'?'var(--azul)':'var(--borde)'};
                background:${state.filtroEstado==='Todos'?'var(--azul)':'white'};color:${state.filtroEstado==='Todos'?'white':'var(--texto)'};
                font-size:11px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-        <span>ðŸ“Š Todas</span>
+        <span>\uD83D\uDCCA Todas</span>
         <span style="background:${state.filtroEstado==='Todos'?'rgba(255,255,255,0.25)':'var(--gris-bg)'};padding:1px 7px;border-radius:10px;font-weight:700;">
           ${state.solicitudes.length}
         </span>
@@ -1587,59 +1597,36 @@ function renderSidebarUnidad() {
           </div>`;
         }).join("")}
       </div>
-      <input type="text" id="uni-buscar" placeholder="ðŸ” Buscar..." value="${state.filtroBuscar||''}"
-        style="width:100%;padding:9px;border:1.5px solid #dde3ee;border-radius:8px;font-size:13px;box-sizing:border-box;"
-        oninput="state.filtroBuscar=this.value;state.pagina=1;_renderUniLista()">
+      <input type="text" id="uni-buscar" placeholder="\uD83D\uDD0D Buscar..." style="width:100%;padding:9px;border:1.5px solid #dde3ee;border-radius:8px;font-size:13px;box-sizing:border-box;"
+        oninput="state.filtroBuscar=this.value;state.pagina=1;renderSidebarUnidad()">
     </div>
-    <div id="uni-lista-cards" style="flex:1;overflow-y:auto;padding:12px;"></div>
-    <div id="uni-lista-pag" class="paginacion"></div>`;
-
-  _renderUniLista();
-}
-
-function _renderUniLista() {
-  const cards = document.getElementById("uni-lista-cards");
-  const pag   = document.getElementById("uni-lista-pag");
-  if (!cards) return;
-
-  const q = (state.filtroBuscar || "").toLowerCase().trim();
-  const filtradas = state.solicitudes.filter(s => {
-    if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
-    if (q) return (s.NroSolicitud||"").toLowerCase().includes(q) ||
-                  (s.Solicitante||"").toLowerCase().includes(q) ||
-                  (s.Direccion||"").toLowerCase().includes(q) ||
-                  (s.Solicitud||"").toLowerCase().includes(q);
-    return true;
-  });
-  const totalPags = Math.max(1, Math.ceil(filtradas.length / state.pageSize));
-  if (state.pagina > totalPags) state.pagina = 1;
-  const pagina = filtradas.slice((state.pagina - 1) * state.pageSize, state.pagina * state.pageSize);
-
-  cards.innerHTML = pagina.length === 0
-    ? '<p style="text-align:center;color:#9ca3af;padding:40px">Sin solicitudes</p>'
-    : pagina.map(s => {
-        const sem = calcularSemaforo(s);
-        const semBadge = sem
-          ? `<span style="background:${sem.bg};color:${sem.color};border:1px solid ${sem.color}40;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;">${sem.emoji} ${sem.texto}</span>`
-          : "";
-        return `
-        <div class="sol-card ${state.solicitudSeleccionada?.id === s.id ? 'selected' : ''}" onclick="seleccionarSolicitudUnidad('${s.id}')">
-          <div class="sol-card-top">
-            <span class="sol-nro">${s.NroSolicitud}</span>
-            <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
-          </div>
-          <div class="sol-card-name">${s.Solicitante}</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px;">
-            <div class="sol-card-dir" style="margin-top:0;">ðŸ“ ${s.Direccion || ""}</div>
-            ${semBadge}
-          </div>
-        </div>`;
-      }).join("");
-
-  if (pag) pag.innerHTML = `
-    <button onclick="cambiarPaginaUni(${state.pagina-1})" ${state.pagina<=1?'disabled':''}>â€¹</button>
-    <span>${state.pagina}/${totalPags} (${filtradas.length})</span>
-    <button onclick="cambiarPaginaUni(${state.pagina+1})" ${state.pagina>=totalPags?'disabled':''}>â€º</button>`;
+    <div style="flex:1;overflow-y:auto;padding:12px;">
+      ${pagina.length === 0 ? '<p style="text-align:center;color:#9ca3af;padding:40px">Sin solicitudes</p>' :
+        pagina.map(s => `
+          ${(() => {
+            const sem = calcularSemaforo(s);
+            const semBadge = sem
+              ? `<span style="background:${sem.bg};color:${sem.color};border:1px solid ${sem.color}40;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;">${sem.emoji} ${sem.texto}</span>`
+              : "";
+            return `
+          <div class="sol-card ${state.solicitudSeleccionada?.id === s.id ? 'selected' : ''}" onclick="seleccionarSolicitudUnidad('${s.id}')">
+            <div class="sol-card-top">
+              <span class="sol-nro">${s.NroSolicitud}</span>
+              <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
+            </div>
+            <div class="sol-card-name">${s.Solicitante}</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px;">
+              <div class="sol-card-dir" style="margin-top:0;">\uD83D\uDCCD ${s.Direccion || ""}</div>
+              ${semBadge}
+            </div>
+          </div>`;
+          })()}`).join("")}
+    </div>
+    <div class="paginacion">
+      <button onclick="cambiarPaginaUni(${state.pagina-1})" ${state.pagina<=1?'disabled':''}>\u2039</button>
+      <span>${state.pagina}/${Math.max(1,totalPags)} (${filtradas.length})</span>
+      <button onclick="cambiarPaginaUni(${state.pagina+1})" ${state.pagina>=totalPags?'disabled':''}>\u203A</button>
+    </div>`;
 }
 
 function filtrarUnidad(estado) {
@@ -1661,10 +1648,10 @@ function verificarVencimientosUnidad() {
   const partes = [];
   if (venc.length)   partes.push(`${venc.length} vencida${venc.length>1?'s':''}`);
   if (hoy.length)    partes.push(`${hoy.length} vence hoy`);
-  if (manana.length) partes.push(`${manana.length} vence maÃ±ana`);
-  showToast("error", `â° Plazo crÃ­tico: ${partes.join(" Â· ")}`);
+  if (manana.length) partes.push(`${manana.length} vence ma\u00F1ana`);
+  showToast("error", `\u23F0 Plazo cr\u00EDtico: ${partes.join(" \u00B7 ")}`);
 }
-function cambiarPaginaUni(p) { state.pagina = p; _renderUniLista(); }
+function cambiarPaginaUni(p) { state.pagina = p; renderSidebarUnidad(); }
 
 async function seleccionarSolicitudUnidad(id) {
   state.solicitudSeleccionada = state.solicitudes.find(s => s.id === id);
@@ -1683,7 +1670,7 @@ async function seleccionarSolicitudUnidad(id) {
   try {
     const atts = await getListItemAttachments(CONFIG.lists.solicitudes, sol.id);
     if (!atts.length) {
-      pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>ðŸ“­</span><p>Sin documentos adjuntos</p></div>`;
+      pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>\uD83D\uDCED</span><p>Sin documentos adjuntos</p></div>`;
       return;
     }
     const first = atts.find(a => a.name?.toLowerCase().endsWith('.pdf')) || atts[0];
@@ -1692,23 +1679,23 @@ async function seleccionarSolicitudUnidad(id) {
     if (pdfHeader) {
       pdfHeader.style.display = "flex";
       pdfHeader.innerHTML = `
-        ðŸ“„ <span style="font-weight:700;margin-left:4px;">${sol.NroSolicitud}</span>
-        <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">â€” ${first.name}</span>
+        \uD83D\uDCC4 <span style="font-weight:700;margin-left:4px;">${sol.NroSolicitud}</span>
+        <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">\u2014 ${first.name}</span>
         <div style="display:flex;align-items:center;gap:4px;margin-left:8px;flex-shrink:0;">
           ${isPdf ? `
           <button onclick="zoomUniPdf(-0.25)"
-            style="background:#1f2937;border:1px solid #374151;color:white;width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:700;" title="Alejar">âˆ’</button>
+            style="background:#1f2937;border:1px solid #374151;color:white;width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:700;" title="Alejar">\u2212</button>
           <span id="uni-pdf-zoom-label" style="font-size:11px;min-width:36px;text-align:center;font-weight:600;color:#1f2937;">100%</span>
           <button onclick="zoomUniPdf(0.25)"
             style="background:#1f2937;border:1px solid #374151;color:white;width:28px;height:28px;border-radius:6px;font-size:16px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:700;" title="Acercar">+</button>
           <div style="width:1px;height:20px;background:#d1d5db;margin:0 2px;"></div>` : ""}
           <a href="${blobUrl}" download="${first.name}"
             style="background:#1f2937;border:1px solid #374151;color:white;padding:4px 10px;border-radius:6px;font-size:12px;text-decoration:none;white-space:nowrap;font-weight:600;">
-            â¬‡ Descargar
+            \u2B07 Descargar
           </a>
           <button onclick="(function(){var w=window.open('${blobUrl}','_blank');if(w)setTimeout(function(){w.print();},800);})()"
             style="background:#1f2937;border:1px solid #374151;color:white;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;font-weight:600;">
-            ðŸ–¨ Imprimir
+            \uD83D\uDDA8 Imprimir
           </button>
         </div>`;
     }
@@ -1728,7 +1715,7 @@ async function seleccionarSolicitudUnidad(id) {
       pdfPanel.appendChild(img);
     }
   } catch(e) {
-    pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>âš ï¸</span><p style="color:#ef4444;font-size:13px;">No se pudo cargar el documento</p></div>`;
+    pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>\u26A0\uFE0F</span><p style="color:#ef4444;font-size:13px;">No se pudo cargar el documento</p></div>`;
   }
 }
 
@@ -1751,7 +1738,7 @@ async function _renderUniPdfPages() {
     if (p < _uniPdfDoc.numPages) {
       const sep = document.createElement("div");
       sep.style.cssText = "color:rgba(255,255,255,0.35);font-size:11px;text-align:center;padding:2px;";
-      sep.textContent = `â€” ${p} / ${_uniPdfDoc.numPages} â€”`;
+      sep.textContent = `\u2014 ${p} / ${_uniPdfDoc.numPages} \u2014`;
       frag.appendChild(sep);
     }
   }
@@ -1771,15 +1758,15 @@ function imprimirSolicitudUnidad(sol) {
   const sem = calcularSemaforo(sol);
   const semTexto = sem
     ? (sem.dias > 0
-        ? `${sem.emoji} ${sem.dias === 1 ? "Vence maÃ±ana" : `${sem.dias} dÃ­as restantes`} (lÃ­mite ${CONFIG.plazoDerivacionDias||15} dÃ­as, vence ${formatFecha(sem.vencimiento.toISOString())})`
+        ? `${sem.emoji} ${sem.dias === 1 ? "Vence ma\u00F1ana" : `${sem.dias} d\u00EDas restantes`} (l\u00EDmite ${CONFIG.plazoDerivacionDias||15} d\u00EDas, vence ${formatFecha(sem.vencimiento.toISOString())})`
         : sem.dias === 0
           ? `${sem.emoji} Vence hoy`
-          : `${sem.emoji} Plazo vencido hace ${Math.abs(sem.dias)} dÃ­a${Math.abs(sem.dias)>1?'s':''}`)
+          : `${sem.emoji} Plazo vencido hace ${Math.abs(sem.dias)} d\u00EDa${Math.abs(sem.dias)>1?'s':''}`)
     : "";
   const w = window.open("", "_blank");
-  if (!w) { showToast("error","El navegador bloqueÃ³ la ventana emergente. Permite ventanas emergentes para este sitio."); return; }
+  if (!w) { showToast("error","El navegador bloque\u00F3 la ventana emergente. Permite ventanas emergentes para este sitio."); return; }
   w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-<title>Solicitud ${sol.NroSolicitud} â€” DOM DoÃ±ihue</title>
+<title>Solicitud ${sol.NroSolicitud} \u2014 DOM Do\u00F1ihue</title>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:'Segoe UI',Arial,sans-serif; font-size:13px; color:#1a202c; background:#fff; padding:28px; }
@@ -1807,30 +1794,30 @@ function imprimirSolicitudUnidad(sol) {
 </style></head><body>
 <div class="header">
   <div>
-    <h1>DirecciÃ³n de Obras â€” Municipalidad de DoÃ±ihue</h1>
-    <p>Registro de Solicitud Â· Sistema DOM</p>
+    <h1>Direcci\u00F3n de Obras \u2014 Municipalidad de Do\u00F1ihue</h1>
+    <p>Registro de Solicitud \u00B7 Sistema DOM</p>
   </div>
 </div>
 <button class="no-print" onclick="window.print()"
   style="margin-bottom:16px;padding:8px 18px;background:#1a3a6b;color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">
-  ðŸ–¨ Imprimir / Guardar PDF
+  \uD83D\uDDA8 Imprimir / Guardar PDF
 </button>
 ${sem ? `<div class="semaforo" style="background:${sem.bg};color:${sem.color};border-color:${sem.color}40;">${semTexto}</div>` : ""}
 <div class="section-title">Datos de la Solicitud</div>
 <table>
   <tr><th>Nro Solicitud</th><td><strong>${sol.NroSolicitud||"-"}</strong></td><th>Estado</th><td><span class="badge">${sol.Estado||"-"}</span></td></tr>
-  <tr><th>Fecha RecepciÃ³n</th><td>${formatFecha(sol.FechaRecepcion)}</td><th>Unidad</th><td>${sol.UnidadDerivada||"-"}</td></tr>
-  ${sol.FechaDerivacion?`<tr><th>Fecha DerivaciÃ³n</th><td colspan="3">${formatFecha(sol.FechaDerivacion)}</td></tr>`:""}
+  <tr><th>Fecha Recepci\u00F3n</th><td>${formatFecha(sol.FechaRecepcion)}</td><th>Unidad</th><td>${sol.UnidadDerivada||"-"}</td></tr>
+  ${sol.FechaDerivacion?`<tr><th>Fecha Derivaci\u00F3n</th><td colspan="3">${formatFecha(sol.FechaDerivacion)}</td></tr>`:""}
 </table>
 <div class="section-title">Solicitante</div>
 <table>
   <tr><th>Nombre</th><td>${sol.Solicitante||"-"}</td><th>RUT</th><td>${sol.Rut||"-"}</td></tr>
-  <tr><th>DirecciÃ³n</th><td colspan="3">${sol.Direccion||"-"}</td></tr>
+  <tr><th>Direcci\u00F3n</th><td colspan="3">${sol.Direccion||"-"}</td></tr>
   ${sol.Correo?`<tr><th>Correo</th><td colspan="3">${sol.Correo}</td></tr>`:""}
-  ${sol.Telefono?`<tr><th>TelÃ©fono</th><td colspan="3">${sol.Telefono}</td></tr>`:""}
+  ${sol.Telefono?`<tr><th>Tel\u00E9fono</th><td colspan="3">${sol.Telefono}</td></tr>`:""}
 </table>
-<div class="section-title">DescripciÃ³n</div>
-<div class="descripcion">${sol.Solicitud||"Sin descripciÃ³n registrada"}</div>
+<div class="section-title">Descripci\u00F3n</div>
+<div class="descripcion">${sol.Solicitud||"Sin descripci\u00F3n registrada"}</div>
 ${sol.Acciones?`<div class="section-title">Instrucciones del Director</div><div class="descripcion">${sol.Acciones}</div>`:""}
 <div style="margin-top:20px;border:1px solid #e2e8f0;border-radius:6px;padding:14px;">
   <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">Observaciones / Respuesta de la Unidad</div>
@@ -1839,7 +1826,7 @@ ${sol.Acciones?`<div class="section-title">Instrucciones del Director</div><div 
   <div style="height:80px;"></div>
 </div>
 <div class="footer">
-  <span>DOM Â· Municipalidad de DoÃ±ihue</span>
+  <span>DOM \u00B7 Municipalidad de Do\u00F1ihue</span>
   <span>Impreso: ${new Date().toLocaleString("es-CL")}</span>
 </div>
 </body></html>`);
@@ -1850,7 +1837,7 @@ ${sol.Acciones?`<div class="section-title">Instrucciones del Director</div><div 
 async function renderDetalleUnidad(sol) {
   const cont = document.getElementById("uni-detalle");
   if (!sol) {
-    cont.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;flex-direction:column;gap:16px;"><span style="font-size:60px">ðŸ“‹</span><p>Selecciona una solicitud</p></div>`;
+    cont.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;flex-direction:column;gap:16px;"><span style="font-size:60px">\uD83D\uDCCB</span><p>Selecciona una solicitud</p></div>`;
     return;
   }
 
@@ -1877,21 +1864,21 @@ async function renderDetalleUnidad(sol) {
       <div style="flex:1;">
         <div style="font-size:12px;font-weight:700;color:${sem.color};">
           ${sem.dias > 0
-            ? `Plazo: ${sem.dias === 1 ? "Vence maÃ±ana" : `${sem.dias} dÃ­as restantes`}`
-            : sem.dias === 0 ? "âš ï¸ Vence hoy" : `âš ï¸ Plazo vencido hace ${Math.abs(sem.dias)} dÃ­a${Math.abs(sem.dias)>1?'s':''}`}
+            ? `Plazo: ${sem.dias === 1 ? "Vence ma\u00F1ana" : `${sem.dias} d\u00EDas restantes`}`
+            : sem.dias === 0 ? "\u26A0\uFE0F Vence hoy" : `\u26A0\uFE0F Plazo vencido hace ${Math.abs(sem.dias)} d\u00EDa${Math.abs(sem.dias)>1?'s':''}`}
         </div>
-        <div style="font-size:11px;color:${sem.color};opacity:0.8;">LÃ­mite ${CONFIG.plazoDerivacionDias||15} dÃ­as Â· Vence el ${formatFecha(sem.vencimiento.toISOString())}</div>
+        <div style="font-size:11px;color:${sem.color};opacity:0.8;">L\u00EDmite ${CONFIG.plazoDerivacionDias||15} d\u00EDas \u00B7 Vence el ${formatFecha(sem.vencimiento.toISOString())}</div>
       </div>
     </div>` : "";
 
   cont.innerHTML = `
     <div style="overflow-y:auto;height:100%;display:flex;flex-direction:column;gap:0;">
-      <button class="mobile-back-bar" onclick="volverAListaMovil('.uni-layout')">â† Volver a lista</button>
+      <button class="mobile-back-bar" onclick="volverAListaMovil('.uni-layout')">\u2190 Volver a lista</button>
       <div class="panel-header" style="background:#f8fafc;border-bottom:1px solid var(--borde);display:flex;align-items:center;gap:8px;">
-        <span style="flex:1;">ðŸ“‹ ${sol.NroSolicitud} â€” ${sol.Solicitante}</span>
+        <span style="flex:1;">\uD83D\uDCCB ${sol.NroSolicitud} \u2014 ${sol.Solicitante}</span>
         <button onclick="imprimirSolicitudUnidad(state.solicitudSeleccionada)"
           style="background:#1a3a6b;color:white;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;"
-          title="Imprimir ficha de esta solicitud">ðŸ–¨ Imprimir</button>
+          title="Imprimir ficha de esta solicitud">\uD83D\uDDA8 Imprimir</button>
       </div>
       ${semBanner}
 
@@ -1900,7 +1887,7 @@ async function renderDetalleUnidad(sol) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
           <div><span style="color:#666">Fecha: </span>${formatFecha(sol.FechaRecepcion)}</div>
           <div><span style="color:#666">Estado: </span><span class="estado-badge estado-${sol.Estado}">${sol.Estado}</span></div>
-          <div style="grid-column:1/-1;"><span style="color:#666">DirecciÃ³n: </span>${sol.Direccion||"-"}</div>
+          <div style="grid-column:1/-1;"><span style="color:#666">Direcci\u00F3n: </span>${sol.Direccion||"-"}</div>
           <div style="grid-column:1/-1;"><span style="color:#666">Solicitud: </span>${sol.Solicitud||"-"}</div>
           ${sol.ObservacionesDirector ? `<div style="grid-column:1/-1;"><span style="color:#666">Obs. Director: </span>${sol.ObservacionesDirector}</div>` : ""}
         </div>
@@ -1909,11 +1896,11 @@ async function renderDetalleUnidad(sol) {
       <!-- Banner Pendiente de Cierre -->
       ${esPendienteCierre ? `
       <div style="background:#fdf4ff;border-left:4px solid #7e22ce;padding:12px 14px;border-bottom:1px solid #e9d5ff;">
-        <div style="font-size:12px;font-weight:700;color:#7e22ce;margin-bottom:6px;">â³ PENDIENTE DE CIERRE â€” Segunda instancia</div>
-        ${plazoCierreTexto ? `<div style="font-size:12px;color:#6b21a8;margin-bottom:4px;">ðŸ“… Plazo fijado por Director: <strong>${plazoCierreTexto}</strong></div>` : ""}
+        <div style="font-size:12px;font-weight:700;color:#7e22ce;margin-bottom:6px;">\u23F3 PENDIENTE DE CIERRE \u2014 Segunda instancia</div>
+        ${plazoCierreTexto ? `<div style="font-size:12px;color:#6b21a8;margin-bottom:4px;">\uD83D\uDCC5 Plazo fijado por Director: <strong>${plazoCierreTexto}</strong></div>` : ""}
         ${instruccionDirector ? `
         <div style="background:#ede9fe;border-left:3px solid #7c3aed;padding:8px 10px;border-radius:0 6px 6px 0;font-size:13px;color:#4c1d95;margin-top:4px;">
-          ðŸ›ï¸ <strong>InstrucciÃ³n del Director:</strong><br>${instruccionDirector}
+          \uD83C\uDFDB\uFE0F <strong>Instrucci\u00F3n del Director:</strong><br>${instruccionDirector}
         </div>` : ""}
         <div style="font-size:11px;color:#7e22ce;margin-top:8px;">Registra una nueva respuesta para cerrar esta solicitud.</div>
       </div>` : ""}
@@ -1921,13 +1908,13 @@ async function renderDetalleUnidad(sol) {
       <!-- Instrucciones del director (otros estados) -->
       ${!esPendienteCierre && instruccionDirector ? `
       <div style="background:#eff6ff;border-left:4px solid #1a3a6b;padding:10px 14px;border-bottom:1px solid #bfdbfe;">
-        <div style="font-size:11px;font-weight:700;color:#1a3a6b;margin-bottom:4px;">ðŸ›ï¸ Instrucciones del Director</div>
+        <div style="font-size:11px;font-weight:700;color:#1a3a6b;margin-bottom:4px;">\uD83C\uDFDB\uFE0F Instrucciones del Director</div>
         <div style="font-size:13px;color:#1e3a5f;">${instruccionDirector}</div>
       </div>` : ""}
 
       <!-- Documentos de la solicitud -->
       <div id="uni-sol-adjuntos" style="padding:12px;border-bottom:1px solid var(--borde);">
-        <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;">ðŸ“Ž Documentos de la solicitud</div>
+        <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;">\uD83D\uDCCE Documentos de la solicitud</div>
         ${solicitudAtts.length === 0
           ? `<p style="color:#9ca3af;font-size:13px;text-align:center;padding:4px;">Sin documentos adjuntos</p>`
           : solicitudAtts.map(a => {
@@ -1935,8 +1922,8 @@ async function renderDetalleUnidad(sol) {
               const isImg = /\.(jpg|jpeg|png|gif)$/i.test(a.name||'');
               return `<div class="file-item" style="cursor:pointer;border-left:3px solid ${isPdf?'#ef4444':isImg?'#3b82f6':'#6b7280'};"
                 onclick="abrirAdjuntoUnidad('${a.downloadUrl}','${a.serverRelativeUrl}','${a.name}',${isPdf})">
-                <span>${isPdf?'ðŸ“„':isImg?'ðŸ–¼ï¸':'ðŸ“Ž'} <strong>${a.name}</strong></span>
-                <span style="font-size:11px;color:var(--azul);">Ver â†—</span>
+                <span>${isPdf?'\uD83D\uDCC4':isImg?'\uD83D\uDDBC\uFE0F':'\uD83D\uDCCE'} <strong>${a.name}</strong></span>
+                <span style="font-size:11px;color:var(--azul);">Ver \u2197</span>
               </div>`;
             }).join('')
         }
@@ -1946,46 +1933,46 @@ async function renderDetalleUnidad(sol) {
       ${evidencias.length > 0 ? `
       <div style="border-top:2px solid #15803d;">
         <div style="background:linear-gradient(90deg,#14532d,#15803d);color:white;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:0.3px;">
-          ðŸ¢ ${evidencias.length > 1 ? `Respuestas registradas (${evidencias.length})` : "Respuesta registrada"}
+          \uD83C\uDFE2 ${evidencias.length > 1 ? `Respuestas registradas (${evidencias.length})` : "Respuesta registrada"}
         </div>
         ${evidencias.map((e,idx)=>`
           <div style="padding:12px 14px;border-bottom:1px solid #e2e8f0;${idx>0?'background:#f9fafb;':''}">
             <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:2px;">Respuesta ${idx+1}</div>
             <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">
-              ðŸ‘¤ ${e.Responsable||""} &nbsp;Â·&nbsp; ðŸ“… ${formatFecha(e.FechaCarga)}
+              \uD83D\uDC64 ${e.Responsable||""} &nbsp;\u00B7&nbsp; \uD83D\uDCC5 ${formatFecha(e.FechaCarga)}
             </div>
             <div style="font-size:13px;color:#374151;line-height:1.7;background:#f0fdf4;border-left:3px solid #15803d;padding:10px 12px;border-radius:0 8px 8px 0;margin-bottom:8px;">
-              ${e.DescripcionEvidencia||"Sin descripciÃ³n."}
+              ${e.DescripcionEvidencia||"Sin descripci\u00F3n."}
             </div>
             <div id="uni-ev-media-${e.id}" style="margin-top:4px;"></div>
           </div>`).join("")}
       </div>` : ""}
 
-      <!-- Panel de acciÃ³n -->
+      <!-- Panel de acci\u00F3n -->
       ${puedeResponder ? `
       <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
         <div class="form-section">
           <div class="form-section-header" style="font-size:11px;">
-            ${esPendienteCierre ? "ðŸ“ Nueva respuesta (2Âª instancia)" : "ðŸ“ DescripciÃ³n de la SoluciÃ³n"}
+            ${esPendienteCierre ? "\uD83D\uDCDD Nueva respuesta (2\u00AA instancia)" : "\uD83D\uDCDD Descripci\u00F3n de la Soluci\u00F3n"}
           </div>
           <div class="form-section-body">
             <textarea id="uni-obs" rows="4"
-              placeholder="${esPendienteCierre ? "Describe las acciones tomadas en la segunda inspecciÃ³n..." : "Describe detalladamente la acciÃ³n realizada, visita, notificaciÃ³n o soluciÃ³n ejecutada..."}"
+              placeholder="${esPendienteCierre ? "Describe las acciones tomadas en la segunda inspecci\u00F3n..." : "Describe detalladamente la acci\u00F3n realizada, visita, notificaci\u00F3n o soluci\u00F3n ejecutada..."}"
               style="width:100%;padding:10px;border:1.5px solid ${esPendienteCierre?'#a855f7':'var(--borde)'};border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
           </div>
         </div>
         <div class="form-section">
-          <div class="form-section-header naranja" style="font-size:11px;">ðŸ“¸ Evidencia FotogrÃ¡fica / Documentos</div>
+          <div class="form-section-header naranja" style="font-size:11px;">\uD83D\uDCF8 Evidencia Fotogr\u00E1fica / Documentos</div>
           <div class="form-section-body">
-            <p style="font-size:12px;color:#888;margin-bottom:8px;">Adjunta fotos de la visita o documentos que corroboren la soluciÃ³n ejecutada.</p>
+            <p style="font-size:12px;color:#888;margin-bottom:8px;">Adjunta fotos de la visita o documentos que corroboren la soluci\u00F3n ejecutada.</p>
             <div style="border:2px dashed ${esPendienteCierre?'#a855f7':'#f59e0b'};border-radius:10px;padding:16px;text-align:center;cursor:pointer;background:${esPendienteCierre?'#fdf4ff':'#fffbeb'};"
               onclick="document.getElementById('uni-ev-files').click()"
               ondragover="event.preventDefault();this.style.opacity='0.7'"
               ondragleave="this.style.opacity='1'"
               ondrop="event.preventDefault();this.style.opacity='1';handleEvFiles(event.dataTransfer.files)">
-              <div style="font-size:28px;">ðŸ“·</div>
-              <div style="font-weight:600;font-size:13px;color:${esPendienteCierre?'#7e22ce':'#b45309'};">Arrastra fotos aquÃ­</div>
-              <div style="font-size:11px;color:#9ca3af;margin-top:2px;">o haz clic â€” JPG, PNG, PDF</div>
+              <div style="font-size:28px;">\uD83D\uDCF7</div>
+              <div style="font-weight:600;font-size:13px;color:${esPendienteCierre?'#7e22ce':'#b45309'};">Arrastra fotos aqu\u00ED</div>
+              <div style="font-size:11px;color:#9ca3af;margin-top:2px;">o haz clic \u2014 JPG, PNG, PDF</div>
             </div>
             <input type="file" id="uni-ev-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleEvFiles(this.files)" style="display:none;">
             <div id="uni-ev-preview" style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;"></div>
@@ -1993,24 +1980,24 @@ async function renderDetalleUnidad(sol) {
         </div>
         <button class="btn-success" onclick="responderSolicitud('${sol.id}')"
           style="width:100%;padding:13px;font-size:14px;${esPendienteCierre?'background:linear-gradient(90deg,#7e22ce,#9333ea);':''}">
-          ${esPendienteCierre ? "ðŸ“‹ Registrar 2Âª Respuesta" : "âœ… Responder â€” Registrar SoluciÃ³n"}
+          ${esPendienteCierre ? "\uD83D\uDCCB Registrar 2\u00AA Respuesta" : "\u2705 Responder \u2014 Registrar Soluci\u00F3n"}
         </button>
         ${!esPendienteCierre && !esRespondida ? `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button class="btn-primary" style="background:#0e7490;padding:10px;" onclick="enProcesoSolicitud('${sol.id}')">âš™ï¸ En Proceso</button>
-          <button class="btn-warning" style="padding:10px;" onclick="devolverSolicitudUnidad('${sol.id}')">â†©ï¸ Devolver</button>
+          <button class="btn-primary" style="background:#0e7490;padding:10px;" onclick="enProcesoSolicitud('${sol.id}')">\u2699\uFE0F En Proceso</button>
+          <button class="btn-warning" style="padding:10px;" onclick="devolverSolicitudUnidad('${sol.id}')">\u21A9\uFE0F Devolver</button>
         </div>` : ""}
       </div>` : `
       <div style="padding:14px;">
         <div style="background:#f3f4f6;border-radius:8px;padding:14px;text-align:center;color:#6b7280;font-size:13px;">
-          ðŸ”’ Solicitud cerrada â€” solo lectura
+          \uD83D\uDD12 Solicitud cerrada \u2014 solo lectura
         </div>
       </div>`}
 
       <!-- Hilo de interacciones -->
       <div style="border-top:2px solid #e2e8f0;">
         <div style="background:linear-gradient(90deg,#1e3a5f,#1a3a6b);color:white;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:0.3px;">
-          ðŸ’¬ Historial de Interacciones
+          \uD83D\uDCAC Historial de Interacciones
         </div>
         <div id="uni-hilo" style="padding:8px 12px;max-height:320px;overflow-y:auto;">
           <div style="text-align:center;color:#9ca3af;font-size:12px;padding:16px;">
@@ -2020,10 +2007,10 @@ async function renderDetalleUnidad(sol) {
       </div>
     </div>`;
 
-  // â”€â”€ Hilo de interacciones (historial + evidencias) â”€â”€
+  // \u2500\u2500 Hilo de interacciones (historial + evidencias) \u2500\u2500
   cargarHistorialDir(sol.NroSolicitud, "uni-hilo");
 
-  // â”€â”€ Cargar imÃ¡genes adjuntas de cada evidencia registrada â”€â”€
+  // \u2500\u2500 Cargar im\u00E1genes adjuntas de cada evidencia registrada \u2500\u2500
   for (const ev of evidencias) {
     const mediaCont = document.getElementById(`uni-ev-media-${ev.id}`);
     if (!mediaCont) continue;
@@ -2031,9 +2018,9 @@ async function renderDetalleUnidad(sol) {
       const imgs = atts.filter(a => /\.(jpg|jpeg|png|gif)$/i.test(a.name||''));
       const pdfs = atts.filter(a => a.name?.toLowerCase().endsWith('.pdf'));
       if (!imgs.length && !pdfs.length) return; // sin adjuntos: no mostrar nada
-      mediaCont.innerHTML = `<div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;">ðŸ“Ž Adjuntos (${atts.length})</div>`;
+      mediaCont.innerHTML = `<div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;">\uD83D\uDCCE Adjuntos (${atts.length})</div>`;
 
-      // Grilla de imÃ¡genes
+      // Grilla de im\u00E1genes
       if (imgs.length) {
         const grid = document.createElement("div");
         grid.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(imgs.length,2)},1fr);gap:6px;margin-bottom:8px;`;
@@ -2052,9 +2039,9 @@ async function renderDetalleUnidad(sol) {
             box.appendChild(imgEl);
             const badge = document.createElement("div");
             badge.style.cssText = "position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.5);color:white;border-radius:4px;padding:2px 6px;font-size:10px;";
-            badge.textContent = "ðŸ” ver";
+            badge.textContent = "\uD83D\uDD0D ver";
             box.appendChild(badge);
-          }).catch(() => { box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:#fca5a5;">âš ï¸ Error</div>`; });
+          }).catch(() => { box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:#fca5a5;">\u26A0\uFE0F Error</div>`; });
         }
       }
 
@@ -2062,7 +2049,7 @@ async function renderDetalleUnidad(sol) {
       for (const pdf of pdfs) {
         const pdfRow = document.createElement("div");
         pdfRow.style.cssText = "font-size:12px;padding:6px 8px;background:#f8fafc;border:1px solid var(--borde);border-radius:6px;margin-bottom:4px;cursor:pointer;color:var(--azul);font-weight:600;";
-        pdfRow.innerHTML = `ðŸ“„ ${pdf.name}`;
+        pdfRow.innerHTML = `\uD83D\uDCC4 ${pdf.name}`;
         pdfRow.onclick = async () => {
           try {
             const blobUrl = await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl);
@@ -2089,11 +2076,11 @@ function handleEvFiles(files) {
       const url = URL.createObjectURL(f);
       box.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;">`;
     } else {
-      box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:#666;padding:4px;text-align:center;">ðŸ“„ ${f.name}</div>`;
+      box.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:11px;color:#666;padding:4px;text-align:center;">\uD83D\uDCC4 ${f.name}</div>`;
     }
     const del = document.createElement("button");
     del.style.cssText = "position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.5);color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;";
-    del.textContent = "âœ•";
+    del.textContent = "\u2715";
     del.onclick = () => { _evFiles.splice(i,1); handleEvFiles([]); };
     box.appendChild(del);
     preview.appendChild(box);
@@ -2103,13 +2090,13 @@ function handleEvFiles(files) {
 async function responderSolicitud(solId) {
   const obs = document.getElementById("uni-obs")?.value.trim();
   const files = _evFiles.length > 0 ? _evFiles : Array.from(document.getElementById("uni-ev-files")?.files||[]);
-  if (!obs) { showToast("error", "Ingresa una observaciÃ³n"); return; }
+  if (!obs) { showToast("error", "Ingresa una observaci\u00F3n"); return; }
 
   showLoading("Respondiendo...");
   try {
     const sol = state.solicitudes.find(s => s.id === solId);
     const esPendienteCierre = sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
-    // Si estÃ¡ en Pendiente de Cierre, se mantiene ese estado (el Director cierra)
+    // Si est\u00E1 en Pendiente de Cierre, se mantiene ese estado (el Director cierra)
     // Si es cualquier otro estado activo, pasa a Respondida
     if (!esPendienteCierre) {
       await actualizarSolicitud(solId, { Estado: CONFIG.estados.RESPONDIDA });
@@ -2133,7 +2120,7 @@ async function responderSolicitud(solId) {
     const nuevoEstado = esPendienteCierre ? CONFIG.estados.PENDIENTE_CIERRE : CONFIG.estados.RESPONDIDA;
     registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Title: esPendienteCierre ? "2Âª respuesta registrada (Pend. Cierre)" : "Solicitud respondida",
+      Title: esPendienteCierre ? "2\u00AA respuesta registrada (Pend. Cierre)" : "Solicitud respondida",
       EstadoAnterior: sol.Estado,
       EstadoNuevo: nuevoEstado,
       UsuarioAccion: state.usuario.NombreCompleto,
@@ -2141,11 +2128,11 @@ async function responderSolicitud(solId) {
       Unidad: state.usuario.Unidad,
       FechaAccion: new Date().toISOString(),
       Observaciones: obs
-    }).catch(e => console.warn("Historial (no crÃ­tico):", e.message));
+    }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
 
-    const accionNotif = esPendienteCierre ? "2Âª respuesta registrada â€” Pendiente de Cierre" : "Solicitud respondida por unidad";
+    const accionNotif = esPendienteCierre ? "2\u00AA respuesta registrada \u2014 Pendiente de Cierre" : "Solicitud respondida por unidad";
     notificarDirector({ ...sol, Estado: nuevoEstado }, accionNotif);
-    showToast("success", esPendienteCierre ? "ðŸ“‹ 2Âª respuesta registrada" : "âœ… Solicitud respondida");
+    showToast("success", esPendienteCierre ? "\uD83D\uDCCB 2\u00AA respuesta registrada" : "\u2705 Solicitud respondida");
     _evFiles.splice(0);
     await renderUnidad();
   } catch (e) {
@@ -2171,8 +2158,8 @@ async function enProcesoSolicitud(solId) {
       Unidad: state.usuario.Unidad,
       FechaAccion: new Date().toISOString(),
       Observaciones: obs
-    }).catch(e => console.warn("Historial (no crÃ­tico):", e.message));
-    showToast("info", "âš™ï¸ Solicitud marcada En Proceso");
+    }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
+    showToast("info", "\u2699\uFE0F Solicitud marcada En Proceso");
     await renderUnidad();
   } catch (e) {
     showToast("error", "Error: " + e.message);
@@ -2183,7 +2170,7 @@ async function enProcesoSolicitud(solId) {
 
 async function devolverSolicitudUnidad(solId) {
   const obs = document.getElementById("uni-obs")?.value.trim();
-  if (!obs) { showToast("error", "Ingresa el motivo de devoluciÃ³n"); return; }
+  if (!obs) { showToast("error", "Ingresa el motivo de devoluci\u00F3n"); return; }
 
   showLoading("Devolviendo...");
   try {
@@ -2200,9 +2187,9 @@ async function devolverSolicitudUnidad(solId) {
       FechaAccion: new Date().toISOString(),
       Observaciones: obs,
       Motivo: obs
-    }).catch(e => console.warn("Historial (no crÃ­tico):", e.message));
+    }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
     notificarDirector({ ...sol, Estado: CONFIG.estados.DEVUELTA }, "Solicitud devuelta por unidad");
-    showToast("info", "â†©ï¸ Solicitud devuelta");
+    showToast("info", "\u21A9\uFE0F Solicitud devuelta");
     await renderUnidad();
   } catch (e) {
     showToast("error", "Error: " + e.message);
@@ -2227,8 +2214,8 @@ async function cerrarSolicitudUnidad(solId) {
       Unidad: state.usuario.Unidad,
       FechaAccion: new Date().toISOString(),
       Observaciones: obs
-    }).catch(e => console.warn("Historial (no crÃ­tico):", e.message));
-    showToast("success", "ðŸ”’ Solicitud cerrada");
+    }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
+    showToast("success", "\uD83D\uDD12 Solicitud cerrada");
     await renderUnidad();
   } catch (e) {
     showToast("error", "Error: " + e.message);
@@ -2249,8 +2236,8 @@ async function verHistorial(nroSolicitud) {
   modal.innerHTML = `
     <div class="modal">
       <div class="modal-header">
-        <h3>ðŸ• Historial â€” Solicitud ${nroSolicitud}</h3>
-        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">âœ•</button>
+        <h3>\uD83D\uDD50 Historial \u2014 Solicitud ${nroSolicitud}</h3>
+        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">\u2715</button>
       </div>
       <div class="modal-body">
         ${historial.length === 0 ? '<p style="color:#9ca3af;text-align:center">Sin historial registrado</p>' :
@@ -2258,8 +2245,8 @@ async function verHistorial(nroSolicitud) {
             <div class="historial-item accion-${h.Accion?.toLowerCase().split(' ')[1]||''}">
               <div class="historial-fecha">${formatFechaHora(h.FechaAccion)}</div>
               <div class="historial-accion">${h.Accion}</div>
-              <div class="historial-user">ðŸ‘¤ ${h.UsuarioAccion} (${h.RolUsuario}) ${h.Unidad?`â€” ${h.Unidad}`:""}</div>
-              ${h.EstadoAnterior ? `<div style="font-size:12px;color:#888;margin-top:2px;">${h.EstadoAnterior} â†’ ${h.EstadoNuevo}</div>` : ""}
+              <div class="historial-user">\uD83D\uDC64 ${h.UsuarioAccion} (${h.RolUsuario}) ${h.Unidad?`\u2014 ${h.Unidad}`:""}</div>
+              ${h.EstadoAnterior ? `<div style="font-size:12px;color:#888;margin-top:2px;">${h.EstadoAnterior} \u2192 ${h.EstadoNuevo}</div>` : ""}
               ${h.Observaciones ? `<div class="historial-obs">${h.Observaciones}</div>` : ""}
             </div>`).join("")}
       </div>
@@ -2283,19 +2270,19 @@ async function renderAdmin(seccion = "solicitudes") {
   <div style="display:flex;flex-direction:column;height:calc(100vh - 120px);overflow:hidden;">
     <!-- Header -->
     <div style="background:linear-gradient(90deg,#1e1b4b,#312e81);color:white;padding:10px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
-      <span style="font-size:18px;">ðŸ›¡ï¸</span>
+      <span style="font-size:18px;">\uD83D\uDEE1\uFE0F</span>
       <div style="flex:1;">
-        <div style="font-size:14px;font-weight:700;">Panel de AdministraciÃ³n</div>
-        <div style="font-size:11px;opacity:0.7;">GestiÃ³n avanzada del sistema DOM</div>
+        <div style="font-size:14px;font-weight:700;">Panel de Administraci\u00F3n</div>
+        <div style="font-size:11px;opacity:0.7;">Gesti\u00F3n avanzada del sistema DOM</div>
       </div>
     </div>
-    <!-- PestaÃ±as internas -->
+    <!-- Pesta\u00F1as internas -->
     <div style="display:flex;background:white;border-bottom:2px solid var(--borde);flex-shrink:0;">
-      <button id="adm-tab-solicitudes" style="${admTabStyle(seccion==='solicitudes')}" onclick="renderAdmin('solicitudes')">ðŸ“‹ Solicitudes</button>
-      <button id="adm-tab-unidades"    style="${admTabStyle(seccion==='unidades')}"    onclick="renderAdmin('unidades')">ðŸ¢ Unidades</button>
-      <button id="adm-tab-usuarios"    style="${admTabStyle(seccion==='usuarios')}"    onclick="renderAdmin('usuarios')">ðŸ‘¤ Usuarios</button>
+      <button id="adm-tab-solicitudes" style="${admTabStyle(seccion==='solicitudes')}" onclick="renderAdmin('solicitudes')">\uD83D\uDCCB Solicitudes</button>
+      <button id="adm-tab-unidades"    style="${admTabStyle(seccion==='unidades')}"    onclick="renderAdmin('unidades')">\uD83C\uDFE2 Unidades</button>
+      <button id="adm-tab-usuarios"    style="${admTabStyle(seccion==='usuarios')}"    onclick="renderAdmin('usuarios')">\uD83D\uDC64 Usuarios</button>
     </div>
-    <!-- Contenido dinÃ¡mico -->
+    <!-- Contenido din\u00E1mico -->
     <div id="adm-contenido" style="flex:1;overflow:hidden;display:flex;flex-direction:column;"></div>
   </div>`;
 
@@ -2304,14 +2291,14 @@ async function renderAdmin(seccion = "solicitudes") {
   else if (seccion === "usuarios") await renderAdmUsuarios();
 }
 
-// â”€â”€ SecciÃ³n Solicitudes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// \u2500\u2500 Secci\u00F3n Solicitudes \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 let _adminSolicitudes = [];
 
 async function renderAdmSolicitudes() {
   const cont = document.getElementById("adm-contenido");
   cont.innerHTML = `
     <div style="background:white;border-bottom:1px solid var(--borde);padding:8px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0;">
-      <input type="text" id="adm-buscar" placeholder="ðŸ” NÂ°, solicitante, direcciÃ³n..."
+      <input type="text" id="adm-buscar" placeholder="\uD83D\uDD0D N\u00B0, solicitante, direcci\u00F3n..."
         style="flex:1;min-width:180px;padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12px;"
         oninput="filtrarAdmin()">
       <select id="adm-filtro-estado" onchange="filtrarAdmin()"
@@ -2324,16 +2311,16 @@ async function renderAdmSolicitudes() {
         <option value="">Todas las unidades</option>
         ${CONFIG.unidades.map(u=>`<option value="${u}">${u}</option>`).join("")}
       </select>
-      <button onclick="renderAdmin('solicitudes')" class="btn-primary" style="padding:6px 12px;font-size:12px;">ðŸ”„</button>
+      <button onclick="renderAdmin('solicitudes')" class="btn-primary" style="padding:6px 12px;font-size:12px;">\uD83D\uDD04</button>
       <span id="adm-count" style="font-size:11px;color:#6b7280;font-weight:600;"></span>
     </div>
     <div style="flex:1;overflow-y:auto;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead style="position:sticky;top:0;z-index:1;">
           <tr style="background:#1e1b4b;color:white;">
-            <th style="padding:9px 10px;text-align:left;">NÂ° Solicitud</th>
+            <th style="padding:9px 10px;text-align:left;">N\u00B0 Solicitud</th>
             <th style="padding:9px 10px;text-align:left;">Solicitante</th>
-            <th style="padding:9px 10px;text-align:left;">DirecciÃ³n</th>
+            <th style="padding:9px 10px;text-align:left;">Direcci\u00F3n</th>
             <th style="padding:9px 10px;text-align:left;">Fecha</th>
             <th style="padding:9px 10px;text-align:center;">Estado actual</th>
             <th style="padding:9px 10px;text-align:left;">Unidad</th>
@@ -2380,14 +2367,14 @@ function filtrarAdmin() {
       <td style="padding:7px 10px;color:#6b7280;">${s.Direccion||""}</td>
       <td style="padding:7px 10px;color:#6b7280;white-space:nowrap;">${formatFecha(s.FechaRecepcion)}</td>
       <td style="padding:7px 10px;text-align:center;"><span style="background:${c}20;color:${c};padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid ${c}40;">${s.Estado}</span></td>
-      <td style="padding:7px 10px;font-size:11px;">${s.UnidadDerivada||"â€”"}</td>
+      <td style="padding:7px 10px;font-size:11px;">${s.UnidadDerivada||"\u2014"}</td>
       <td style="padding:7px 10px;text-align:center;">
         <div style="display:flex;gap:5px;align-items:center;justify-content:center;">
           <select id="adm-sel-${s.id}" style="padding:3px 5px;border:1.5px solid var(--borde);border-radius:5px;font-size:11px;">
-            <option value="">â€” nuevo estado â€”</option>
+            <option value="">\u2014 nuevo estado \u2014</option>
             ${TODOS_ESTADOS.filter(e=>e!==s.Estado).map(e=>`<option value="${e}">${e}</option>`).join("")}
           </select>
-          <button onclick="cambiarEstadoAdmin('${s.id}')" style="padding:4px 9px;background:#312e81;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600;">âœ“</button>
+          <button onclick="cambiarEstadoAdmin('${s.id}')" style="padding:4px 9px;background:#312e81;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600;">\u2713</button>
         </div>
       </td>
     </tr>`;
@@ -2398,24 +2385,24 @@ async function cambiarEstadoAdmin(solId) {
   const nuevoEstado = document.getElementById(`adm-sel-${solId}`)?.value;
   if (!nuevoEstado) { showToast("error","Selecciona un estado"); return; }
   const sol = _adminSolicitudes.find(s=>s.id===solId);
-  if (!confirm(`Â¿Cambiar ${sol?.NroSolicitud||solId}?\n${sol?.Estado} â†’ ${nuevoEstado}`)) return;
+  if (!confirm(`\u00BFCambiar ${sol?.NroSolicitud||solId}?\n${sol?.Estado} \u2192 ${nuevoEstado}`)) return;
   showLoading("Actualizando...");
   try {
     await actualizarSolicitud(solId, { Estado: nuevoEstado });
-    registrarHistorial({ NroSolicitud:sol.NroSolicitud, Title:`[Admin] Estado â†’ ${nuevoEstado}`,
+    registrarHistorial({ NroSolicitud:sol.NroSolicitud, Title:`[Admin] Estado \u2192 ${nuevoEstado}`,
       EstadoAnterior:sol.Estado, EstadoNuevo:nuevoEstado,
       UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
       Unidad:state.usuario.Unidad, FechaAccion:new Date().toISOString(),
       Observaciones:"Cambio manual por Administrador"
     }).catch(e=>console.warn(e));
-    showToast("success",`âœ… ${sol?.NroSolicitud} â†’ ${nuevoEstado}`);
+    showToast("success",`\u2705 ${sol?.NroSolicitud} \u2192 ${nuevoEstado}`);
     sol.Estado = nuevoEstado;
     filtrarAdmin();
   } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }
 }
 
-// â”€â”€ SecciÃ³n Unidades â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// \u2500\u2500 Secci\u00F3n Unidades \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 let _adminUnidades = [];
 
 async function renderAdmUnidades() {
@@ -2424,7 +2411,7 @@ async function renderAdmUnidades() {
     <div style="padding:16px 20px;flex-shrink:0;background:white;border-bottom:1px solid var(--borde);display:flex;gap:10px;align-items:flex-end;">
       <div style="flex:1;">
         <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:4px;">NOMBRE DE LA UNIDAD</label>
-        <input type="text" id="adm-uni-nueva" placeholder="Ej: InspecciÃ³n, Operaciones..."
+        <input type="text" id="adm-uni-nueva" placeholder="Ej: Inspecci\u00F3n, Operaciones..."
           style="width:100%;padding:7px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;box-sizing:border-box;">
       </div>
       <button onclick="agregarUnidad()" class="btn-primary" style="padding:8px 18px;white-space:nowrap;">+ Agregar Unidad</button>
@@ -2445,14 +2432,14 @@ async function cargarAdmUnidades() {
     renderListaUnidades();
   } catch(e) {
     if (e.message.includes("404") || e.message.includes("no existe")) {
-      // Lista no existe â€” mostrar botÃ³n para crearla automÃ¡ticamente
+      // Lista no existe \u2014 mostrar bot\u00F3n para crearla autom\u00E1ticamente
       document.getElementById("adm-uni-lista").innerHTML = `
         <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:20px;text-align:center;">
-          <div style="font-size:28px;margin-bottom:8px;">ðŸ“‹</div>
+          <div style="font-size:28px;margin-bottom:8px;">\uD83D\uDCCB</div>
           <div style="font-size:14px;font-weight:700;color:#9a3412;margin-bottom:6px;">La lista "UnidadesDOM" no existe en SharePoint</div>
-          <div style="font-size:12px;color:#c2410c;margin-bottom:16px;">Se puede crear automÃ¡ticamente con las columnas necesarias.</div>
+          <div style="font-size:12px;color:#c2410c;margin-bottom:16px;">Se puede crear autom\u00E1ticamente con las columnas necesarias.</div>
           <button onclick="crearListaUnidades()" class="btn-primary" style="padding:10px 24px;font-size:13px;">
-            ðŸš€ Crear lista automÃ¡ticamente en SharePoint
+            \uD83D\uDE80 Crear lista autom\u00E1ticamente en SharePoint
           </button>
         </div>`;
     } else {
@@ -2484,13 +2471,13 @@ async function crearListaUnidades() {
     });
     if (!resLista.ok) {
       const err = await resLista.text();
-      // Si ya existe (cÃ³digo 409), continuamos igual
+      // Si ya existe (c\u00F3digo 409), continuamos igual
       if (!err.includes("ya existe") && !err.includes("already exists") && resLista.status !== 409) {
         throw new Error(`No se pudo crear la lista: ${err}`);
       }
     }
 
-    // 2. Agregar columna Activo (SÃ­/No)
+    // 2. Agregar columna Activo (S\u00ED/No)
     await fetch(`${SP_BASE_URL}/web/lists/getbytitle('${encodeURIComponent(CONFIG.lists.unidades)}')/fields`, {
       method: "POST",
       headers: {
@@ -2511,7 +2498,7 @@ async function crearListaUnidades() {
       await createListItem(CONFIG.lists.unidades, { Title: nombre, Activo: true }).catch(() => {});
     }
 
-    showToast("success", "âœ… Lista UnidadesDOM creada con las unidades actuales");
+    showToast("success", "\u2705 Lista UnidadesDOM creada con las unidades actuales");
     await cargarAdmUnidades();
   } catch(e) {
     showToast("error", "Error creando lista: " + e.message);
@@ -2532,7 +2519,7 @@ function renderListaUnidades() {
     return `
     <div style="background:white;border:1.5px solid ${activo?'var(--borde)':'#fecaca'};border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;">
       <div id="adm-uni-view-${u.id}" style="flex:1;display:flex;align-items:center;gap:10px;">
-        <span style="font-size:16px;">ðŸ¢</span>
+        <span style="font-size:16px;">\uD83C\uDFE2</span>
         <span style="font-size:14px;font-weight:600;color:${activo?'#1a3a6b':'#9ca3af'};${activo?'':'text-decoration:line-through;'}">${u.Title}</span>
         <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${activo?'#dcfce7':'#fee2e2'};color:${activo?'#15803d':'#b91c1c'};font-weight:600;">${activo?'Activa':'Inactiva'}</span>
       </div>
@@ -2541,16 +2528,16 @@ function renderListaUnidades() {
           style="flex:1;padding:6px 10px;border:1.5px solid var(--azul);border-radius:6px;font-size:13px;">
       </div>
       <div style="display:flex;gap:6px;">
-        <!-- BotÃ³n editar -->
+        <!-- Bot\u00F3n editar -->
         <button id="adm-uni-btn-edit-${u.id}" onclick="editarUnidadToggle('${u.id}')"
-          style="padding:5px 10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:6px;cursor:pointer;font-size:12px;">âœï¸ Editar</button>
-        <!-- BotÃ³n guardar (oculto) -->
+          style="padding:5px 10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:6px;cursor:pointer;font-size:12px;">\u270F\uFE0F Editar</button>
+        <!-- Bot\u00F3n guardar (oculto) -->
         <button id="adm-uni-btn-save-${u.id}" onclick="guardarUnidad('${u.id}')" style="display:none;
-          padding:5px 10px;background:#15803d;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">ðŸ’¾ Guardar</button>
+          padding:5px 10px;background:#15803d;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;">\uD83D\uDCBE Guardar</button>
         <!-- Activo/Inactivo -->
         <button onclick="toggleUnidadActivo('${u.id}',${!activo})"
           style="padding:5px 10px;background:${activo?'#fef3c7':'#dcfce7'};color:${activo?'#b45309':'#15803d'};border:1px solid ${activo?'#fde68a':'#86efac'};border-radius:6px;cursor:pointer;font-size:12px;">
-          ${activo?'â¸ Desactivar':'â–¶ Activar'}
+          ${activo?'\u23F8 Desactivar':'\u25B6 Activar'}
         </button>
       </div>
     </div>`;
@@ -2574,14 +2561,14 @@ function editarUnidadToggle(id) {
 
 async function guardarUnidad(id) {
   const nombre = document.getElementById(`adm-uni-nombre-${id}`)?.value.trim();
-  if (!nombre) { showToast("error","El nombre no puede estar vacÃ­o"); return; }
+  if (!nombre) { showToast("error","El nombre no puede estar vac\u00EDo"); return; }
   showLoading("Guardando...");
   try {
     await actualizarUnidad(id, { Title: nombre });
     const u = _adminUnidades.find(x=>x.id===id);
     if (u) u.Title = nombre;
     CONFIG.unidades = _adminUnidades.filter(x=>x.Activo!==false&&x.Activo!==0).map(x=>x.Title);
-    showToast("success","âœ… Unidad actualizada");
+    showToast("success","\u2705 Unidad actualizada");
     renderListaUnidades();
   } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }
@@ -2594,7 +2581,7 @@ async function toggleUnidadActivo(id, nuevoActivo) {
     const u = _adminUnidades.find(x=>x.id===id);
     if (u) u.Activo = nuevoActivo;
     CONFIG.unidades = _adminUnidades.filter(x=>x.Activo!==false&&x.Activo!==0).map(x=>x.Title);
-    showToast("success", nuevoActivo?"âœ… Unidad activada":"â¸ Unidad desactivada");
+    showToast("success", nuevoActivo?"\u2705 Unidad activada":"\u23F8 Unidad desactivada");
     renderListaUnidades();
   } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }
@@ -2609,24 +2596,24 @@ async function agregarUnidad() {
     _adminUnidades.push({ id: String(nueva.Id||nueva.id), Title: nombre, Activo: true });
     CONFIG.unidades = _adminUnidades.filter(u=>u.Activo!==false&&u.Activo!==0).map(u=>u.Title);
     document.getElementById("adm-uni-nueva").value = "";
-    showToast("success",`âœ… Unidad "${nombre}" creada`);
+    showToast("success",`\u2705 Unidad "${nombre}" creada`);
     renderListaUnidades();
   } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }
 }
 
-// â”€â”€ SecciÃ³n Usuarios â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// \u2500\u2500 Secci\u00F3n Usuarios \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 let _adminUsuarios = [];
 
 async function renderAdmUsuarios() {
   const cont = document.getElementById("adm-contenido");
   cont.innerHTML = `
     <div style="padding:12px 16px;flex-shrink:0;background:white;border-bottom:1px solid var(--borde);display:flex;gap:8px;align-items:center;">
-      <input type="text" id="adm-usr-buscar" placeholder="ðŸ” Buscar usuario..."
+      <input type="text" id="adm-usr-buscar" placeholder="\uD83D\uDD0D Buscar usuario..."
         style="flex:1;padding:6px 10px;border:1.5px solid var(--borde);border-radius:7px;font-size:12px;"
         oninput="filtrarUsuarios()">
       <button onclick="abrirModalUsuario(null)" class="btn-primary" style="padding:7px 14px;white-space:nowrap;">+ Nuevo Usuario</button>
-      <button onclick="renderAdmin('usuarios')" style="padding:7px 10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:7px;cursor:pointer;font-size:12px;">ðŸ”„</button>
+      <button onclick="renderAdmin('usuarios')" style="padding:7px 10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:7px;cursor:pointer;font-size:12px;">\uD83D\uDD04</button>
     </div>
     <div style="flex:1;overflow-y:auto;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
@@ -2665,16 +2652,16 @@ async function renderAdmUsuarios() {
             <div>
               <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:3px;">ROL</label>
               <select id="adm-usr-rol" style="width:100%;padding:7px 8px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;" onchange="toggleUnidadField()">
-                <option value="Administrador">ðŸ›¡ï¸ Administrador</option>
-                <option value="Director">ðŸ›ï¸ Director</option>
-                <option value="Secretaria">ðŸ“‹ Secretaria</option>
-                <option value="Unidad">ðŸ¢ Unidad</option>
+                <option value="Administrador">\uD83D\uDEE1\uFE0F Administrador</option>
+                <option value="Director">\uD83C\uDFDB\uFE0F Director</option>
+                <option value="Secretaria">\uD83D\uDCCB Secretaria</option>
+                <option value="Unidad">\uD83C\uDFE2 Unidad</option>
               </select>
             </div>
             <div id="adm-usr-unidad-wrap">
               <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:3px;">UNIDAD</label>
               <select id="adm-usr-unidad" style="width:100%;padding:7px 8px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;">
-                <option value="">â€” Sin unidad â€”</option>
+                <option value="">\u2014 Sin unidad \u2014</option>
                 ${CONFIG.unidades.map(u=>`<option value="${u}">${u}</option>`).join("")}
               </select>
             </div>
@@ -2704,7 +2691,7 @@ async function renderAdmUsuarios() {
         </div>
         <input type="hidden" id="adm-usr-id">
         <div style="display:flex;gap:10px;margin-top:20px;">
-          <button onclick="guardarUsuarioAdmin()" class="btn-primary" style="flex:1;padding:10px;">ðŸ’¾ Guardar</button>
+          <button onclick="guardarUsuarioAdmin()" class="btn-primary" style="flex:1;padding:10px;">\uD83D\uDCBE Guardar</button>
           <button onclick="cerrarModalUsuario()" style="flex:1;padding:10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:8px;cursor:pointer;font-weight:600;">Cancelar</button>
         </div>
       </div>
@@ -2736,13 +2723,13 @@ function filtrarUsuarios() {
       <td style="padding:8px 12px;font-weight:600;">${u.NombreCompleto||""}</td>
       <td style="padding:8px 12px;color:#6b7280;font-size:11px;">${u.Correo||""}</td>
       <td style="padding:8px 12px;text-align:center;"><span style="background:${c}20;color:${c};padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid ${c}30;">${u.Rol||""}</span></td>
-      <td style="padding:8px 12px;font-size:11px;">${u.Unidad||"â€”"}</td>
-      <td style="padding:8px 12px;text-align:center;"><span style="padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;background:${activo?'#dcfce7':'#fee2e2'};color:${activo?'#15803d':'#b91c1c'};">${activo?"SÃ­":"No"}</span></td>
-      <td style="padding:8px 12px;text-align:center;">${u.PuedeDerivar?'âœ…':'â€”'}</td>
-      <td style="padding:8px 12px;text-align:center;">${u.PuedeCerrar?'âœ…':'â€”'}</td>
-      <td style="padding:8px 12px;text-align:center;">${u.EsAdministrador?'âœ…':'â€”'}</td>
+      <td style="padding:8px 12px;font-size:11px;">${u.Unidad||"\u2014"}</td>
+      <td style="padding:8px 12px;text-align:center;"><span style="padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;background:${activo?'#dcfce7':'#fee2e2'};color:${activo?'#15803d':'#b91c1c'};">${activo?"S\u00ED":"No"}</span></td>
+      <td style="padding:8px 12px;text-align:center;">${u.PuedeDerivar?'\u2705':'\u2014'}</td>
+      <td style="padding:8px 12px;text-align:center;">${u.PuedeCerrar?'\u2705':'\u2014'}</td>
+      <td style="padding:8px 12px;text-align:center;">${u.EsAdministrador?'\u2705':'\u2014'}</td>
       <td style="padding:8px 12px;text-align:center;">
-        <button onclick="abrirModalUsuario('${u.id}')" style="padding:4px 10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:5px;cursor:pointer;font-size:11px;">âœï¸ Editar</button>
+        <button onclick="abrirModalUsuario('${u.id}')" style="padding:4px 10px;background:#f1f5f9;color:#374151;border:1px solid var(--borde);border-radius:5px;cursor:pointer;font-size:11px;">\u270F\uFE0F Editar</button>
       </td>
     </tr>`;
   }).join("");
@@ -2795,11 +2782,11 @@ async function guardarUsuarioAdmin() {
       await actualizarUsuario(id, fields);
       const u = _adminUsuarios.find(x=>x.id===id);
       if (u) Object.assign(u, fields);
-      showToast("success","âœ… Usuario actualizado");
+      showToast("success","\u2705 Usuario actualizado");
     } else {
       const nuevo = await crearUsuario(fields);
       _adminUsuarios.push({ id:String(nuevo.Id||nuevo.id), ...fields });
-      showToast("success","âœ… Usuario creado");
+      showToast("success","\u2705 Usuario creado");
     }
     cerrarModalUsuario();
     filtrarUsuarios();
@@ -2845,48 +2832,48 @@ async function renderGraficos() {
 
   <div style="display:flex;flex-direction:column;height:calc(100vh - 62px);overflow:hidden;">
 
-    <!-- â”€â”€ Header oscuro â”€â”€ -->
+    <!-- \u2500\u2500 Header oscuro \u2500\u2500 -->
     <div style="background:linear-gradient(135deg,#0f2547 0%,#1a3a6b 100%);padding:14px 24px;flex-shrink:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
       <div style="margin-right:12px;">
         <div style="font-size:16px;font-weight:800;color:white;letter-spacing:-.2px;">Dashboard DOM</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;">DirecciÃ³n de Obras Â· DoÃ±ihue</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;">Direcci\u00F3n de Obras \u00B7 Do\u00F1ihue</div>
       </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;">
-        ${[["Este mes",1],["3 meses",3],["6 meses",6],["1 aÃ±o",12],["Todo",0]].map(([l,m])=>
+        ${[["Este mes",1],["3 meses",3],["6 meses",6],["1 a\u00F1o",12],["Todo",0]].map(([l,m])=>
           `<button class="dash-per-btn" onclick="setPeriodo(${m})">${l}</button>`).join("")}
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-left:6px;">
         <input type="date" id="graf-desde" value="${hace3m}"
           style="padding:5px 9px;border:1.5px solid rgba(255,255,255,.22);border-radius:7px;font-size:12px;background:rgba(255,255,255,.08);color:white;cursor:pointer;"
           onchange="actualizarGraficos()">
-        <span style="color:rgba(255,255,255,.4);font-size:12px;">â†’</span>
+        <span style="color:rgba(255,255,255,.4);font-size:12px;">\u2192</span>
         <input type="date" id="graf-hasta" value="${hoy}"
           style="padding:5px 9px;border:1.5px solid rgba(255,255,255,.22);border-radius:7px;font-size:12px;background:rgba(255,255,255,.08);color:white;cursor:pointer;"
           onchange="actualizarGraficos()">
       </div>
       <div style="margin-left:auto;display:flex;gap:6px;">
-        <button onclick="actualizarGraficos()" class="dash-per-btn">âŸ³ Actualizar</button>
-        <button onclick="exportarExcel()" style="padding:5px 13px;background:#C9A84C;color:#0f2547;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:800;">â¬‡ CSV</button>
+        <button onclick="actualizarGraficos()" class="dash-per-btn">\u27F3 Actualizar</button>
+        <button onclick="exportarExcel()" style="padding:5px 13px;background:#C9A84C;color:#0f2547;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:800;">\u2B07 CSV</button>
       </div>
     </div>
 
-    <!-- â”€â”€ Cuerpo scrollable â”€â”€ -->
+    <!-- \u2500\u2500 Cuerpo scrollable \u2500\u2500 -->
     <div style="flex:1;overflow-y:auto;padding:18px 20px;background:#f0f4f8;display:flex;flex-direction:column;gap:16px;">
 
       <!-- KPIs -->
       <div id="graf-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;"></div>
 
-      <!-- Fila 1: doughnut + lÃ­nea tendencia -->
+      <!-- Fila 1: doughnut + l\u00EDnea tendencia -->
       <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;">
         <div class="dash-chart da da3">
-          <h3>â¬¤ Por estado <span class="badge-per" id="badge-per-estado"></span></h3>
+          <h3>\u2B24 Por estado <span class="badge-per" id="badge-per-estado"></span></h3>
           <div style="display:flex;align-items:center;gap:14px;">
             <div style="width:140px;flex-shrink:0;"><canvas id="chart-estado"></canvas></div>
             <div id="legend-estado" style="font-size:12px;display:flex;flex-direction:column;gap:7px;flex:1;"></div>
           </div>
         </div>
         <div class="dash-chart da da4">
-          <h3>ðŸ“… EvoluciÃ³n mensual
+          <h3>\uD83D\uDCC5 Evoluci\u00F3n mensual
             <span style="display:flex;gap:10px;margin-left:auto;font-size:11px;font-weight:500;">
               <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:2.5px;background:#1a3a6b;display:inline-block;border-radius:2px;"></span>Ingresadas</span>
               <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:2.5px;background:#16a34a;display:inline-block;border-radius:2px;border-style:dashed;"></span>Cerradas</span>
@@ -2896,14 +2883,14 @@ async function renderGraficos() {
         </div>
       </div>
 
-      <!-- Fila 2: barras unidad + semÃ¡foro plazos -->
+      <!-- Fila 2: barras unidad + sem\u00E1foro plazos -->
       <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;">
         <div class="dash-chart da da5">
-          <h3>ðŸ¢ Solicitudes por unidad</h3>
+          <h3>\uD83C\uDFE2 Solicitudes por unidad</h3>
           <canvas id="chart-unidad" height="130"></canvas>
         </div>
         <div class="dash-chart da da6">
-          <h3>ðŸš¦ Plazos activos</h3>
+          <h3>\uD83D\uDEA6 Plazos activos</h3>
           <div id="dash-semaforo" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
       </div>
@@ -2911,7 +2898,7 @@ async function renderGraficos() {
       <!-- Tabla resumen -->
       <div class="dash-chart da da7" style="padding:0;overflow:hidden;">
         <div style="padding:13px 18px;border-bottom:1px solid #e8eef6;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:13px;font-weight:700;color:#0f2547;">ðŸ¢ Rendimiento por unidad</span>
+          <span style="font-size:13px;font-weight:700;color:#0f2547;">\uD83C\uDFE2 Rendimiento por unidad</span>
           <span id="tabla-periodo" style="font-size:11px;color:#94a3b8;"></span>
         </div>
         <div style="overflow-x:auto;">
@@ -2985,7 +2972,7 @@ async function actualizarGraficos() {
       "Respondida":"#22c55e","Devuelta":"#ef4444","Pendiente de Cierre":"#7e22ce","Cerrada":"#64748b"
     };
 
-    // â”€â”€ KPIs â”€â”€
+    // \u2500\u2500 KPIs \u2500\u2500
     const total      = filtradas.length;
     const cerradas   = filtradas.filter(s => s.Estado === "Cerrada").length;
     const respondidas= filtradas.filter(s => s.Estado === "Respondida").length;
@@ -2994,11 +2981,11 @@ async function actualizarGraficos() {
     const tasa       = total > 0 ? Math.round(((cerradas + pendCierre) / total) * 100) : 0;
 
     const kpisConf = [
-      { id:"kv-total", label:"Total perÃ­odo",   val:total,       suf:"", color:"#1a3a6b", bar:100,                    del:1 },
+      { id:"kv-total", label:"Total per\u00EDodo",   val:total,       suf:"", color:"#1a3a6b", bar:100,                    del:1 },
       { id:"kv-cerr",  label:"Cerradas",         val:cerradas,    suf:"", color:"#64748b", bar:total?cerradas/total*100:0, del:2 },
       { id:"kv-resp",  label:"Respondidas",      val:respondidas, suf:"", color:"#16a34a", bar:total?respondidas/total*100:0, del:3 },
       { id:"kv-pend",  label:"Pend. de Cierre",  val:pendCierre,  suf:"", color:"#7e22ce", bar:total?pendCierre/total*100:0, del:4 },
-      { id:"kv-tasa",  label:"Tasa resoluciÃ³n",  val:tasa,        suf:"%",color:"#0e7490", bar:tasa,                   del:5 },
+      { id:"kv-tasa",  label:"Tasa resoluci\u00F3n",  val:tasa,        suf:"%",color:"#0e7490", bar:tasa,                   del:5 },
     ];
     const kpisCont = document.getElementById("graf-kpis");
     if (kpisCont) {
@@ -3008,7 +2995,7 @@ async function actualizarGraficos() {
           <div class="kv" id="${k.id}" style="color:${k.color};">0${k.suf}</div>
           <div class="kb"><div class="kb-fill" id="${k.id}-bar" style="width:0%;background:${k.color};"></div></div>
         </div>`).join("");
-      // Lanzar count-up + barra con pequeÃ±o delay para que el DOM pinte primero
+      // Lanzar count-up + barra con peque\u00F1o delay para que el DOM pinte primero
       setTimeout(() => {
         kpisConf.forEach(k => {
           _countUp(k.id, k.val, k.suf);
@@ -3018,11 +3005,11 @@ async function actualizarGraficos() {
       }, 60);
     }
 
-    // â”€â”€ Badge perÃ­odo â”€â”€
+    // \u2500\u2500 Badge per\u00EDodo \u2500\u2500
     const bp = document.getElementById("badge-per-estado");
-    if (bp && desde && hasta) bp.textContent = `${desde.slice(5)} â†’ ${hasta.slice(5)}`;
+    if (bp && desde && hasta) bp.textContent = `${desde.slice(5)} \u2192 ${hasta.slice(5)}`;
 
-    // â”€â”€ Chart 1: Doughnut estado â”€â”€
+    // \u2500\u2500 Chart 1: Doughnut estado \u2500\u2500
     const byEstado = {};
     filtradas.forEach(s => { byEstado[s.Estado] = (byEstado[s.Estado]||0)+1; });
     const eLabels = Object.keys(byEstado);
@@ -3047,7 +3034,7 @@ async function actualizarGraficos() {
         <span style="font-weight:700;color:${eColors[i]};">${eData[i]}</span>
       </div>`).join("");
 
-    // â”€â”€ Chart 2: LÃ­nea mensual con gradiente â”€â”€
+    // \u2500\u2500 Chart 2: L\u00EDnea mensual con gradiente \u2500\u2500
     const byMesIng = {}, byMesCer = {};
     filtradas.forEach(s => { const m = s.FechaRecepcion?.substring(0,7); if(m) byMesIng[m]=(byMesIng[m]||0)+1; });
     filtradas.filter(s=>s.Estado==="Cerrada").forEach(s => { const m = s.FechaRecepcion?.substring(0,7); if(m) byMesCer[m]=(byMesCer[m]||0)+1; });
@@ -3075,7 +3062,7 @@ async function actualizarGraficos() {
       });
     }
 
-    // â”€â”€ Chart 3: Barras horizontales unidades â”€â”€
+    // \u2500\u2500 Chart 3: Barras horizontales unidades \u2500\u2500
     const byUnidad = {};
     filtradas.filter(s=>s.UnidadDerivada).forEach(s => { byUnidad[(s.UnidadDerivada||"").trim()]=(byUnidad[(s.UnidadDerivada||"").trim()]||0)+1; });
     const uLabels = Object.keys(byUnidad).sort((a,b)=>byUnidad[b]-byUnidad[a]);
@@ -3095,7 +3082,7 @@ async function actualizarGraficos() {
       });
     }
 
-    // â”€â”€ SemÃ¡foro de plazos (sobre solicitudes activas en todo el sistema) â”€â”€
+    // \u2500\u2500 Sem\u00E1foro de plazos (sobre solicitudes activas en todo el sistema) \u2500\u2500
     const activas = all.filter(s => s.Estado===CONFIG.estados.DERIVADA||s.Estado===CONFIG.estados.EN_PROCESO);
     const semVerde   = activas.filter(s => { const r=calcularSemaforo(s); return r&&r.dias>3; }).length;
     const semAmarillo= activas.filter(s => { const r=calcularSemaforo(s); return r&&r.dias>0&&r.dias<=3; }).length;
@@ -3107,9 +3094,9 @@ async function actualizarGraficos() {
         semCont.innerHTML = `<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px;">Sin solicitudes activas</div>`;
       } else {
         const semItems = [
-          { n:semVerde,    label:"En plazo",    sub:">3 dÃ­as restantes",  bg:"#f0fdf4", bc:"#86efac", tc:"#15803d", emoji:"ðŸŸ¢" },
-          { n:semAmarillo, label:"Por vencer",  sub:"1â€“3 dÃ­as",           bg:"#fffbeb", bc:"#fde68a", tc:"#b45309", emoji:"ðŸŸ¡" },
-          { n:semRojo,     label:"CrÃ­tico",     sub:"Vencidas o hoy",     bg:"#fef2f2", bc:"#fca5a5", tc:"#b91c1c", emoji:"ðŸ”´" },
+          { n:semVerde,    label:"En plazo",    sub:">3 d\u00EDas restantes",  bg:"#f0fdf4", bc:"#86efac", tc:"#15803d", emoji:"\uD83D\uDFE2" },
+          { n:semAmarillo, label:"Por vencer",  sub:"1\u20133 d\u00EDas",           bg:"#fffbeb", bc:"#fde68a", tc:"#b45309", emoji:"\uD83D\uDFE1" },
+          { n:semRojo,     label:"Cr\u00EDtico",     sub:"Vencidas o hoy",     bg:"#fef2f2", bc:"#fca5a5", tc:"#b91c1c", emoji:"\uD83D\uDD34" },
         ];
         semCont.innerHTML = semItems.map(s => `
           <div class="sem-box" style="background:${s.bg};border:1.5px solid ${s.bc};">
@@ -3126,11 +3113,11 @@ async function actualizarGraficos() {
       }
     }
 
-    // â”€â”€ Tabla unidades â”€â”€
+    // \u2500\u2500 Tabla unidades \u2500\u2500
     const unidades = [...new Set(filtradas.filter(s=>s.UnidadDerivada).map(s=>(s.UnidadDerivada||"").trim()))].sort();
     const tbody = document.getElementById("tabla-unidades-body");
     const per   = document.getElementById("tabla-periodo");
-    if (per) per.textContent = desde && hasta ? `${desde} â€” ${hasta}` : "Todo el perÃ­odo";
+    if (per) per.textContent = desde && hasta ? `${desde} \u2014 ${hasta}` : "Todo el per\u00EDodo";
     if (tbody) {
       tbody.innerHTML = unidades.map((u,ri) => {
         const sols = filtradas.filter(s=>(s.UnidadDerivada||"").trim()===u);
@@ -3159,7 +3146,7 @@ async function actualizarGraficos() {
             </div>
           </td>
         </tr>`;
-      }).join("") || `<tr><td colspan="7" style="padding:28px;text-align:center;color:#94a3b8;font-size:13px;">Sin datos para el perÃ­odo</td></tr>`;
+      }).join("") || `<tr><td colspan="7" style="padding:28px;text-align:center;color:#94a3b8;font-size:13px;">Sin datos para el per\u00EDodo</td></tr>`;
     }
 
   } catch (e) {
@@ -3211,14 +3198,14 @@ async function exportarExcel() {
     .concat(filtradas.map(s =>
       `"${s.NroSolicitud}","${formatFecha(s.FechaRecepcion)}","${s.Solicitante}","${s.Direccion||""}","${s.Estado}","${s.UnidadDerivada||""}","${(s.Solicitud||"").replace(/"/g,'""')}"`
     )).join("\n");
-  const blob = new Blob(["ï»¿" + csv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `solicitudes_${desde}_${hasta}.csv`;
   a.click();
 }
 
-// ===== NAVEGACIÃ“N MÃ“VIL =====
+// ===== NAVEGACI\u00D3N M\u00D3VIL =====
 function isMobile() { return window.innerWidth <= 768; }
 
 function mostrarDetalleMovil(layoutClass) {
@@ -3233,7 +3220,7 @@ function volverAListaMovil(layoutClass) {
     renderListaSolicitudes();
     renderFormNueva();
     const header = document.getElementById("form-panel-header");
-    if (header) { header.textContent = "âž• Nueva Solicitud"; header.style.cssText = ""; }
+    if (header) { header.textContent = "\u2795 Nueva Solicitud"; header.style.cssText = ""; }
   }
   if (layoutClass === '.dir-layout') { renderDirLista(); }
   if (layoutClass === '.uni-layout') { renderSidebarUnidad(); }
@@ -3259,7 +3246,7 @@ function seleccionarSolicitud(id) {
 }
 
 function cargarSolicitudEnFormulario(sol) {
-  // â”€â”€ Header dinÃ¡mico: modo ediciÃ³n vs solo lectura â”€â”€
+  // \u2500\u2500 Header din\u00E1mico: modo edici\u00F3n vs solo lectura \u2500\u2500
   const editable = sol.Estado === CONFIG.estados.INGRESADA;
   const header = document.getElementById("form-panel-header");
   if (header) {
@@ -3267,10 +3254,10 @@ function cargarSolicitudEnFormulario(sol) {
       background:${editable ? 'linear-gradient(90deg,#166534,#15803d)' : 'linear-gradient(90deg,#0f2547,#1a3a6b)'};`;
     header.innerHTML = `
       <button class="mobile-back-bar" onclick="volverAListaMovil('.sec-layout')" style="font-size:13px;padding:8px 12px;">
-        â† Volver a lista
+        \u2190 Volver a lista
       </button>
       <div style="display:flex;align-items:center;gap:10px;flex:1;padding:10px 16px;">
-        <span style="font-size:16px;">${editable ? 'âœï¸' : 'ðŸ‘ï¸'}</span>
+        <span style="font-size:16px;">${editable ? '\u270F\uFE0F' : '\uD83D\uDC41\uFE0F'}</span>
         <span style="font-weight:600;font-size:13px;opacity:0.9;">${editable ? 'Editando' : 'Viendo'}</span>
         <span style="font-weight:800;font-size:16px;letter-spacing:0.5px;color:white;">Solicitud #${sol.NroSolicitud}</span>
         <span style="background:rgba(255,255,255,0.2);color:white;font-size:11px;font-weight:700;
@@ -3278,26 +3265,26 @@ function cargarSolicitudEnFormulario(sol) {
         <button onclick="limpiarSeleccion()" title="Cerrar"
           style="margin-left:auto;background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);
                  color:white;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">
-          âœ• Cerrar
+          \u2715 Cerrar
         </button>
       </div>`;
   }
 
-  // â”€â”€ Banner de modo ediciÃ³n â”€â”€
+  // \u2500\u2500 Banner de modo edici\u00F3n \u2500\u2500
   const bannerHtml = editable
     ? `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:10px 14px;
                    display:flex;align-items:center;gap:10px;font-size:13px;color:#15803d;">
-         <span style="font-size:20px;">âœï¸</span>
+         <span style="font-size:20px;">\u270F\uFE0F</span>
          <div>
-           <strong>Modo ediciÃ³n activo</strong><br>
+           <strong>Modo edici\u00F3n activo</strong><br>
            <span style="font-size:12px;">Puedes modificar los datos y guardar los cambios.</span>
          </div>
        </div>`
     : `<div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;
                    display:flex;align-items:center;gap:10px;font-size:13px;color:#64748b;">
-         <span style="font-size:20px;">ðŸ‘ï¸</span>
+         <span style="font-size:20px;">\uD83D\uDC41\uFE0F</span>
          <div>
-           <strong>Solicitud en estado "${sol.Estado}"</strong> â€” solo lectura<br>
+           <strong>Solicitud en estado "${sol.Estado}"</strong> \u2014 solo lectura<br>
            <span style="font-size:12px;">Los datos no pueden modificarse en este estado.</span>
          </div>
        </div>`;
@@ -3308,9 +3295,9 @@ function cargarSolicitudEnFormulario(sol) {
 
       ${bannerHtml}
 
-      <!-- â”€â”€ Datos â”€â”€ -->
+      <!-- \u2500\u2500 Datos \u2500\u2500 -->
       <div class="form-section">
-        <div class="form-section-header">ðŸ“‹ Datos de la Solicitud</div>
+        <div class="form-section-header">\uD83D\uDCCB Datos de la Solicitud</div>
         <div class="form-section-body">
           <div class="form-row">
             <div class="form-group">
@@ -3318,7 +3305,7 @@ function cargarSolicitudEnFormulario(sol) {
               <input type="text" id="nueva-nro" value="${sol.NroSolicitud||''}" ${editable?'':'readonly'}>
             </div>
             <div class="form-group">
-              <label>Fecha RecepciÃ³n</label>
+              <label>Fecha Recepci\u00F3n</label>
               <input type="date" id="nueva-fecha" value="${sol.FechaRecepcion?.split('T')[0]||''}" ${editable?'':'readonly'}>
             </div>
           </div>
@@ -3327,39 +3314,39 @@ function cargarSolicitudEnFormulario(sol) {
             <input type="text" id="nueva-solicitante" value="${sol.Solicitante||''}" ${editable?'':'readonly'}>
           </div>
           <div class="form-group">
-            <label>DirecciÃ³n</label>
+            <label>Direcci\u00F3n</label>
             <input type="text" id="nueva-dir" value="${sol.Direccion||''}" ${editable?'':'readonly'}>
           </div>
           <div class="form-group">
-            <label>DescripciÃ³n de la solicitud</label>
+            <label>Descripci\u00F3n de la solicitud</label>
             <textarea id="nueva-solicitud" rows="3" ${editable?'':'readonly'}>${sol.Solicitud||''}</textarea>
           </div>
           ${sol.UnidadDerivada?`
           <div class="form-group">
-            <label>ðŸ“¤ Unidad Derivada</label>
+            <label>\uD83D\uDCE4 Unidad Derivada</label>
             <input type="text" value="${sol.UnidadDerivada}" readonly style="color:#b45309;font-weight:700;">
           </div>`:''}
           ${sol.MotivoDevolucion?`
           <div class="form-group">
-            <label>â†©ï¸ Motivo de DevoluciÃ³n</label>
+            <label>\u21A9\uFE0F Motivo de Devoluci\u00F3n</label>
             <textarea rows="2" readonly style="color:#b91c1c;background:#fff5f5;border-color:#fca5a5;">${sol.MotivoDevolucion}</textarea>
           </div>`:''}
         </div>
       </div>
 
-      <!-- â”€â”€ Adjuntos â”€â”€ -->
+      <!-- \u2500\u2500 Adjuntos \u2500\u2500 -->
       <div class="form-section">
-        <div class="form-section-header naranja">ðŸ“Ž Documentos Adjuntos</div>
+        <div class="form-section-header naranja">\uD83D\uDCCE Documentos Adjuntos</div>
         <div class="form-section-body">
           <div id="adjuntos-existentes">
-            <div style="text-align:center;color:#9ca3af;padding:16px;font-size:13px;">â³ Cargando adjuntos...</div>
+            <div style="text-align:center;color:#9ca3af;padding:16px;font-size:13px;">\u23F3 Cargando adjuntos...</div>
           </div>
           ${editable?`
           <div style="margin-top:12px;border-top:1px solid var(--borde);padding-top:12px;">
-            <div style="font-size:12px;color:#b45309;font-weight:600;margin-bottom:8px;">âž• Agregar nuevos documentos</div>
+            <div style="font-size:12px;color:#b45309;font-weight:600;margin-bottom:8px;">\u2795 Agregar nuevos documentos</div>
             <div id="drop-area" class="upload-area" onclick="document.getElementById('nueva-files').click()"
               ondragover="event.preventDefault()" ondrop="event.preventDefault();handleFiles(event.dataTransfer.files)">
-              <div style="font-size:28px;">ðŸ“„</div>
+              <div style="font-size:28px;">\uD83D\uDCC4</div>
               <div style="font-size:13px;font-weight:600;">Arrastra o haz clic para subir</div>
             </div>
             <input type="file" id="nueva-files" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFiles(this.files)">
@@ -3368,11 +3355,11 @@ function cargarSolicitudEnFormulario(sol) {
         </div>
       </div>
 
-      <!-- â”€â”€ Respuesta de la Unidad (solo Respondida / Cerrada) â”€â”€ -->
+      <!-- \u2500\u2500 Respuesta de la Unidad (solo Respondida / Cerrada) \u2500\u2500 -->
       ${(sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.CERRADA) ? `
       <div style="background:white;border:2px solid #15803d;border-radius:10px;overflow:hidden;">
         <div style="background:linear-gradient(90deg,#14532d,#15803d);color:white;padding:8px 14px;font-size:12px;font-weight:700;letter-spacing:0.3px;">
-          ðŸ¢ Respuesta de la Unidad
+          \uD83C\uDFE2 Respuesta de la Unidad
         </div>
         <div id="sec-evidencia-panel" style="padding:0;">
           <div style="text-align:center;color:#9ca3af;font-size:12px;padding:16px;">
@@ -3382,39 +3369,39 @@ function cargarSolicitudEnFormulario(sol) {
         </div>
       </div>` : ''}
 
-      <!-- â”€â”€ Historial â”€â”€ -->
+      <!-- \u2500\u2500 Historial \u2500\u2500 -->
       <div class="form-section">
-        <div class="form-section-header verde">ðŸ• Historial de Movimientos</div>
+        <div class="form-section-header verde">\uD83D\uDD50 Historial de Movimientos</div>
         <div class="form-section-body" id="historial-inline" style="max-height:240px;overflow-y:auto;padding:8px 16px;">
-          <div style="text-align:center;color:#9ca3af;padding:16px;font-size:13px;">â³ Cargando historial...</div>
+          <div style="text-align:center;color:#9ca3af;padding:16px;font-size:13px;">\u23F3 Cargando historial...</div>
         </div>
       </div>
 
-      <!-- â”€â”€ Botones â”€â”€ -->
+      <!-- \u2500\u2500 Botones \u2500\u2500 -->
       ${editable?`
       <div style="display:flex;justify-content:center;gap:12px;padding:8px 0 12px;">
         <button class="btn-primary" onclick="guardarEdicionSolicitud('${sol.id}')"
           style="width:220px;padding:13px;font-size:15px;">
-          ðŸ’¾ Guardar Cambios
+          \uD83D\uDCBE Guardar Cambios
         </button>
         <button onclick="limpiarSeleccion()"
           style="padding:12px 22px;border:1.5px solid var(--borde);border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#666;">
-          âœ• Cancelar
+          \u2715 Cancelar
         </button>
       </div>` : `
       <div style="display:flex;justify-content:center;padding:12px 0;">
         <button onclick="limpiarSeleccion()"
           style="padding:11px 28px;border:1.5px solid var(--azul);border-radius:8px;background:white;
                  cursor:pointer;font-size:13px;color:var(--azul);font-weight:600;">
-          âž• Ingresar nueva solicitud
+          \u2795 Ingresar nueva solicitud
         </button>
       </div>`}
     </div>`;
 
-  // â”€â”€ Cargar adjuntos â†’ panel derecho (visor) + lista en formulario â”€â”€
+  // \u2500\u2500 Cargar adjuntos \u2192 panel derecho (visor) + lista en formulario \u2500\u2500
   const pdfPanel = document.getElementById("pdf-visor-contenido");
   const pdfHeader = document.getElementById("pdf-panel-header");
-  if (pdfPanel) pdfPanel.innerHTML = `<div style="text-align:center;color:#9ca3af;padding:30px;font-size:13px;">â³ Cargando documento...</div>`;
+  if (pdfPanel) pdfPanel.innerHTML = `<div style="text-align:center;color:#9ca3af;padding:30px;font-size:13px;">\u23F3 Cargando documento...</div>`;
 
   getListItemAttachments(CONFIG.lists.solicitudes, sol.id).then(atts => {
     // Lista compacta en formulario
@@ -3428,8 +3415,8 @@ function cargarSolicitudEnFormulario(sol) {
           const isImg = /\.(jpg|jpeg|png)$/i.test(a.name||'');
           return `<div class="file-item" style="cursor:pointer;border-left:3px solid ${isPdf?'#ef4444':isImg?'#3b82f6':'#6b7280'};"
             onclick="mostrarEnVisor('${a.downloadUrl}','${a.name}',${isPdf},'${sol.NroSolicitud}','${a.serverRelativeUrl}')">
-            <span>${isPdf?'ðŸ“„':isImg?'ðŸ–¼ï¸':'ðŸ“Ž'} <strong>${a.name}</strong></span>
-            <span style="font-size:11px;color:var(--azul);">Ver â†—</span>
+            <span>${isPdf?'\uD83D\uDCC4':isImg?'\uD83D\uDDBC\uFE0F':'\uD83D\uDCCE'} <strong>${a.name}</strong></span>
+            <span style="font-size:11px;color:var(--azul);">Ver \u2197</span>
           </div>`;
         }).join('');
       }
@@ -3438,8 +3425,8 @@ function cargarSolicitudEnFormulario(sol) {
     // Visor derecho: mostrar primer PDF o imagen
     if (!pdfPanel) return;
     if (!atts.length) {
-      pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>ðŸ“­</span><p>Esta solicitud no tiene documentos adjuntos</p></div>`;
-      if (pdfHeader) pdfHeader.textContent = "ðŸ“„ Sin adjuntos";
+      pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>\uD83D\uDCED</span><p>Esta solicitud no tiene documentos adjuntos</p></div>`;
+      if (pdfHeader) pdfHeader.textContent = "\uD83D\uDCC4 Sin adjuntos";
       return;
     }
     const first = atts.find(a => a.name?.toLowerCase().endsWith('.pdf')) || atts[0];
@@ -3457,9 +3444,9 @@ function cargarSolicitudEnFormulario(sol) {
         thumb.style.cssText = `min-width:60px;height:60px;border-radius:8px;border:2px solid var(--borde);
           cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;
           font-size:20px;background:#f8fafc;flex-shrink:0;transition:border-color 0.2s;`;
-        thumb.innerHTML = isPdf ? 'ðŸ“„' : isImg
+        thumb.innerHTML = isPdf ? '\uD83D\uDCC4' : isImg
           ? `<img src="${a.downloadUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">`
-          : 'ðŸ“Ž';
+          : '\uD83D\uDCCE';
         thumb.title = a.name;
         thumb.onclick = async () => {
           document.querySelectorAll(".thumb-active").forEach(t => { t.classList.remove("thumb-active"); t.style.borderColor = "var(--borde)"; });
@@ -3474,10 +3461,10 @@ function cargarSolicitudEnFormulario(sol) {
   }).catch(() => {
     const c = document.getElementById("adjuntos-existentes");
     if (c) c.innerHTML = `<p style="color:#9ca3af;font-size:13px;text-align:center;">No se pudieron cargar los adjuntos</p>`;
-    if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>âš ï¸</span><p>Error al cargar el documento</p></div>`;
+    if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>\u26A0\uFE0F</span><p>Error al cargar el documento</p></div>`;
   });
 
-  // â”€â”€ Cargar respuesta de la unidad para Respondida/Cerrada â”€â”€
+  // \u2500\u2500 Cargar respuesta de la unidad para Respondida/Cerrada \u2500\u2500
   if (sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.CERRADA) {
     getEvidenciasBySolicitud(sol.NroSolicitud, sol.id).then(evidencias => {
       const panel = document.getElementById("sec-evidencia-panel");
@@ -3489,10 +3476,10 @@ function cargarSolicitudEnFormulario(sol) {
       panel.innerHTML = evidencias.map(ev => `
         <div style="border-bottom:1px solid #e2e8f0;padding:12px 14px;">
           <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">
-            ðŸ¢ ${ev.Unidad||"Unidad"} &nbsp;Â·&nbsp; ðŸ‘¤ ${ev.Responsable||""} &nbsp;Â·&nbsp; ðŸ“… ${formatFecha(ev.FechaCarga)}
+            \uD83C\uDFE2 ${ev.Unidad||"Unidad"} &nbsp;\u00B7&nbsp; \uD83D\uDC64 ${ev.Responsable||""} &nbsp;\u00B7&nbsp; \uD83D\uDCC5 ${formatFecha(ev.FechaCarga)}
           </div>
           <div style="font-size:13px;color:#374151;line-height:1.7;background:#f0fdf4;border-left:3px solid #15803d;padding:10px 12px;border-radius:0 8px 8px 0;">
-            ${ev.DescripcionEvidencia||"Sin descripciÃ³n."}
+            ${ev.DescripcionEvidencia||"Sin descripci\u00F3n."}
           </div>
         </div>`).join("");
     }).catch(e => {
@@ -3502,7 +3489,7 @@ function cargarSolicitudEnFormulario(sol) {
     });
   }
 
-  // â”€â”€ Cargar historial â”€â”€
+  // \u2500\u2500 Cargar historial \u2500\u2500
   getHistorialBySolicitud(sol.NroSolicitud).then(hist => {
     const hc = document.getElementById("historial-inline");
     if (!hc) return;
@@ -3520,7 +3507,7 @@ function cargarSolicitudEnFormulario(sol) {
       return '#3b82f6';
     };
     hc.innerHTML = hist.map((h,i) => {
-      const accion  = h.Accion||h.Title||h.title||"â€”";
+      const accion  = h.Accion||h.Title||h.title||"\u2014";
       const usuario = h.UsuarioAccion||"";
       const unidad  = h.Unidad||"";
       const obs     = h.Observaciones||"";
@@ -3536,13 +3523,13 @@ function cargarSolicitudEnFormulario(sol) {
         <div style="flex:1;padding-bottom:4px;">
           <div style="font-size:13px;font-weight:700;color:#1a1a1a;">${accion}</div>
           <div style="font-size:11px;color:#888;margin-top:1px;">
-            ðŸ“… ${formatFechaHora(fecha)}
-            ${usuario?`Â· ðŸ‘¤ ${usuario}`:''}
-            ${unidad?`Â· ðŸ¢ ${unidad}`:''}
+            \uD83D\uDCC5 ${formatFechaHora(fecha)}
+            ${usuario?`\u00B7 \uD83D\uDC64 ${usuario}`:''}
+            ${unidad?`\u00B7 \uD83C\uDFE2 ${unidad}`:''}
           </div>
           ${estAnt?`<div style="font-size:11px;color:#aaa;margin-top:2px;">
             <span class="estado-badge estado-${estAnt}" style="font-size:10px;">${estAnt}</span>
-            â†’ <span class="estado-badge estado-${estNuevo}" style="font-size:10px;">${estNuevo}</span>
+            \u2192 <span class="estado-badge estado-${estNuevo}" style="font-size:10px;">${estNuevo}</span>
           </div>`:''}
           ${obs?`<div style="font-size:12px;color:#4b5563;margin-top:4px;padding:6px 8px;background:#f9fafb;border-left:3px solid ${dotColor(accion)};border-radius:0 4px 4px 0;">"${obs}"</div>`:''}
         </div>
@@ -3562,9 +3549,9 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
   if (header) {
     header.style.display = "flex";
     header.innerHTML = `
-      ðŸ“„ <span style="font-weight:700;">${nroSolicitud}</span>
-      <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;">â€” ${nombre}</span>
-      <span id="visor-loader" style="margin-left:auto;font-size:12px;opacity:0.7;">â³ Cargando...</span>`;
+      \uD83D\uDCC4 <span style="font-weight:700;">${nroSolicitud}</span>
+      <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;">\u2014 ${nombre}</span>
+      <span id="visor-loader" style="margin-left:auto;font-size:12px;opacity:0.7;">\u23F3 Cargando...</span>`;
   }
 
   // Mantener barra de miniaturas si existe
@@ -3580,7 +3567,7 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
 
   try {
     // Si es blob URL local (nueva solicitud) la usamos directo
-    // Si es URL de SharePoint, descargamos vÃ­a REST API con autenticaciÃ³n
+    // Si es URL de SharePoint, descargamos v\u00EDa REST API con autenticaci\u00F3n
     let blobUrl = downloadUrl;
     if (!downloadUrl.startsWith("blob:")) {
       blobUrl = await getAttachmentBlobUrl(downloadUrl, serverRelativeUrl);
@@ -3589,18 +3576,18 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
     // Actualizar header con botones
     if (header) {
       header.innerHTML = `
-        ðŸ“„ <span style="font-weight:700;">${nroSolicitud}</span>
-        <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;">â€” ${nombre}</span>
+        \uD83D\uDCC4 <span style="font-weight:700;">${nroSolicitud}</span>
+        <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;">\u2014 ${nombre}</span>
         <div style="margin-left:auto;display:flex;gap:6px;">
           <a href="${blobUrl}" download="${nombre}"
             style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);
                    color:white;padding:4px 10px;border-radius:6px;font-size:12px;text-decoration:none;">
-            â¬‡ Bajar
+            \u2B07 Bajar
           </a>
           <a href="${downloadUrl}" target="_blank"
             style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);
                    color:white;padding:4px 10px;border-radius:6px;font-size:12px;text-decoration:none;">
-            â†— Abrir
+            \u2197 Abrir
           </a>
         </div>`;
     }  // cierre if (header)
@@ -3610,7 +3597,7 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
       // Renderizar con PDF.js dentro del sistema
       const wrap = document.createElement("div");
       wrap.style.cssText = "flex:1;overflow-y:auto;background:#525659;border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:0;";
-      wrap.innerHTML = `<div style="color:white;font-size:13px;opacity:0.7;">â³ Renderizando PDF...</div>`;
+      wrap.innerHTML = `<div style="color:white;font-size:13px;opacity:0.7;">\u23F3 Renderizando PDF...</div>`;
       panel.appendChild(wrap);
       if (thumbBar) panel.appendChild(thumbBar);
 
@@ -3639,11 +3626,11 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
             await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
             wrap.appendChild(canvas);
 
-            // Separador entre pÃ¡ginas
+            // Separador entre p\u00E1ginas
             if (pageNum < pdf.numPages) {
               const sep = document.createElement("div");
               sep.style.cssText = "width:100%;text-align:center;color:rgba(255,255,255,0.4);font-size:11px;padding:2px 0;";
-              sep.textContent = `â€” PÃ¡gina ${pageNum} de ${pdf.numPages} â€”`;
+              sep.textContent = `\u2014 P\u00E1gina ${pageNum} de ${pdf.numPages} \u2014`;
               wrap.appendChild(sep);
             }
           }
@@ -3667,10 +3654,10 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
     } else {
       panel.innerHTML = `
         <div class="pdf-visor-empty">
-          <span>ðŸ“Ž</span><p>${nombre}</p>
+          <span>\uD83D\uDCCE</span><p>${nombre}</p>
           <a href="${blobUrl}" download="${nombre}"
             style="color:var(--azul);font-size:13px;font-weight:600;padding:8px 20px;border:1.5px solid var(--azul);border-radius:8px;">
-            â¬‡ Descargar archivo
+            \u2B07 Descargar archivo
           </a>
         </div>`;
     }
@@ -3679,13 +3666,13 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
   } catch (e) {
     panel.innerHTML = `
       <div class="pdf-visor-empty" style="gap:16px;">
-        <span>ðŸ“„</span>
+        <span>\uD83D\uDCC4</span>
         <p style="color:#374151;font-weight:600;">${nombre}</p>
-        <p style="color:#9ca3af;font-size:12px;">No se puede mostrar el documento aquÃ­,<br>pero puedes abrirlo en SharePoint:</p>
+        <p style="color:#9ca3af;font-size:12px;">No se puede mostrar el documento aqu\u00ED,<br>pero puedes abrirlo en SharePoint:</p>
         <a href="${downloadUrl}" target="_blank"
           style="background:var(--azul);color:white;padding:10px 24px;border-radius:8px;
                  font-size:14px;font-weight:600;text-decoration:none;">
-          â†— Abrir documento en SharePoint
+          \u2197 Abrir documento en SharePoint
         </a>
         <small style="color:#d1d5db;font-size:11px;">${e.message}</small>
       </div>`;
@@ -3699,12 +3686,12 @@ function limpiarSeleccion() {
   renderListaSolicitudes();
   renderFormNueva();
   const header = document.getElementById("form-panel-header");
-  if (header) { header.textContent = "âž• Nueva Solicitud"; header.style.cssText = ""; }
+  if (header) { header.textContent = "\u2795 Nueva Solicitud"; header.style.cssText = ""; }
   // Limpiar visor
   const pdfPanel = document.getElementById("pdf-visor-contenido");
-  if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>ðŸ“„</span><p>Selecciona una solicitud para ver el documento adjunto</p></div>`;
+  if (pdfPanel) pdfPanel.innerHTML = `<div class="pdf-visor-empty"><span>\uD83D\uDCC4</span><p>Selecciona una solicitud para ver el documento adjunto</p></div>`;
   const pdfHeader = document.getElementById("pdf-panel-header");
-  if (pdfHeader) { pdfHeader.textContent = "ðŸ“„ Documento"; pdfHeader.style.display = ""; }
+  if (pdfHeader) { pdfHeader.textContent = "\uD83D\uDCC4 Documento"; pdfHeader.style.display = ""; }
 }
 
 async function guardarEdicionSolicitud(solId) {
@@ -3723,7 +3710,7 @@ async function guardarEdicionSolicitud(solId) {
       }
       state.adjuntosNueva = [];
     }
-    showToast("success", `âœ… Solicitud ${nro} actualizada`);
+    showToast("success", `\u2705 Solicitud ${nro} actualizada`);
     await renderSecretaria();
   } catch(e) {
     showToast("error","Error: "+e.message);
@@ -3738,11 +3725,11 @@ function calcularSemaforo(sol) {
   const plazo       = CONFIG.plazoDerivacionDias || 15;
   const vencimiento = new Date(inicio.getTime() + plazo * 864e5);
   const dias        = Math.ceil((vencimiento - new Date()) / 864e5);
-  if (dias > 7)  return { color:"#16a34a", bg:"#dcfce7", emoji:"ðŸŸ¢", texto:`${dias}d`,        dias, vencimiento };
-  if (dias > 3)  return { color:"#d97706", bg:"#fef3c7", emoji:"ðŸŸ¡", texto:`${dias}d`,        dias, vencimiento };
-  if (dias > 0)  return { color:"#dc2626", bg:"#fee2e2", emoji:"ðŸ”´", texto:`${dias}d`,        dias, vencimiento };
-  if (dias === 0) return { color:"#dc2626", bg:"#fee2e2", emoji:"ðŸ”´", texto:"Hoy",            dias, vencimiento };
-  return           { color:"#7f1d1d",  bg:"#fecaca",  emoji:"âš«", texto:`+${Math.abs(dias)}d`, dias, vencimiento };
+  if (dias > 7)  return { color:"#16a34a", bg:"#dcfce7", emoji:"\uD83D\uDFE2", texto:`${dias}d`,        dias, vencimiento };
+  if (dias > 3)  return { color:"#d97706", bg:"#fef3c7", emoji:"\uD83D\uDFE1", texto:`${dias}d`,        dias, vencimiento };
+  if (dias > 0)  return { color:"#dc2626", bg:"#fee2e2", emoji:"\uD83D\uDD34", texto:`${dias}d`,        dias, vencimiento };
+  if (dias === 0) return { color:"#dc2626", bg:"#fee2e2", emoji:"\uD83D\uDD34", texto:"Hoy",            dias, vencimiento };
+  return           { color:"#7f1d1d",  bg:"#fecaca",  emoji:"\u26AB", texto:`+${Math.abs(dias)}d`, dias, vencimiento };
 }
 
 function formatFecha(iso) {

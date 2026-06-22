@@ -10,8 +10,7 @@ const CONFIG = {
     historial: "HistorialSolicitud",
     evidencias: "EvidenciaSolicitudes",
     unidades: "UnidadesDOM",
-    configuracion: "ConfiguracionDom",
-
+    configuracion: "ConfiguracionDom"
   },
   estados: {
     INGRESADA: "Ingresada",
