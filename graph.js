@@ -481,6 +481,25 @@ async function eliminarUnidad(itemId) {
   await spFetch(url, { method: "DELETE" });
 }
 
+async function deleteListItem(listName, itemId) {
+  const url = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})`;
+  await spFetch(url, { method: "DELETE" });
+}
+
+async function limpiarHistorialSolicitud(nroSolicitud) {
+  const items = await getHistorialBySolicitud(nroSolicitud);
+  if (!items.length) return;
+  await Promise.all(items.map(i => deleteListItem(CONFIG.lists.historial, i.id).catch(e => console.warn("Del historial:", e.message))));
+  _cacheInvalidate(CONFIG.lists.historial);
+}
+
+async function limpiarEvidenciasSolicitud(nroSolicitud, solicitudId) {
+  const items = await getEvidenciasBySolicitud(nroSolicitud, solicitudId);
+  if (!items.length) return;
+  await Promise.all(items.map(i => deleteListItem(CONFIG.lists.evidencias, i.id).catch(e => console.warn("Del evidencia:", e.message))));
+  _cacheInvalidate(CONFIG.lists.evidencias);
+}
+
 // ===== Usuarios (SharePoint list UsuarioDom) =====
 async function getTodosUsuarios() {
   return getListItems(CONFIG.lists.usuarios);

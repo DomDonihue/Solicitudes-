@@ -2382,18 +2382,47 @@ async function cambiarEstadoAdmin(solId) {
   const nuevoEstado = document.getElementById(`adm-sel-${solId}`)?.value;
   if (!nuevoEstado) { showToast("error","Selecciona un estado"); return; }
   const sol = _adminSolicitudes.find(s=>s.id===solId);
-  if (!confirm(`\u00BFCambiar ${sol?.NroSolicitud||solId}?\n${sol?.Estado} \u2192 ${nuevoEstado}`)) return;
+
+  const irAIngresada = nuevoEstado === CONFIG.estados.INGRESADA;
+  const msgBase = `\u00BFCambiar ${sol?.NroSolicitud||solId}?\n${sol?.Estado} \u2192 ${nuevoEstado}\n\nSe limpiar\u00E1n los campos asociados (unidad, acciones, observaciones).`;
+  if (!confirm(msgBase)) return;
+
+  let borrarHistEvi = false;
+  if (irAIngresada) {
+    borrarHistEvi = confirm(`\u00BFDeseas tambi\u00E9n eliminar el historial de movimientos y las evidencias de esta solicitud?\n\nAceptar = s\u00ED borrar historial y evidencias\nCancelar = solo cambiar estado`);
+  }
+
   showLoading("Actualizando...");
   try {
-    await actualizarSolicitud(solId, { Estado: nuevoEstado });
-    registrarHistorial({ NroSolicitud:sol.NroSolicitud, Title:`[Admin] Estado \u2192 ${nuevoEstado}`,
-      EstadoAnterior:sol.Estado, EstadoNuevo:nuevoEstado,
-      UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
-      Unidad:state.usuario.Unidad, FechaAccion:new Date().toISOString(),
-      Observaciones:"Cambio manual por Administrador"
-    }).catch(e=>console.warn(e));
-    showToast("success",`\u2705 ${sol?.NroSolicitud} \u2192 ${nuevoEstado}`);
+    const camposLimpiar = {
+      Estado: nuevoEstado,
+      UnidadDerivada: null,
+      Acciones: null,
+      MotivoDevolucion: null,
+      FechaDerivacion: null,
+      FechaCierre: null
+    };
+    await actualizarSolicitud(solId, camposLimpiar);
+
+    if (borrarHistEvi) {
+      await Promise.all([
+        limpiarHistorialSolicitud(sol.NroSolicitud).catch(e => console.warn("Limpieza historial:", e.message)),
+        limpiarEvidenciasSolicitud(sol.NroSolicitud, solId).catch(e => console.warn("Limpieza evidencias:", e.message))
+      ]);
+    }
+
+    registrarHistorial({
+      NroSolicitud: sol.NroSolicitud,
+      Title: `[Admin] Estado \u2192 ${nuevoEstado}`,
+      EstadoAnterior: sol.Estado, EstadoNuevo: nuevoEstado,
+      UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
+      Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(),
+      Observaciones: borrarHistEvi ? "Cambio manual por Administrador (historial y evidencias eliminados)" : "Cambio manual por Administrador"
+    }).catch(e => console.warn(e));
+
+    showToast("success", `\u2705 ${sol?.NroSolicitud} \u2192 ${nuevoEstado}`);
     sol.Estado = nuevoEstado;
+    sol.UnidadDerivada = null;
     filtrarAdmin();
   } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }
