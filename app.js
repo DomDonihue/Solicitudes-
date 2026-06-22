@@ -48,8 +48,6 @@ async function initApp() {
     CONFIG.plazoDerivacionDias = parseInt(cfgSP.PlazoDerivacionDias) || 15;
     CONFIG.plazoAlertaDias     = parseInt(cfgSP.PlazoAlertaDias)     || 1;
     CONFIG.correoSoporte       = cfgSP.CorreoSoporte                 || "enovo@mdonihue.cl";
-    // Crear campo FechaDerivacion si aún no existe (idempotente, falla en silencio)
-    crearCampoFechaDerivacion().catch(console.warn);
     crearCamposEvidencia().catch(console.warn);
     crearCamposHistorial().catch(console.warn);
     crearListaMultas().catch(console.warn);
