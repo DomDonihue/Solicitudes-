@@ -1375,7 +1375,7 @@ async function derivarSolicitud(solId) {
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
     const esRederivar = sol.Estado === CONFIG.estados.DEVUELTA;
-    const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad };
+    const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad, FechaDerivacion:new Date().toISOString() };
     if (obs) updateFields.Acciones = obs;
     await actualizarSolicitud(solId, updateFields);
     registrarHistorial({
@@ -3717,7 +3717,7 @@ async function guardarEdicionSolicitud(solId) {
 function calcularSemaforo(sol) {
   const activos = [CONFIG.estados.DERIVADA, CONFIG.estados.EN_PROCESO];
   if (!activos.includes(sol.Estado)) return null;
-  const inicio      = new Date(sol.FechaRecepcion);
+  const inicio      = new Date(sol.FechaDerivacion || sol.FechaRecepcion);
   if (isNaN(inicio)) return null;
   const plazo       = CONFIG.plazoDerivacionDias || 15;
   const vencimiento = new Date(inicio.getTime() + plazo * 864e5);

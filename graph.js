@@ -282,6 +282,7 @@ async function crearIndicesSharePoint() {
     { list: CONFIG.lists.solicitudes, field: "UnidadDerivada" },
     { list: CONFIG.lists.solicitudes, field: "NroSolicitud" },
     { list: CONFIG.lists.solicitudes, field: "FechaRecepcion" },
+    { list: CONFIG.lists.solicitudes, field: "FechaDerivacion" },
     // HistorialSolicitud \u2014 consultado siempre por NroSolicitud
     { list: CONFIG.lists.historial,   field: "NroSolicitud" },
     // EvidenciaSolicitudes \u2014 consultado por NroSolicitud y SolicitudID
