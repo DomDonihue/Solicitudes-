@@ -11,8 +11,7 @@ const CONFIG = {
     evidencias: "EvidenciaSolicitudes",
     unidades: "UnidadesDOM",
     configuracion: "ConfiguracionDom",
-    multas: "MultasDOM",
-    patentes: "PatentesDOM"
+
   },
   estados: {
     INGRESADA: "Ingresada",
