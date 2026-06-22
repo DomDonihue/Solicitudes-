@@ -1,9 +1,9 @@
 // ===== Cache en memoria con TTL =====
 const _cache = {};
 const _cacheTTL = {
-  [CONFIG.lists?.usuarios]:     5 * 60 * 1000,  // 5 min \uFFFD cambia poco
-  [CONFIG.lists?.unidades]:    10 * 60 * 1000,  // 10 min \uFFFD muy estable
-  [CONFIG.lists?.solicitudes]:  1 * 60 * 1000,  //  1 min \uFFFD cambia seguido
+  [CONFIG.lists?.usuarios]:     5 * 60 * 1000,  // 5 min — cambia poco
+  [CONFIG.lists?.unidades]:    10 * 60 * 1000,  // 10 min — muy estable
+  [CONFIG.lists?.solicitudes]:  1 * 60 * 1000,  //  1 min — cambia seguido
   [CONFIG.lists?.historial]:    2 * 60 * 1000,  //  2 min
   [CONFIG.lists?.evidencias]:   2 * 60 * 1000,  //  2 min
 };
@@ -125,7 +125,7 @@ async function updateListItem(listName, itemId, fields) {
   return null;
 }
 
-// Cache de tipos de lista para evitar m\uFFFDltiples llamadas
+// Cache de tipos de lista para evitar múltiples llamadas
 const _listTypeCache = {};
 async function getListItemType(listName) {
   if (_listTypeCache[listName]) return _listTypeCache[listName];
@@ -150,7 +150,7 @@ async function getListItemAttachments(listName, itemId) {
   }
 }
 
-// Descarga un adjunto v\uFFFDa REST API SharePoint y retorna blob URL
+// Descarga un adjunto vía REST API SharePoint y retorna blob URL
 const _blobCache = {};
 async function getAttachmentBlobUrl(downloadUrl, serverRelativeUrl) {
   const cacheKey = serverRelativeUrl || downloadUrl;
@@ -162,7 +162,7 @@ async function getAttachmentBlobUrl(downloadUrl, serverRelativeUrl) {
   const relUrl = serverRelativeUrl ||
     downloadUrl.replace("https://mdonihue.sharepoint.com", "");
 
-  // IMPORTANTE: NO usar encodeURIComponent \uFFFD SharePoint necesita el path sin codificar
+  // IMPORTANTE: NO usar encodeURIComponent — SharePoint necesita el path sin codificar
   // Solo escapar comillas simples si las hay
   const safeRelUrl = relUrl.replace(/'/g, "''");
   const apiUrl = `${SP_BASE}/web/getfilebyserverrelativeurl('${safeRelUrl}')/$value`;
@@ -201,7 +201,7 @@ function comprimirImagen(file, maxPx = 1200, quality = 0.82) {
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      // Si ya es peque\uFFFDa, no tocar
+      // Si ya es pequeña, no tocar
       if (img.width <= maxPx && img.height <= maxPx && file.size < 300 * 1024) {
         resolve(file); return;
       }
@@ -218,7 +218,7 @@ function comprimirImagen(file, maxPx = 1200, quality = 0.82) {
       canvas.toBlob(blob => {
         if (!blob || blob.size >= file.size) { resolve(file); return; }
         const nombre = file.name.replace(/\.[^.]+$/, "") + "." + ext;
-        console.info(`[DOM] Compresi\uFFFDn: ${(file.size/1024).toFixed(0)}KB ? ${(blob.size/1024).toFixed(0)}KB (${nombre})`);
+        console.info(`[DOM] Compresión: ${(file.size/1024).toFixed(0)}KB → ${(blob.size/1024).toFixed(0)}KB (${nombre})`);
         resolve(new File([blob], nombre, { type: outType }));
       }, outType, quality);
     };
@@ -277,14 +277,14 @@ async function getUserByEmail(email) {
 
 async function crearIndicesSharePoint() {
   const indices = [
-    // Solicitud_Dom \uFFFD filtros principales de la app
+    // Solicitud_Dom — filtros principales de la app
     { list: CONFIG.lists.solicitudes, field: "Estado" },
     { list: CONFIG.lists.solicitudes, field: "UnidadDerivada" },
     { list: CONFIG.lists.solicitudes, field: "NroSolicitud" },
     { list: CONFIG.lists.solicitudes, field: "FechaRecepcion" },
-    // HistorialSolicitud \uFFFD consultado siempre por NroSolicitud
+    // HistorialSolicitud — consultado siempre por NroSolicitud
     { list: CONFIG.lists.historial,   field: "NroSolicitud" },
-    // EvidenciaSolicitudes \uFFFD consultado por NroSolicitud y SolicitudID
+    // EvidenciaSolicitudes — consultado por NroSolicitud y SolicitudID
     { list: CONFIG.lists.evidencias,  field: "NroSolicitud" },
     { list: CONFIG.lists.evidencias,  field: "SolicitudID" },
   ];
@@ -305,12 +305,12 @@ async function crearIndicesSharePoint() {
         body: JSON.stringify({ __metadata: { type: "SP.Field" }, Indexed: true })
       });
       if (res.ok || res.status === 204) ok++;
-      else console.warn(`[DOM] \uFFFDndice ${list}.${field}: HTTP ${res.status}`);
+      else console.warn(`[DOM] Índice ${list}.${field}: HTTP ${res.status}`);
     } catch(e) {
-      console.warn(`[DOM] \uFFFDndice ${list}.${field}:`, e.message);
+      console.warn(`[DOM] Índice ${list}.${field}:`, e.message);
     }
   }
-  console.info(`[DOM] \uFFFDndices SharePoint: ${ok}/${indices.length} aplicados`);
+  console.info(`[DOM] Índices SharePoint: ${ok}/${indices.length} aplicados`);
 }
 
 
@@ -381,11 +381,11 @@ async function registrarHistorial(fields) {
     return await createListItem(CONFIG.lists.historial, mapped);
   } catch(e) {
     if (e.message.includes("InvalidClientQueryException") || e.message.includes("no es tipo") || e.message.includes("is not of type")) {
-      console.warn("[DOM] Columnas faltantes en HistorialSolicitud \uFFFD creando y reintentando...");
+      console.warn("[DOM] Columnas faltantes en HistorialSolicitud — creando y reintentando...");
       await crearCamposHistorial();
       try { return await createListItem(CONFIG.lists.historial, mapped); } catch(e2) { console.warn("registrarHistorial:", e2.message); }
     } else {
-      console.warn("registrarHistorial (no cr\uFFFDtico):", e.message);
+      console.warn("registrarHistorial (no crítico):", e.message);
     }
     return null;
   }
@@ -399,7 +399,7 @@ async function getEvidenciasBySolicitud(nroSolicitud, solicitudId = null) {
   const nro = String(nroSolicitud || "").trim();
   const idNum = solicitudId ? parseInt(solicitudId) : null;
 
-  // Filtrar por SolicitudID (n\uFFFDmero, siempre confiable) y como fallback por Title (= NroSolicitud)
+  // Filtrar por SolicitudID (número, siempre confiable) y como fallback por Title (= NroSolicitud)
   try {
     const partes = [];
     if (idNum) partes.push(`SolicitudID eq ${idNum}`);
@@ -409,7 +409,7 @@ async function getEvidenciasBySolicitud(nroSolicitud, solicitudId = null) {
     return await getListItems(CONFIG.lists.evidencias, filter);
   } catch(e) {
     // Si falla (ej: columna no indexada), fallback a filtro en cliente
-    console.warn("Evidencias: filtro servidor fall\uFFFD, usando cliente:", e.message);
+    console.warn("Evidencias: filtro servidor falló, usando cliente:", e.message);
     try {
       const todas = await getListItems(CONFIG.lists.evidencias);
       return todas.filter(ev => {
@@ -438,8 +438,8 @@ async function crearEvidencia(fields) {
     try {
       return await createListItem(CONFIG.lists.evidencias, fields);
     } catch(e2) {
-      // Fallback: guardar solo Title \uFFFD el adjunto se sube igual como attachment
-      console.warn("[DOM] Evidencia sin columnas extra (permisos insuficientes). El administrador debe iniciar sesi\uFFFDn para crear las columnas.", e2.message);
+      // Fallback: guardar solo Title — el adjunto se sube igual como attachment
+      console.warn("[DOM] Evidencia sin columnas extra (permisos insuficientes). El administrador debe iniciar sesión para crear las columnas.", e2.message);
       return await createListItem(CONFIG.lists.evidencias, {
         Title: fields.Title || `Evidencia ${fields.SolicitudID || "?"}`
       });
@@ -503,7 +503,7 @@ function notificarDirector(solicitud, accion) {
       await Promise.all(directores.map(dir =>
         sendEmail(
           dir.Correo,
-          `[SistemaDOM] Solicitud ${solicitud.NroSolicitud} \uFFFD ${accion}`,
+          `[SistemaDOM] Solicitud ${solicitud.NroSolicitud} — ${accion}`,
           emailTemplate(solicitud, accion)
         ).catch(e => console.warn("Email director:", e.message))
       ));
@@ -519,7 +519,7 @@ function notificarUnidad(solicitud, unidad) {
       await Promise.all(usuarios.map(u =>
         sendEmail(
           u.Correo,
-          `[SistemaDOM] Solicitud derivada a ${unidad} \uFFFD ${solicitud.NroSolicitud}`,
+          `[SistemaDOM] Solicitud derivada a ${unidad} — ${solicitud.NroSolicitud}`,
           emailTemplate(solicitud, `Derivada a ${unidad}`)
         ).catch(e => console.warn("Email unidad:", e.message))
       ));
@@ -531,15 +531,15 @@ function emailTemplate(sol, accion) {
   return `
     <div style="font-family:Arial;max-width:600px;margin:0 auto;background:#f5f5f5;padding:20px;">
       <div style="background:#1a3a6b;color:white;padding:20px;border-radius:8px 8px 0 0;">
-        <h2 style="margin:0;font-size:18px;">Municipalidad de Do\uFFFDihue</h2>
-        <p style="margin:4px 0 0;font-size:13px;opacity:0.85;">Direcci\uFFFDn de Obras \uFFFD Sistema de Solicitudes</p>
+        <h2 style="margin:0;font-size:18px;">Municipalidad de Doñihue</h2>
+        <p style="margin:4px 0 0;font-size:13px;opacity:0.85;">Dirección de Obras — Sistema de Solicitudes</p>
       </div>
       <div style="background:white;padding:24px;border-radius:0 0 8px 8px;border:1px solid #ddd;">
         <h3 style="color:#1a3a6b;margin-top:0;">${accion}</h3>
         <table style="width:100%;border-collapse:collapse;font-size:14px;">
           <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;color:#666;width:140px;">Nro Solicitud</td><td style="padding:8px;font-weight:bold;">${sol.NroSolicitud||''}</td></tr>
           <tr style="border-bottom:1px solid #eee;background:#fafafa;"><td style="padding:8px;color:#666;">Solicitante</td><td style="padding:8px;">${sol.Solicitante||''}</td></tr>
-          <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;color:#666;">Direcci\uFFFDn</td><td style="padding:8px;">${sol.Direccion||''}</td></tr>
+          <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;color:#666;">Dirección</td><td style="padding:8px;">${sol.Direccion||''}</td></tr>
           <tr style="border-bottom:1px solid #eee;background:#fafafa;"><td style="padding:8px;color:#666;">Solicitud</td><td style="padding:8px;">${sol.Solicitud||''}</td></tr>
           <tr><td style="padding:8px;color:#666;">Estado</td><td style="padding:8px;"><span style="background:#1a3a6b;color:white;padding:3px 10px;border-radius:12px;font-size:13px;">${sol.Estado||''}</span></td></tr>
         </table>
