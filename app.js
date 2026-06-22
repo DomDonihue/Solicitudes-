@@ -841,7 +841,7 @@ function renderDetalleDirector(sol) {
     return;
   }
 
-  const esDerivable       = false; // El director no deriva â€” lo hace la secretaria
+  const esDerivable       = sol.Estado === CONFIG.estados.INGRESADA || sol.Estado === CONFIG.estados.DEVUELTA;
   const esCerrable        = sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
   const esPendienteCierre = sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
   const tieneEvidencia    = sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.CERRADA || sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
