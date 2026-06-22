@@ -1384,18 +1384,9 @@ async function derivarSolicitud(solId) {
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
     const esRederivar = sol.Estado === CONFIG.estados.DEVUELTA;
-    const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad, FechaDerivacion:new Date().toISOString() };
+    const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad };
     if (obs) updateFields.Acciones = obs;
-    try {
-      await actualizarSolicitud(solId, updateFields);
-    } catch(eInner) {
-      if (eInner.message.includes("FechaDerivacion") || eInner.message.includes("InvalidClientQueryException")) {
-        // FechaDerivacion no existe en la lista — intentar crearlo y reintentar sin él
-        await crearCampoFechaDerivacion().catch(() => {});
-        const { FechaDerivacion, ...fieldsSinFecha } = updateFields;
-        await actualizarSolicitud(solId, fieldsSinFecha);
-      } else throw eInner;
-    }
+    await actualizarSolicitud(solId, updateFields);
     registrarHistorial({
       NroSolicitud:sol.NroSolicitud,
       Title:esRederivar ? "Re-derivada a unidad" : "Derivada a unidad",
