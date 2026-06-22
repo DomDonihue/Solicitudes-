@@ -282,7 +282,6 @@ async function crearIndicesSharePoint() {
     { list: CONFIG.lists.solicitudes, field: "UnidadDerivada" },
     { list: CONFIG.lists.solicitudes, field: "NroSolicitud" },
     { list: CONFIG.lists.solicitudes, field: "FechaRecepcion" },
-    { list: CONFIG.lists.solicitudes, field: "FechaDerivacion" },
     // HistorialSolicitud \u2014 consultado siempre por NroSolicitud
     { list: CONFIG.lists.historial,   field: "NroSolicitud" },
     // EvidenciaSolicitudes \u2014 consultado por NroSolicitud y SolicitudID
@@ -314,25 +313,6 @@ async function crearIndicesSharePoint() {
   console.info(`[DOM] \u00CDndices SharePoint: ${ok}/${indices.length} aplicados`);
 }
 
-async function crearCampoFechaDerivacion() {
-  const url = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(CONFIG.lists.solicitudes)}')/fields`;
-  try {
-    await spFetch(url, {
-      method: "POST",
-      body: JSON.stringify({
-        __metadata: { type: "SP.FieldDateTime" },
-        Title: "FechaDerivacion",
-        FieldTypeKind: 4,
-        AddToDefaultView: true,
-        Required: false
-      })
-    });
-    console.info("[DOM] Campo FechaDerivacion creado en SharePoint.");
-  } catch(e) {
-    // 400 "duplicate" = ya existe \u2192 ignorar; cualquier otro error \u2192 solo advertencia
-    if (!e.message.includes("400")) console.warn("[DOM] FechaDerivacion:", e.message);
-  }
-}
 
 async function _crearCamposLista(listName, campos) {
   const listUrl = `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/fields`;

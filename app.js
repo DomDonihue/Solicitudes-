@@ -48,8 +48,6 @@ async function initApp() {
     CONFIG.plazoDerivacionDias = parseInt(cfgSP.PlazoDerivacionDias) || 15;
     CONFIG.plazoAlertaDias     = parseInt(cfgSP.PlazoAlertaDias)     || 1;
     CONFIG.correoSoporte       = cfgSP.CorreoSoporte                 || "enovo@mdonihue.cl";
-    // Crear campo FechaDerivacion si a\u00FAn no existe (idempotente, falla en silencio)
-    crearCampoFechaDerivacion().catch(console.warn);
     crearCamposEvidencia().catch(console.warn);
     crearCamposHistorial().catch(console.warn);
     // Indexar columnas cr\u00EDticas (idempotente \u2014 no hace nada si ya est\u00E1n indexadas)
@@ -1377,7 +1375,7 @@ async function derivarSolicitud(solId) {
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
     const esRederivar = sol.Estado === CONFIG.estados.DEVUELTA;
-    const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad, FechaDerivacion:new Date().toISOString() };
+    const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad };
     if (obs) updateFields.Acciones = obs;
     await actualizarSolicitud(solId, updateFields);
     registrarHistorial({
@@ -1807,7 +1805,6 @@ ${sem ? `<div class="semaforo" style="background:${sem.bg};color:${sem.color};bo
 <table>
   <tr><th>Nro Solicitud</th><td><strong>${sol.NroSolicitud||"-"}</strong></td><th>Estado</th><td><span class="badge">${sol.Estado||"-"}</span></td></tr>
   <tr><th>Fecha Recepci\u00F3n</th><td>${formatFecha(sol.FechaRecepcion)}</td><th>Unidad</th><td>${sol.UnidadDerivada||"-"}</td></tr>
-  ${sol.FechaDerivacion?`<tr><th>Fecha Derivaci\u00F3n</th><td colspan="3">${formatFecha(sol.FechaDerivacion)}</td></tr>`:""}
 </table>
 <div class="section-title">Solicitante</div>
 <table>
@@ -3720,7 +3717,7 @@ async function guardarEdicionSolicitud(solId) {
 function calcularSemaforo(sol) {
   const activos = [CONFIG.estados.DERIVADA, CONFIG.estados.EN_PROCESO];
   if (!activos.includes(sol.Estado)) return null;
-  const inicio      = new Date(sol.FechaDerivacion || sol.FechaRecepcion);
+  const inicio      = new Date(sol.FechaRecepcion);
   if (isNaN(inicio)) return null;
   const plazo       = CONFIG.plazoDerivacionDias || 15;
   const vencimiento = new Date(inicio.getTime() + plazo * 864e5);
