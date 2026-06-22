@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presentación — Sistema DOM · Doñihue</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --azul:    #0f2547;
+      --azul2:   #1a3a6b;
+      --acento:  #2563eb;
+      --dorado:  #c8a84b;
+      --blanco:  #ffffff;
+      --gris:    #f1f5f9;
+      --texto:   #1e293b;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--azul);
+      color: var(--blanco);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== TOPBAR ===== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 56px;
+      background: rgba(0,0,0,0.35);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      flex-shrink: 0;
+      backdrop-filter: blur(8px);
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-escudo {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      background: var(--dorado);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .topbar-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .topbar-subtitle {
+      font-size: 10px;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* ===== TIMER ===== */
+    .timer-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #timer-display {
+      font-size: 22px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--dorado);
+      letter-spacing: 2px;
+    }
+
+    #timer-display.warn { color: #f59e0b; animation: pulse 1s infinite; }
+    #timer-display.danger { color: #ef4444; animation: pulse 0.5s infinite; }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.5; }
+    }
+
+    .btn-timer {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-timer:hover { background: rgba(255,255,255,0.2); }
+
+    /* ===== SLIDES ===== */
+    .slide-area {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 80px;
+      text-align: center;
+    }
+
+    .slide.active {
+      display: flex;
+      animation: slideIn 0.5s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(30px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .slide-number {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--dorado);
+      margin-bottom: 8px;
+    }
+
+    .slide-icon {
+      font-size: 72px;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 4px 16px rgba(0,0,0,0.4));
+    }
+
+    .slide-title {
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 16px;
+      color: var(--blanco);
+      text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .slide-title span {
+      color: var(--dorado);
+    }
+
+    .slide-desc {
+      font-size: 18px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.7;
+      max-width: 720px;
+      margin-bottom: 32px;
+    }
+
+    /* Puntos / features */
+    .features {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    .feature-card {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 16px 20px;
+      min-width: 160px;
+      max-width: 200px;
+      backdrop-filter: blur(6px);
+      transition: transform 0.2s, background 0.2s;
+    }
+    .feature-card:hover { transform: translateY(-3px); background: rgba(255,255,255,0.13); }
+
+    .feature-icon { font-size: 28px; margin-bottom: 8px; }
+    .feature-name { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.95); }
+    .feature-detail { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 4px; line-height: 1.4; }
+
+    /* Grid 2 col para detalles */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      max-width: 800px;
+      margin-top: 10px;
+    }
+
+    .detail-item {
+      background: rgba(255,255,255,0.07);
+      border-left: 3px solid var(--dorado);
+      border-radius: 0 10px 10px 0;
+      padding: 12px 16px;
+      text-align: left;
+    }
+
+    .detail-item-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--dorado);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .detail-item-text {
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.5;
+    }
+
+    /* Diagrama flujo */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-top: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .flow-step {
+      background: rgba(255,255,255,0.1);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      min-width: 110px;
+    }
+
+    .flow-step .step-num {
+      font-size: 10px;
+      color: var(--dorado);
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .flow-arrow {
+      font-size: 22px;
+      color: var(--dorado);
+      margin: 0 6px;
+    }
+
+    /* Slide especial portada */
+    .slide-portada .slide-title { font-size: 48px; }
+    .slide-portada .slide-icon { font-size: 96px; }
+
+    /* Etiqueta de tiempo estimado */
+    .time-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(200,168,75,0.2);
+      border: 1px solid rgba(200,168,75,0.4);
+      color: var(--dorado);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    /* ===== PROGRESS BAR ===== */
+    .progress-bar-wrap {
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      position: relative;
+    }
+
+    #progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--dorado), #2563eb);
+      transition: width 0.4s ease;
+    }
+
+    /* ===== BOTTOMBAR ===== */
+    .bottombar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 60px;
+      background: rgba(0,0,0,0.3);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      flex-shrink: 0;
+      backdrop-filter: blur(8px);
+    }
+
+    .slide-dots {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dot.active {
+      background: var(--dorado);
+      width: 20px;
+      border-radius: 4px;
+    }
+    .dot:hover { background: rgba(255,255,255,0.5); }
+
+    .nav-btns {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-nav {
+      background: rgba(255,255,255,0.1);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      color: white;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-nav:hover { background: rgba(255,255,255,0.2); transform: translateY(-1px); }
+    .btn-nav:disabled { opacity: 0.3; cursor: default; transform: none; }
+    .btn-nav.primary {
+      background: var(--dorado);
+      border-color: var(--dorado);
+      color: var(--azul);
+    }
+    .btn-nav.primary:hover { background: #d4a843; }
+
+    .slide-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+    }
+
+    /* ===== AUTO MODE ===== */
+    .auto-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+    }
+    .auto-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+    /* BG gradient rotativo */
+    .bg-gradient {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: radial-gradient(ellipse at 20% 50%, #1a3a6b 0%, #0f2547 60%, #060e1f 100%);
+    }
+    .bg-particles {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+    }
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(200,168,75,0.06);
+      animation: float linear infinite;
+    }
+    @keyframes float {
+      from { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 0.6; }
+      to   { transform: translateY(-20vh) rotate(360deg); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-gradient"></div>
+<div class="bg-particles" id="particles"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-escudo">🏛️</div>
+    <div>
+      <div class="topbar-title">Sistema DOM · Municipalidad de Doñihue</div>
+      <div class="topbar-subtitle">Presentación del Sistema de Solicitudes</div>
+    </div>
+  </div>
+
+  <div class="timer-wrap">
+    <span style="font-size:12px;color:rgba(255,255,255,0.5);">Tiempo restante</span>
+    <div id="timer-display">15:00</div>
+    <button class="btn-timer" onclick="toggleTimer()">⏸</button>
+    <button class="btn-timer" onclick="resetTimer()">↺</button>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-bar-wrap">
+  <div id="progress-bar" style="width:0%"></div>
+</div>
+
+<!-- SLIDES -->
+<div class="slide-area">
+
+  <!-- SLIDE 0 – PORTADA -->
+  <div class="slide slide-portada active" id="slide-0">
+    <div class="slide-number">Sistema de Gestión</div>
+    <div class="slide-icon">🏛️</div>
+    <div class="slide-title">Sistema <span>DOM</span></div>
+    <div class="slide-desc">
+      Plataforma digital de gestión de solicitudes ciudadanas<br>
+      para la <strong>Dirección de Obras Municipales</strong> de Doñihue
+    </div>
+    <div class="features">
+      <div class="feature-card">
+        <div class="feature-icon">📋</div>
+        <div class="feature-name">Secretaría</div>
+        <div class="feature-detail">Ingreso y registro de solicitudes</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏛️</div>
+        <div class="feature-name">Director</div>
+        <div class="feature-detail">Revisión y derivación oficial</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔧</div>
+        <div class="feature-name">Unidades</div>
+        <div class="feature-detail">Gestión técnica por área</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <div class="feature-name">Reportes</div>
+        <div class="feature-detail">Estadísticas y gráficos en tiempo real</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 1 – LOGIN -->
+  <div class="slide" id="slide-1">
+    <div class="slide-number">Sección 1 · Acceso</div>
+    <div class="time-badge">⏱ ~1 min</div>
+    <div class="slide-icon">🔐</div>
+    <div class="slide-title">Portal de <span>Acceso</span></div>
+    <div class="slide-desc">
+      Autenticación segura mediante cuenta institucional de Office 365.<br>
+      Solo usuarios registrados con correo <strong>@mdonihue.cl</strong> pueden ingresar.
+    </div>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="detail-item-title">🔑 Autenticación</div>
+        <div class="detail-item-text">Microsoft Azure AD · Single Sign-On con cuenta institucional</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">👥 Control de acceso</div>
+        <div class="detail-item-text">Perfiles diferenciados: Secretaría, Director, Unidad, Admin</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">🛡️ Seguridad</div>
+        <div class="detail-item-text">Sesión vinculada a cuenta corporativa Office 365</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">📧 Soporte</div>
+        <div class="detail-item-text">Contacto directo al soporte DOM desde la pantalla de acceso</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2 – FLUJO GENERAL -->
+  <div class="slide" id="slide-2">
+    <div class="slide-number">Sección 2 · Flujo de trabajo</div>
+    <div class="time-badge">⏱ ~1.5 min</div>
+    <div class="slide-icon">🔄</div>
+    <div class="slide-title">Flujo de <span>Solicitudes</span></div>
+    <div class="slide-desc">
+      Cada solicitud ciudadana recorre un ciclo completo desde su ingreso hasta su resolución,
+      pasando por revisión directiva y gestión técnica.
+    </div>
+    <div class="flow">
+      <div class="flow-step"><div class="step-num">PASO 1</div>Ingreso<br>Secretaría</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="step-num">PASO 2</div>Revisión<br>Director</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="step-num">PASO 3</div>Derivación<br>Unidad</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="step-num">PASO 4</div>Trabajo<br>Técnico</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><div class="step-num">PASO 5</div>Resolución<br>Cierre</div>
+    </div>
+    <div style="margin-top:28px;display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
+      <div class="feature-card" style="min-width:120px;">
+        <div class="feature-icon">🟡</div>
+        <div class="feature-name">Pendiente</div>
+        <div class="feature-detail">Recién ingresada</div>
+      </div>
+      <div class="feature-card" style="min-width:120px;">
+        <div class="feature-icon">🔵</div>
+        <div class="feature-name">En Revisión</div>
+        <div class="feature-detail">Director evaluando</div>
+      </div>
+      <div class="feature-card" style="min-width:120px;">
+        <div class="feature-icon">🟣</div>
+        <div class="feature-name">Derivada</div>
+        <div class="feature-detail">Asignada a unidad</div>
+      </div>
+      <div class="feature-card" style="min-width:120px;">
+        <div class="feature-icon">🟠</div>
+        <div class="feature-name">En Proceso</div>
+        <div class="feature-detail">Trabajando</div>
+      </div>
+      <div class="feature-card" style="min-width:120px;">
+        <div class="feature-icon">🟢</div>
+        <div class="feature-name">Cerrada</div>
+        <div class="feature-detail">Resuelta</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3 – SECRETARIA LISTA -->
+  <div class="slide" id="slide-3">
+    <div class="slide-number">Sección 3 · Secretaría — Lista y Filtros</div>
+    <div class="time-badge">⏱ ~2 min</div>
+    <div class="slide-icon">📋</div>
+    <div class="slide-title">Panel <span>Secretaría</span></div>
+    <div class="slide-desc">
+      Vista principal para la secretaria. Muestra todas las solicitudes con filtros avanzados
+      y estadísticas de estados en tiempo real.
+    </div>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="detail-item-title">🔍 Filtros avanzados</div>
+        <div class="detail-item-text">Por estado, unidad, fecha desde/hasta y búsqueda por texto libre</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">📊 Panel de estados</div>
+        <div class="detail-item-text">Contador en tiempo real de solicitudes por cada estado del sistema</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">📋 Lista paginada</div>
+        <div class="detail-item-text">Cards con semáforo de plazos, RUT, fecha ingreso y estado visible</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">📄 Visor PDF</div>
+        <div class="detail-item-text">Previsualización del documento adjunto al seleccionar una solicitud</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4 – SECRETARIA NUEVA SOLICITUD -->
+  <div class="slide" id="slide-4">
+    <div class="slide-number">Sección 4 · Secretaría — Nueva Solicitud</div>
+    <div class="time-badge">⏱ ~2 min</div>
+    <div class="slide-icon">➕</div>
+    <div class="slide-title">Ingreso de <span>Nueva Solicitud</span></div>
+    <div class="slide-desc">
+      Formulario completo para registrar solicitudes ciudadanas con todos los datos
+      necesarios y adjuntar documentos oficiales.
+    </div>
+    <div class="features">
+      <div class="feature-card">
+        <div class="feature-icon">👤</div>
+        <div class="feature-name">Datos del ciudadano</div>
+        <div class="feature-detail">RUT, nombre, dirección, teléfono, correo</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📝</div>
+        <div class="feature-name">Tipo de solicitud</div>
+        <div class="feature-detail">Clasificación por tipo y unidad destino</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📎</div>
+        <div class="feature-name">Adjuntos</div>
+        <div class="feature-detail">Carga múltiple de documentos PDF e imágenes</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🗓️</div>
+        <div class="feature-name">Fecha y folio</div>
+        <div class="feature-detail">Registro automático de fecha ingreso y número de folio</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5 – DIRECTOR -->
+  <div class="slide" id="slide-5">
+    <div class="slide-number">Sección 5 · Director</div>
+    <div class="time-badge">⏱ ~2 min</div>
+    <div class="slide-icon">🏛️</div>
+    <div class="slide-title">Panel <span>Director</span></div>
+    <div class="slide-desc">
+      Vista exclusiva para el Director de Obras. Permite revisar cada solicitud,
+      ver el documento original y tomar decisiones de gestión.
+    </div>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="detail-item-title">🃏 Cards de solicitudes</div>
+        <div class="detail-item-text">Vista compacta con semáforo de plazos (verde/amarillo/rojo) y datos clave</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">📄 Visor de documentos</div>
+        <div class="detail-item-text">PDF del expediente directamente en pantalla, sin descargar</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">✅ Acciones directivas</div>
+        <div class="detail-item-text">Derivar a unidad, agregar instrucciones, cambiar estado</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">⏰ Semáforo de plazos</div>
+        <div class="detail-item-text">Alerta visual automática según días transcurridos desde ingreso</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6 – UNIDAD -->
+  <div class="slide" id="slide-6">
+    <div class="slide-number">Sección 6 · Unidad Técnica</div>
+    <div class="time-badge">⏱ ~2 min</div>
+    <div class="slide-icon">🔧</div>
+    <div class="slide-title">Panel de <span>Unidad</span></div>
+    <div class="slide-desc">
+      Cada unidad técnica ve únicamente las solicitudes derivadas a su área.
+      Pueden gestionar el trabajo, subir evidencias y marcar avances.
+    </div>
+    <div class="features">
+      <div class="feature-card">
+        <div class="feature-icon">📂</div>
+        <div class="feature-name">Mis solicitudes</div>
+        <div class="feature-detail">Solo las solicitudes derivadas a esta unidad</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📸</div>
+        <div class="feature-name">Evidencias</div>
+        <div class="feature-detail">Adjuntar fotos y documentos como respaldo del trabajo</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <div class="feature-name">Visor PDF zoom</div>
+        <div class="feature-detail">Zoom +/- para revisar documentos en detalle</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🖨️</div>
+        <div class="feature-name">Imprimir ficha</div>
+        <div class="feature-detail">Generación e impresión de ficha oficial de la solicitud</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7 – GRAFICOS -->
+  <div class="slide" id="slide-7">
+    <div class="slide-number">Sección 7 · Estadísticas y Reportes</div>
+    <div class="time-badge">⏱ ~1.5 min</div>
+    <div class="slide-icon">📊</div>
+    <div class="slide-title">Dashboard de <span>Estadísticas</span></div>
+    <div class="slide-desc">
+      Panel de control con métricas clave, gráficos interactivos y semáforo
+      de gestión para la toma de decisiones estratégicas.
+    </div>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="detail-item-title">📈 Solicitudes por estado</div>
+        <div class="detail-item-text">Gráfico de torta con distribución de estados en tiempo real</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">🏢 Por unidad</div>
+        <div class="detail-item-text">Comparativa de carga de trabajo entre todas las unidades</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">📅 Evolución mensual</div>
+        <div class="detail-item-text">Tendencia de ingreso de solicitudes en el tiempo</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-item-title">🚦 Semáforo de plazos</div>
+        <div class="detail-item-text">Cuántas solicitudes están en plazo, en alerta o vencidas</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8 – ADMIN -->
+  <div class="slide" id="slide-8">
+    <div class="slide-number">Sección 8 · Administración</div>
+    <div class="time-badge">⏱ ~1 min</div>
+    <div class="slide-icon">⚙️</div>
+    <div class="slide-title">Panel de <span>Administración</span></div>
+    <div class="slide-desc">
+      Configuración central del sistema. Solo disponible para administradores.
+      Gestión de usuarios, unidades y parámetros del sistema.
+    </div>
+    <div class="features">
+      <div class="feature-card">
+        <div class="feature-icon">👥</div>
+        <div class="feature-name">Usuarios</div>
+        <div class="feature-detail">Crear, editar y desactivar cuentas de acceso</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏢</div>
+        <div class="feature-name">Unidades</div>
+        <div class="feature-detail">Gestionar las unidades técnicas del sistema</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⏱️</div>
+        <div class="feature-name">Plazos</div>
+        <div class="feature-detail">Configurar días de alerta y vencimiento del semáforo</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📧</div>
+        <div class="feature-name">Correo soporte</div>
+        <div class="feature-detail">Dirección de contacto visible en todos los paneles</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9 – CIERRE -->
+  <div class="slide" id="slide-9">
+    <div class="slide-number">Conclusión</div>
+    <div class="slide-icon">✅</div>
+    <div class="slide-title">Gracias por su <span>atención</span></div>
+    <div class="slide-desc">
+      El Sistema DOM moderniza la gestión de solicitudes ciudadanas,
+      brindando transparencia, trazabilidad y eficiencia a la
+      Dirección de Obras de la Municipalidad de Doñihue.
+    </div>
+    <div class="features">
+      <div class="feature-card">
+        <div class="feature-icon">☁️</div>
+        <div class="feature-name">100% en la nube</div>
+        <div class="feature-detail">SharePoint · Office 365 · Azure AD</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <div class="feature-name">Multiplataforma</div>
+        <div class="feature-detail">PC, tablet y celular</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-name">Seguro</div>
+        <div class="feature-detail">Datos institucionales protegidos</div>
+      </div>
+    </div>
+    <div style="margin-top:28px;font-size:13px;color:rgba(255,255,255,0.4);">
+      © 2026 enovo · Dirección de Obras Municipales · Municipalidad de Doñihue
+    </div>
+  </div>
+
+</div><!-- /slide-area -->
+
+<!-- BOTTOMBAR -->
+<div class="bottombar">
+  <div>
+    <div class="slide-label" id="slide-label">Diapositiva 1 de 10</div>
+    <div class="auto-indicator" id="auto-indicator" style="display:none;">
+      <div class="auto-dot"></div>
+      Avance automático activo
+    </div>
+  </div>
+
+  <div class="slide-dots" id="dots"></div>
+
+  <div class="nav-btns">
+    <button class="btn-nav" id="btn-prev" onclick="prevSlide()" disabled>← Anterior</button>
+    <button class="btn-nav" id="btn-auto" onclick="toggleAuto()">▶ Auto</button>
+    <button class="btn-nav primary" id="btn-next" onclick="nextSlide()">Siguiente →</button>
+  </div>
+</div>
+
+<script>
+  const TOTAL_SLIDES = 10;
+  const TOTAL_SECONDS = 15 * 60;
+  const SECONDS_PER_SLIDE = TOTAL_SECONDS / TOTAL_SLIDES;
+
+  let currentSlide = 0;
+  let timerSeconds = TOTAL_SECONDS;
+  let timerRunning = true;
+  let autoMode = false;
+  let autoTimer = null;
+  let countdownInterval = null;
+
+  // ===== PARTICLES =====
+  function createParticles() {
+    const container = document.getElementById('particles');
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('div');
+      p.classList.add('particle');
+      const size = Math.random() * 60 + 20;
+      p.style.cssText = `
+        width: ${size}px; height: ${size}px;
+        left: ${Math.random() * 100}%;
+        animation-duration: ${Math.random() * 20 + 15}s;
+        animation-delay: ${Math.random() * -20}s;
+        opacity: ${Math.random() * 0.5};
+      `;
+      container.appendChild(p);
+    }
+  }
+
+  // ===== DOTS =====
+  function buildDots() {
+    const dotsEl = document.getElementById('dots');
+    dotsEl.innerHTML = '';
+    for (let i = 0; i < TOTAL_SLIDES; i++) {
+      const d = document.createElement('div');
+      d.classList.add('dot');
+      if (i === currentSlide) d.classList.add('active');
+      d.onclick = () => goToSlide(i);
+      d.title = `Diapositiva ${i+1}`;
+      dotsEl.appendChild(d);
+    }
+  }
+
+  // ===== NAVIGATION =====
+  function goToSlide(n) {
+    document.getElementById(`slide-${currentSlide}`).classList.remove('active');
+    currentSlide = Math.max(0, Math.min(n, TOTAL_SLIDES - 1));
+    document.getElementById(`slide-${currentSlide}`).classList.add('active');
+    updateUI();
+  }
+
+  function nextSlide() {
+    if (currentSlide < TOTAL_SLIDES - 1) goToSlide(currentSlide + 1);
+    else stopAuto();
+  }
+
+  function prevSlide() {
+    if (currentSlide > 0) goToSlide(currentSlide - 1);
+  }
+
+  function updateUI() {
+    document.getElementById('btn-prev').disabled = currentSlide === 0;
+    document.getElementById('btn-next').disabled = currentSlide === TOTAL_SLIDES - 1;
+    document.getElementById('slide-label').textContent =
+      `Diapositiva ${currentSlide + 1} de ${TOTAL_SLIDES}`;
+
+    const pct = (currentSlide / (TOTAL_SLIDES - 1)) * 100;
+    document.getElementById('progress-bar').style.width = pct + '%';
+
+    buildDots();
+  }
+
+  // ===== TIMER =====
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+
+  function startTimer() {
+    countdownInterval = setInterval(() => {
+      if (!timerRunning) return;
+      if (timerSeconds > 0) {
+        timerSeconds--;
+        const el = document.getElementById('timer-display');
+        el.textContent = formatTime(timerSeconds);
+        el.className = timerSeconds < 60 ? 'danger' : timerSeconds < 180 ? 'warn' : '';
+      }
+    }, 1000);
+  }
+
+  function toggleTimer() {
+    timerRunning = !timerRunning;
+    document.querySelector('.btn-timer').textContent = timerRunning ? '⏸' : '▶';
+  }
+
+  function resetTimer() {
+    timerSeconds = TOTAL_SECONDS;
+    document.getElementById('timer-display').textContent = formatTime(timerSeconds);
+    document.getElementById('timer-display').className = '';
+  }
+
+  // ===== AUTO MODE =====
+  function toggleAuto() {
+    autoMode ? stopAuto() : startAuto();
+  }
+
+  function startAuto() {
+    autoMode = true;
+    document.getElementById('btn-auto').textContent = '⏹ Detener';
+    document.getElementById('auto-indicator').style.display = 'flex';
+    const ms = (SECONDS_PER_SLIDE * 1000);
+    autoTimer = setInterval(() => {
+      if (currentSlide < TOTAL_SLIDES - 1) nextSlide();
+      else stopAuto();
+    }, ms);
+  }
+
+  function stopAuto() {
+    autoMode = false;
+    clearInterval(autoTimer);
+    document.getElementById('btn-auto').textContent = '▶ Auto';
+    document.getElementById('auto-indicator').style.display = 'none';
+  }
+
+  // ===== KEYBOARD =====
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+    if (e.key === 'ArrowLeft') prevSlide();
+    if (e.key === 'F5') { e.preventDefault(); resetTimer(); }
+    if (e.key === 'p' || e.key === 'P') toggleTimer();
+  });
+
+  // ===== INIT =====
+  createParticles();
+  buildDots();
+  updateUI();
+  startTimer();
+</script>
+</body>
+</html>

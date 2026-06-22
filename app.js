@@ -125,7 +125,6 @@ function buildTabs() {
     tabs.push({ id: "admin",     icon: "🛡️", label: "Administración" });
     tabs.push({ id: "gestion",   icon: "⚙️", label: "Gestión" });
     tabs.push({ id: "graficos",  icon: "📊", label: "Reportes" });
-    tabs.push({ id: "multas",    icon: "🚨", label: "Multas" });
   }
   if (rol === CONFIG.roles.SECRETARIA) {
     tabs.push({ id: "solicitudes", icon: "📋", label: "Ingreso Solicitudes" });
@@ -133,14 +132,10 @@ function buildTabs() {
   if (rol === CONFIG.roles.DIRECTOR) {
     tabs.push({ id: "gestion", icon: "⚙️", label: "Gestión" });
     tabs.push({ id: "graficos", icon: "📊", label: "Reportes" });
-    tabs.push({ id: "multas",  icon: "🚨", label: "Multas" });
   }
   if (rol === CONFIG.roles.UNIDAD) {
     tabs.push({ id: "unidad", icon: "🏢", label: "Mis Solicitudes" });
     tabs.push({ id: "graficos", icon: "📊", label: "Reportes" });
-    if (state.usuario.Unidad === "Inspección") {
-      tabs.push({ id: "multas", icon: "🚨", label: "Multas" });
-    }
   }
 
   tabs.forEach(t => {
@@ -851,7 +846,7 @@ function renderDetalleDirector(sol) {
     return;
   }
 
-  const esDerivable       = sol.Estado === CONFIG.estados.INGRESADA || sol.Estado === CONFIG.estados.DEVUELTA;
+  const esDerivable       = false; // El director no deriva — lo hace la secretaria
   const esCerrable        = sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
   const esPendienteCierre = sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
   const tieneEvidencia    = sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.CERRADA || sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
