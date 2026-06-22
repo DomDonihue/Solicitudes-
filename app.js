@@ -1385,7 +1385,7 @@ async function derivarSolicitud(solId) {
       UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
       Unidad:unidad, FechaAccion:new Date().toISOString(), Observaciones:obs
     }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
-    notificarUnidad({...sol,Estado:CONFIG.estados.DERIVADA},unidad).catch(console.error);
+    notificarUnidad({...sol,Estado:CONFIG.estados.DERIVADA},unidad);
     showToast("success",`\u2705 Derivada a ${unidad}`);
     await renderDirector();
   } catch(e) { showToast("error","Error: "+e.message); }
