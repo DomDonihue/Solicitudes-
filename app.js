@@ -1541,20 +1541,6 @@ function renderSidebarUnidad() {
   const counts = {};
   state.solicitudes.forEach(s => { counts[s.Estado] = (counts[s.Estado] || 0) + 1; });
 
-  const estados = ["Todos","Derivada","En Proceso","Respondida","Devuelta","Pendiente de Cierre","Cerrada"];
-  const q = (state.filtroBuscar || "").toLowerCase().trim();
-  const filtradas = state.solicitudes.filter(s => {
-    if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
-    if (q) return (s.NroSolicitud||"").toLowerCase().includes(q) ||
-                  (s.Solicitante||"").toLowerCase().includes(q) ||
-                  (s.Direccion||"").toLowerCase().includes(q) ||
-                  (s.Solicitud||"").toLowerCase().includes(q);
-    return true;
-  });
-  const inicio = (state.pagina - 1) * state.pageSize;
-  const pagina = filtradas.slice(inicio, inicio + state.pageSize);
-  const totalPags = Math.ceil(filtradas.length / state.pageSize);
-
   const uniStats = [
     { e:"Derivada",            icon:"\uD83D\uDCE4", bg:"#fef3c7", tc:"#b45309" },
     { e:"En Proceso",          icon:"\u2699\uFE0F", bg:"#cffafe", tc:"#0e7490" },
@@ -1566,8 +1552,7 @@ function renderSidebarUnidad() {
 
   const cont = document.getElementById("uni-lista");
   cont.innerHTML = `
-    <div style="padding:8px 10px 0;">
-      <!-- Bot\u00F3n Todos -->
+    <div style="padding:8px 10px 0;flex-shrink:0;">
       <button onclick="filtrarUnidad('Todos')"
         style="width:100%;margin-bottom:6px;padding:6px 10px;border-radius:7px;border:1.5px solid ${state.filtroEstado==='Todos'?'var(--azul)':'var(--borde)'};
                background:${state.filtroEstado==='Todos'?'var(--azul)':'white'};color:${state.filtroEstado==='Todos'?'white':'var(--texto)'};
@@ -1577,7 +1562,6 @@ function renderSidebarUnidad() {
           ${state.solicitudes.length}
         </span>
       </button>
-      <!-- Grid 2x3 estados -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px;">
         ${uniStats.map(({e,icon,bg,tc}) => {
           const cnt = counts[e]||0;
@@ -1595,36 +1579,67 @@ function renderSidebarUnidad() {
           </div>`;
         }).join("")}
       </div>
-      <input type="text" id="uni-buscar" placeholder="\uD83D\uDD0D Buscar..." style="width:100%;padding:9px;border:1.5px solid #dde3ee;border-radius:8px;font-size:13px;box-sizing:border-box;"
-        oninput="state.filtroBuscar=this.value;state.pagina=1;renderSidebarUnidad()">
+      <input type="text" id="uni-buscar" placeholder="\uD83D\uDD0D Buscar..."
+        style="width:100%;padding:9px;border:1.5px solid #dde3ee;border-radius:8px;font-size:13px;box-sizing:border-box;"
+        value="${(state.filtroBuscar||'').replace(/"/g,'&quot;')}"
+        oninput="_buscarUnidad(this.value)">
     </div>
-    <div style="flex:1;overflow-y:auto;padding:12px;">
-      ${pagina.length === 0 ? '<p style="text-align:center;color:#9ca3af;padding:40px">Sin solicitudes</p>' :
-        pagina.map(s => `
-          ${(() => {
-            const sem = calcularSemaforo(s);
-            const semBadge = sem
-              ? `<span style="background:${sem.bg};color:${sem.color};border:1px solid ${sem.color}40;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;">${sem.emoji} ${sem.texto}</span>`
-              : "";
-            return `
-          <div class="sol-card ${state.solicitudSeleccionada?.id === s.id ? 'selected' : ''}" onclick="seleccionarSolicitudUnidad('${s.id}')">
-            <div class="sol-card-top">
-              <span class="sol-nro">${s.NroSolicitud}</span>
-              <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
-            </div>
-            <div class="sol-card-name">${s.Solicitante}</div>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px;">
-              <div class="sol-card-dir" style="margin-top:0;">\uD83D\uDCCD ${s.Direccion || ""}</div>
-              ${semBadge}
-            </div>
-          </div>`;
-          })()}`).join("")}
-    </div>
-    <div class="paginacion">
-      <button onclick="cambiarPaginaUni(${state.pagina-1})" ${state.pagina<=1?'disabled':''}>\u2039</button>
-      <span>${state.pagina}/${Math.max(1,totalPags)} (${filtradas.length})</span>
-      <button onclick="cambiarPaginaUni(${state.pagina+1})" ${state.pagina>=totalPags?'disabled':''}>\u203A</button>
-    </div>`;
+    <div id="uni-cards" style="flex:1;overflow-y:auto;padding:12px;"></div>
+    <div id="uni-paginacion" class="paginacion"></div>
+  `;
+  _renderUniLista();
+}
+
+function _buscarUnidad(val) {
+  state.filtroBuscar = val;
+  state.pagina = 1;
+  _renderUniLista();
+}
+
+function _renderUniLista() {
+  const cardsEl = document.getElementById("uni-cards");
+  if (!cardsEl) { renderSidebarUnidad(); return; }
+
+  const q = (state.filtroBuscar || "").toLowerCase().trim();
+  const filtradas = state.solicitudes.filter(s => {
+    if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
+    if (q) return (s.NroSolicitud||"").toLowerCase().includes(q) ||
+                  (s.Solicitante||"").toLowerCase().includes(q) ||
+                  (s.Direccion||"").toLowerCase().includes(q) ||
+                  (s.Solicitud||"").toLowerCase().includes(q);
+    return true;
+  });
+  const inicio = (state.pagina - 1) * state.pageSize;
+  const pagina = filtradas.slice(inicio, inicio + state.pageSize);
+  const totalPags = Math.ceil(filtradas.length / state.pageSize);
+
+  cardsEl.innerHTML = pagina.length === 0
+    ? '<p style="text-align:center;color:#9ca3af;padding:40px">Sin solicitudes</p>'
+    : pagina.map(s => {
+        const sem = calcularSemaforo(s);
+        const semBadge = sem
+          ? `<span style="background:${sem.bg};color:${sem.color};border:1px solid ${sem.color}40;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;">${sem.emoji} ${sem.texto}</span>`
+          : "";
+        return `
+        <div class="sol-card ${state.solicitudSeleccionada?.id === s.id ? 'selected' : ''}" onclick="seleccionarSolicitudUnidad('${s.id}')">
+          <div class="sol-card-top">
+            <span class="sol-nro">${s.NroSolicitud}</span>
+            <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
+          </div>
+          <div class="sol-card-name">${s.Solicitante}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px;">
+            <div class="sol-card-dir" style="margin-top:0;">\uD83D\uDCCD ${s.Direccion || ""}</div>
+            ${semBadge}
+          </div>
+        </div>`;
+      }).join("");
+
+  const pagEl = document.getElementById("uni-paginacion");
+  if (pagEl) pagEl.innerHTML = `
+    <button onclick="cambiarPaginaUni(${state.pagina-1})" ${state.pagina<=1?'disabled':''}>\u2039</button>
+    <span>${state.pagina}/${Math.max(1,totalPags)} (${filtradas.length})</span>
+    <button onclick="cambiarPaginaUni(${state.pagina+1})" ${state.pagina>=totalPags?'disabled':''}>\u203A</button>
+  `;
 }
 
 function filtrarUnidad(estado) {
@@ -1649,12 +1664,12 @@ function verificarVencimientosUnidad() {
   if (manana.length) partes.push(`${manana.length} vence ma\u00F1ana`);
   showToast("error", `\u23F0 Plazo cr\u00EDtico: ${partes.join(" \u00B7 ")}`);
 }
-function cambiarPaginaUni(p) { state.pagina = p; renderSidebarUnidad(); }
+function cambiarPaginaUni(p) { state.pagina = p; _renderUniLista(); }
 
 async function seleccionarSolicitudUnidad(id) {
   state.solicitudSeleccionada = state.solicitudes.find(s => s.id === id);
   const sol = state.solicitudSeleccionada;
-  renderSidebarUnidad();
+  _renderUniLista();
   renderDetalleUnidad(sol);
   mostrarDetalleMovil('.uni-layout');
 
@@ -3249,7 +3264,7 @@ function volverAListaMovil(layoutClass) {
     if (header) { header.textContent = "\u2795 Nueva Solicitud"; header.style.cssText = ""; }
   }
   if (layoutClass === '.dir-layout') { renderDirLista(); }
-  if (layoutClass === '.uni-layout') { renderSidebarUnidad(); }
+  if (layoutClass === '.uni-layout') { _renderUniLista(); }
 }
 
 // ===== HELPERS =====
