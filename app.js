@@ -2900,127 +2900,146 @@ async function guardarUsuarioAdmin() {
 
 // ===== REPORTES =====
 async function renderGraficos() {
+  const esUnidad = state.usuario.Rol === CONFIG.roles.UNIDAD;
+  const miUnidad = (state.usuario.Unidad || "").trim();
   const cont = document.getElementById("view-graficos");
   const hoy    = new Date().toISOString().split('T')[0];
   const hace3m = new Date(new Date().setMonth(new Date().getMonth()-3)).toISOString().split('T')[0];
 
   cont.innerHTML = `
   <style>
-    @keyframes dashFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
-    .da { animation: dashFadeUp .45s ease forwards; opacity:0; }
-    .da1{animation-delay:.05s} .da2{animation-delay:.10s} .da3{animation-delay:.15s}
-    .da4{animation-delay:.20s} .da5{animation-delay:.25s} .da6{animation-delay:.30s}
-    .da7{animation-delay:.35s} .da8{animation-delay:.40s}
-    .dash-kpi { background:white; border-radius:14px; padding:18px 20px; border:1px solid #e8eef6;
-      box-shadow:0 2px 12px rgba(15,37,71,.06); cursor:default; transition:transform .2s,box-shadow .2s; }
-    .dash-kpi:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(15,37,71,.12); }
-    .dash-kpi .kv { font-size:36px; font-weight:800; line-height:1; margin:8px 0 4px; font-variant-numeric:tabular-nums; }
-    .dash-kpi .kl { font-size:11px; font-weight:600; letter-spacing:.4px; text-transform:uppercase; color:#94a3b8; }
-    .dash-kpi .kb { height:3px; border-radius:2px; margin-top:12px; background:#e8eef6; overflow:hidden; }
-    .dash-kpi .kb-fill { height:100%; border-radius:2px; transition:width 1s ease; }
+    :root {
+      --ds1:#2a78d6; --ds2:#1baf7a; --ds3:#eda100; --ds4:#008300;
+      --ds5:#4a3aa7; --ds6:#e34948; --ds7:#e87ba4; --ds8:#eb6834;
+      --dk-ink:#0b0b0b; --dk-muted:#898781; --dk-grid:#e1e0d9;
+    }
+    @keyframes dashFadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    .da { animation: dashFadeUp .4s cubic-bezier(.22,.68,0,1.2) forwards; opacity:0; }
+    .da1{animation-delay:.04s} .da2{animation-delay:.08s} .da3{animation-delay:.12s}
+    .da4{animation-delay:.16s} .da5{animation-delay:.20s} .da6{animation-delay:.24s}
+    .da7{animation-delay:.28s} .da8{animation-delay:.32s}
+    .dash-kpi {
+      background:white; border-radius:12px; padding:18px 20px;
+      border:1px solid #e8eef6; box-shadow:0 1px 6px rgba(15,37,71,.06);
+      cursor:default; transition:transform .2s,box-shadow .2s;
+      border-top:3px solid transparent; position:relative; overflow:hidden;
+    }
+    .dash-kpi:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(15,37,71,.11); }
+    .dash-kpi .ki { font-size:22px; margin-bottom:8px; display:block; }
+    .dash-kpi .kv { font-size:34px; font-weight:800; line-height:1; margin-bottom:4px; font-variant-numeric:tabular-nums; }
+    .dash-kpi .kl { font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#898781; }
     .dash-chart { background:white; border-radius:14px; padding:20px; border:1px solid #e8eef6;
-      box-shadow:0 2px 12px rgba(15,37,71,.06); }
-    .dash-chart h3 { font-size:13px; font-weight:700; color:#0f2547; margin:0 0 14px;
-      display:flex; align-items:center; gap:6px; }
-    .dash-chart h3 span.badge-per { font-size:10px; font-weight:600; background:#eff6ff;
-      color:#1d4ed8; padding:2px 8px; border-radius:10px; margin-left:auto; }
-    .sem-box { border-radius:10px; padding:14px 16px; display:flex; align-items:center; gap:12px; }
-    .sem-num { font-size:32px; font-weight:800; line-height:1; }
-    .sem-lbl { font-size:11px; font-weight:600; letter-spacing:.3px; text-transform:uppercase; margin-top:3px; }
+      box-shadow:0 1px 6px rgba(15,37,71,.06); }
+    .dc-title { font-size:13px; font-weight:700; color:#0f2547; margin:0 0 16px;
+      display:flex; align-items:center; gap:6px; border-bottom:1px solid #f1f5f9; padding-bottom:10px; }
+    .dc-badge { font-size:10px; font-weight:600; background:#eff6ff; color:#1d4ed8;
+      padding:2px 8px; border-radius:10px; margin-left:auto; }
+    .sem-box { border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; }
+    .sem-num { font-size:28px; font-weight:800; line-height:1; }
+    .sem-lbl { font-size:10px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; margin-top:2px; }
     .dash-per-btn { padding:5px 11px; border:1.5px solid rgba(255,255,255,.22);
       border-radius:7px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.85);
       cursor:pointer; font-size:11px; font-weight:600; transition:background .15s; }
-    .dash-per-btn:hover { background:rgba(255,255,255,.2); }
-    #tabla-unidades-body tr { transition:background .15s; }
+    .dash-per-btn:hover { background:rgba(255,255,255,.22); }
+    .dash-per-btn.active { background:rgba(255,255,255,.25); border-color:rgba(255,255,255,.5); }
   </style>
 
   <div style="display:flex;flex-direction:column;height:calc(100vh - 62px);overflow:hidden;">
 
-    <!-- \u2500\u2500 Header oscuro \u2500\u2500 -->
-    <div style="background:linear-gradient(135deg,#0f2547 0%,#1a3a6b 100%);padding:14px 24px;flex-shrink:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-      <div style="margin-right:12px;">
-        <div style="font-size:16px;font-weight:800;color:white;letter-spacing:-.2px;">Dashboard DOM</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:1px;">Direcci\u00F3n de Obras \u00B7 Do\u00F1ihue</div>
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0b1d3a 0%,#0f2547 55%,#1a3a6b 100%);padding:14px 22px;flex-shrink:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+      <div style="margin-right:14px;">
+        <div style="font-size:15px;font-weight:800;color:white;letter-spacing:-.2px;">
+          ${esUnidad ? `\uD83D\uDCCA ${miUnidad}` : "Dashboard DOM"}
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:1px;">
+          ${esUnidad ? `Mis solicitudes \u00B7 Direcci\u00F3n de Obras Do\u00F1ihue` : "Direcci\u00F3n de Obras \u00B7 Municipalidad de Do\u00F1ihue"}
+        </div>
       </div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;" id="periodo-btns">
         ${[["Este mes",1],["3 meses",3],["6 meses",6],["1 a\u00F1o",12],["Todo",0]].map(([l,m])=>
           `<button class="dash-per-btn" onclick="setPeriodo(${m})">${l}</button>`).join("")}
       </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-left:6px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-left:4px;">
         <input type="date" id="graf-desde" value="${hace3m}"
-          style="padding:5px 9px;border:1.5px solid rgba(255,255,255,.22);border-radius:7px;font-size:12px;background:rgba(255,255,255,.08);color:white;cursor:pointer;"
+          style="padding:5px 9px;border:1.5px solid rgba(255,255,255,.2);border-radius:7px;font-size:12px;background:rgba(255,255,255,.08);color:white;cursor:pointer;"
           onchange="actualizarGraficos()">
-        <span style="color:rgba(255,255,255,.4);font-size:12px;">\u2192</span>
+        <span style="color:rgba(255,255,255,.35);font-size:13px;">\u2192</span>
         <input type="date" id="graf-hasta" value="${hoy}"
-          style="padding:5px 9px;border:1.5px solid rgba(255,255,255,.22);border-radius:7px;font-size:12px;background:rgba(255,255,255,.08);color:white;cursor:pointer;"
+          style="padding:5px 9px;border:1.5px solid rgba(255,255,255,.2);border-radius:7px;font-size:12px;background:rgba(255,255,255,.08);color:white;cursor:pointer;"
           onchange="actualizarGraficos()">
       </div>
       <div style="margin-left:auto;display:flex;gap:6px;">
         <button onclick="actualizarGraficos()" class="dash-per-btn">\u27F3 Actualizar</button>
-        <button onclick="exportarExcel()" style="padding:5px 13px;background:#C9A84C;color:#0f2547;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:800;">\u2B07 CSV</button>
+        <button onclick="exportarExcel()" style="padding:5px 14px;background:#C9A84C;color:#0b1d3a;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:800;">\u2B07 CSV</button>
       </div>
     </div>
 
-    <!-- \u2500\u2500 Cuerpo scrollable \u2500\u2500 -->
-    <div style="flex:1;overflow-y:auto;padding:18px 20px;background:#f0f4f8;display:flex;flex-direction:column;gap:16px;">
+    <!-- Body -->
+    <div style="flex:1;overflow-y:auto;padding:16px 18px;background:#eef1f6;display:flex;flex-direction:column;gap:14px;">
 
       <!-- KPIs -->
-      <div id="graf-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;"></div>
+      <div id="graf-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;"></div>
 
-      <!-- Fila 1: doughnut + l\u00EDnea tendencia -->
-      <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;">
+      <!-- Fila 1: donut + l\u00EDnea -->
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:14px;">
         <div class="dash-chart da da3">
-          <h3>\u2B24 Por estado <span class="badge-per" id="badge-per-estado"></span></h3>
-          <div style="display:flex;align-items:center;gap:14px;">
-            <div style="width:140px;flex-shrink:0;"><canvas id="chart-estado"></canvas></div>
-            <div id="legend-estado" style="font-size:12px;display:flex;flex-direction:column;gap:7px;flex:1;"></div>
+          <div class="dc-title">
+            \u2B24 Por estado
+            <span class="dc-badge" id="badge-per-estado"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div style="position:relative;width:120px;flex-shrink:0;">
+              <canvas id="chart-estado"></canvas>
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+                <div id="donut-total" style="font-size:22px;font-weight:800;color:#0f2547;line-height:1;"></div>
+                <div style="font-size:9px;color:#898781;font-weight:700;letter-spacing:.4px;margin-top:2px;">TOTAL</div>
+              </div>
+            </div>
+            <div id="legend-estado" style="font-size:12px;display:flex;flex-direction:column;gap:6px;flex:1;min-width:0;"></div>
           </div>
         </div>
         <div class="dash-chart da da4">
-          <h3>\uD83D\uDCC5 Evoluci\u00F3n mensual
-            <span style="display:flex;gap:10px;margin-left:auto;font-size:11px;font-weight:500;">
-              <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:2.5px;background:#1a3a6b;display:inline-block;border-radius:2px;"></span>Ingresadas</span>
-              <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:2.5px;background:#16a34a;display:inline-block;border-radius:2px;border-style:dashed;"></span>Cerradas</span>
+          <div class="dc-title">
+            \uD83D\uDCC5 Evoluci\u00F3n mensual
+            <span style="display:flex;gap:12px;margin-left:auto;font-size:11px;font-weight:500;color:#52514e;">
+              <span style="display:flex;align-items:center;gap:5px;">
+                <span style="width:16px;height:2.5px;background:var(--ds1);display:inline-block;border-radius:2px;"></span>
+                ${esUnidad ? "Recibidas" : "Ingresadas"}
+              </span>
+              <span style="display:flex;align-items:center;gap:5px;">
+                <span style="width:16px;height:2.5px;background:var(--ds4);display:inline-block;border-radius:2px;"></span>
+                Cerradas
+              </span>
             </span>
-          </h3>
-          <canvas id="chart-mes" height="95"></canvas>
+          </div>
+          <canvas id="chart-mes" height="88"></canvas>
         </div>
       </div>
 
-      <!-- Fila 2: barras unidad + sem\u00E1foro plazos -->
-      <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;">
+      <!-- Fila 2: chart distribuci\u00F3n + sem\u00E1foro -->
+      <div style="display:grid;grid-template-columns:1fr 280px;gap:14px;">
         <div class="dash-chart da da5">
-          <h3>\uD83C\uDFE2 Solicitudes por unidad</h3>
-          <canvas id="chart-unidad" height="130"></canvas>
+          <div class="dc-title" id="chart3-title">
+            ${esUnidad ? "\uD83D\uDCCA Distribuci\u00F3n por estado (mi unidad)" : "\uD83C\uDFE2 Solicitudes por unidad"}
+          </div>
+          <canvas id="chart-unidad" height="${esUnidad ? 100 : 120}"></canvas>
         </div>
         <div class="dash-chart da da6">
-          <h3>\uD83D\uDEA6 Plazos activos</h3>
+          <div class="dc-title">\uD83D\uDEA6 Plazos activos</div>
           <div id="dash-semaforo" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
       </div>
 
-      <!-- Tabla resumen -->
+      <!-- Tabla -->
       <div class="dash-chart da da7" style="padding:0;overflow:hidden;">
-        <div style="padding:13px 18px;border-bottom:1px solid #e8eef6;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:13px;font-weight:700;color:#0f2547;">\uD83C\uDFE2 Rendimiento por unidad</span>
-          <span id="tabla-periodo" style="font-size:11px;color:#94a3b8;"></span>
+        <div style="padding:12px 18px;border-bottom:1px solid #e8eef6;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;font-weight:700;color:#0f2547;">
+            ${esUnidad ? `\uD83D\uDCCB Actividad mensual \u00B7 ${miUnidad}` : "\uD83C\uDFE2 Rendimiento por unidad"}
+          </span>
+          <span id="tabla-periodo" style="font-size:11px;color:#898781;"></span>
         </div>
-        <div style="overflow-x:auto;">
-          <table style="width:100%;border-collapse:collapse;font-size:12px;">
-            <thead>
-              <tr style="background:#f8fafc;">
-                <th style="padding:9px 16px;text-align:left;font-weight:700;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e8eef6;">Unidad</th>
-                <th style="padding:9px 10px;text-align:center;color:#3b82f6;font-size:11px;border-bottom:1px solid #e8eef6;">Derivadas</th>
-                <th style="padding:9px 10px;text-align:center;color:#22c55e;font-size:11px;border-bottom:1px solid #e8eef6;">Respondidas</th>
-                <th style="padding:9px 10px;text-align:center;color:#6b7280;font-size:11px;border-bottom:1px solid #e8eef6;">Cerradas</th>
-                <th style="padding:9px 10px;text-align:center;color:#7e22ce;font-size:11px;border-bottom:1px solid #e8eef6;">Pend.</th>
-                <th style="padding:9px 10px;text-align:center;color:#f59e0b;font-size:11px;border-bottom:1px solid #e8eef6;">En Proc.</th>
-                <th style="padding:9px 16px;text-align:left;font-size:11px;border-bottom:1px solid #e8eef6;min-width:160px;">Efectividad</th>
-              </tr>
-            </thead>
-            <tbody id="tabla-unidades-body"></tbody>
-          </table>
-        </div>
+        <div style="overflow-x:auto;" id="tabla-wrap"></div>
       </div>
 
     </div>
@@ -3059,6 +3078,8 @@ function _countUp(id, target, suffix = "", dur = 900) {
 }
 
 async function actualizarGraficos() {
+  const esUnidad = state.usuario.Rol === CONFIG.roles.UNIDAD;
+  const miUnidad = (state.usuario.Unidad || "").trim();
   showLoading("Cargando datos...");
   try {
     const desde = document.getElementById("graf-desde")?.value;
@@ -3071,53 +3092,63 @@ async function actualizarGraficos() {
       return (!desde || f >= new Date(desde)) && (!hasta || f <= new Date(hasta + "T23:59:59"));
     });
 
+    // Datos filtrados por unidad si corresponde
+    const dataDash = esUnidad
+      ? filtradas.filter(s => (s.UnidadDerivada||"").trim() === miUnidad)
+      : filtradas;
+
+    // Paleta validada (CVD-safe, slots fijos)
     const CE = {
-      "Ingresada":"#3b82f6","Derivada":"#f59e0b","En Proceso":"#06b6d4",
-      "Respondida":"#22c55e","Devuelta":"#ef4444","Pendiente de Cierre":"#7e22ce","Cerrada":"#64748b"
+      "Ingresada":          "#2a78d6",
+      "En Proceso":         "#1baf7a",
+      "Derivada":           "#eda100",
+      "Respondida":         "#008300",
+      "Pendiente de Cierre":"#4a3aa7",
+      "Devuelta":           "#e34948",
+      "Cerrada":            "#898781"
     };
+    const CHIP = (n,bg,tc) => `<span style="background:${bg};color:${tc};padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;">${n}</span>`;
 
     // \u2500\u2500 KPIs \u2500\u2500
-    const total      = filtradas.length;
-    const cerradas   = filtradas.filter(s => s.Estado === "Cerrada").length;
-    const respondidas= filtradas.filter(s => s.Estado === "Respondida").length;
-    const pendCierre = filtradas.filter(s => s.Estado === "Pendiente de Cierre").length;
-    const devueltas  = filtradas.filter(s => s.Estado === "Devuelta").length;
-    const tasa       = total > 0 ? Math.round(((cerradas + pendCierre) / total) * 100) : 0;
+    const total      = dataDash.length;
+    const cerradas   = dataDash.filter(s => s.Estado === "Cerrada").length;
+    const respondidas= dataDash.filter(s => s.Estado === "Respondida").length;
+    const pendCierre = dataDash.filter(s => s.Estado === "Pendiente de Cierre").length;
+    const enProceso  = dataDash.filter(s => s.Estado === "En Proceso").length;
+    const tasa       = total > 0 ? Math.round(((cerradas + respondidas + pendCierre) / total) * 100) : 0;
 
     const kpisConf = [
-      { id:"kv-total", label:"Total per\u00EDodo",   val:total,       suf:"", color:"#1a3a6b", bar:100,                    del:1 },
-      { id:"kv-cerr",  label:"Cerradas",         val:cerradas,    suf:"", color:"#64748b", bar:total?cerradas/total*100:0, del:2 },
-      { id:"kv-resp",  label:"Respondidas",      val:respondidas, suf:"", color:"#16a34a", bar:total?respondidas/total*100:0, del:3 },
-      { id:"kv-pend",  label:"Pend. de Cierre",  val:pendCierre,  suf:"", color:"#7e22ce", bar:total?pendCierre/total*100:0, del:4 },
-      { id:"kv-tasa",  label:"Tasa resoluci\u00F3n",  val:tasa,        suf:"%",color:"#0e7490", bar:tasa,                   del:5 },
+      { id:"kv-total", label:"Total per\u00EDodo",  val:total,       suf:"",  color:"#2a78d6", icon:"\uD83D\uDCCB", del:1 },
+      { id:"kv-proc",  label:"En proceso",      val:enProceso,   suf:"",  color:"#1baf7a", icon:"\u2699\uFE0F", del:2 },
+      { id:"kv-resp",  label:"Respondidas",     val:respondidas, suf:"",  color:"#008300", icon:"\u2705", del:3 },
+      { id:"kv-cerr",  label:"Cerradas",        val:cerradas,    suf:"",  color:"#898781", icon:"\uD83D\uDD12", del:4 },
+      { id:"kv-tasa",  label:"Tasa resoluci\u00F3n", val:tasa,        suf:"%", color:"#4a3aa7", icon:"\uD83D\uDCC8", del:5 },
     ];
     const kpisCont = document.getElementById("graf-kpis");
     if (kpisCont) {
       kpisCont.innerHTML = kpisConf.map(k => `
-        <div class="dash-kpi da da${k.del}">
-          <div class="kl">${k.label}</div>
+        <div class="dash-kpi da da${k.del}" style="border-top-color:${k.color};">
+          <span class="ki">${k.icon}</span>
           <div class="kv" id="${k.id}" style="color:${k.color};">0${k.suf}</div>
-          <div class="kb"><div class="kb-fill" id="${k.id}-bar" style="width:0%;background:${k.color};"></div></div>
+          <div class="kl">${k.label}</div>
         </div>`).join("");
-      // Lanzar count-up + barra con peque\u00F1o delay para que el DOM pinte primero
-      setTimeout(() => {
-        kpisConf.forEach(k => {
-          _countUp(k.id, k.val, k.suf);
-          const bar = document.getElementById(k.id + "-bar");
-          if (bar) setTimeout(() => bar.style.width = k.bar.toFixed(1) + "%", 80);
-        });
-      }, 60);
+      setTimeout(() => { kpisConf.forEach(k => _countUp(k.id, k.val, k.suf)); }, 60);
     }
 
     // \u2500\u2500 Badge per\u00EDodo \u2500\u2500
     const bp = document.getElementById("badge-per-estado");
     if (bp && desde && hasta) bp.textContent = `${desde.slice(5)} \u2192 ${hasta.slice(5)}`;
 
-    // \u2500\u2500 Chart 1: Doughnut estado \u2500\u2500
+    // \u2500\u2500 Donut total center \u2500\u2500
+    const donutEl = document.getElementById("donut-total");
+    if (donutEl) donutEl.textContent = total;
+
+    // \u2500\u2500 Chart 1: Doughnut por estado \u2500\u2500
     const byEstado = {};
-    filtradas.forEach(s => { byEstado[s.Estado] = (byEstado[s.Estado]||0)+1; });
-    const eLabels = Object.keys(byEstado);
-    const eData   = Object.values(byEstado);
+    dataDash.forEach(s => { byEstado[s.Estado] = (byEstado[s.Estado]||0)+1; });
+    const eOrden = ["Derivada","En Proceso","Respondida","Pendiente de Cierre","Devuelta","Ingresada","Cerrada"];
+    const eLabels = eOrden.filter(e => byEstado[e]);
+    const eData   = eLabels.map(e => byEstado[e]);
     const eColors = eLabels.map(e => CE[e]||"#94a3b8");
 
     if (state.chartInstances["chart-estado"]) state.chartInstances["chart-estado"].destroy();
@@ -3125,23 +3156,23 @@ async function actualizarGraficos() {
     if (ctx1) {
       state.chartInstances["chart-estado"] = new Chart(ctx1, {
         type: "doughnut",
-        data: { labels: eLabels, datasets: [{ data:eData, backgroundColor:eColors, borderWidth:3, borderColor:"white", hoverOffset:6 }] },
-        options: { responsive:true, cutout:"70%", animation:{ animateRotate:true, duration:900 },
-          plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c => ` ${c.label}: ${c.raw} (${Math.round(c.raw/total*100)}%)` } } } }
+        data: { labels:eLabels, datasets:[{ data:eData, backgroundColor:eColors, borderWidth:2, borderColor:"white", hoverOffset:5 }] },
+        options: { responsive:true, cutout:"72%", animation:{ animateRotate:true, duration:800 },
+          plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c => ` ${c.label}: ${c.raw} (${total?Math.round(c.raw/total*100):0}%)` } } } }
       });
     }
     const legCont = document.getElementById("legend-estado");
     if (legCont) legCont.innerHTML = eLabels.map((e,i) => `
-      <div style="display:flex;align-items:center;gap:7px;font-size:12px;">
-        <span style="width:10px;height:10px;border-radius:3px;background:${eColors[i]};flex-shrink:0;"></span>
-        <span style="color:#475569;flex:1;">${e}</span>
-        <span style="font-weight:700;color:${eColors[i]};">${eData[i]}</span>
+      <div style="display:flex;align-items:center;gap:7px;">
+        <span style="width:9px;height:9px;border-radius:2px;background:${eColors[i]};flex-shrink:0;"></span>
+        <span style="color:#52514e;flex:1;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e}</span>
+        <span style="font-weight:700;font-size:12px;color:${eColors[i]};">${eData[i]}</span>
       </div>`).join("");
 
-    // \u2500\u2500 Chart 2: L\u00EDnea mensual con gradiente \u2500\u2500
+    // \u2500\u2500 Chart 2: L\u00EDnea mensual \u2500\u2500
     const byMesIng = {}, byMesCer = {};
-    filtradas.forEach(s => { const m = s.FechaRecepcion?.substring(0,7); if(m) byMesIng[m]=(byMesIng[m]||0)+1; });
-    filtradas.filter(s=>s.Estado==="Cerrada").forEach(s => { const m = s.FechaRecepcion?.substring(0,7); if(m) byMesCer[m]=(byMesCer[m]||0)+1; });
+    dataDash.forEach(s => { const m = s.FechaRecepcion?.substring(0,7); if(m) byMesIng[m]=(byMesIng[m]||0)+1; });
+    dataDash.filter(s=>s.Estado==="Cerrada").forEach(s => { const m = s.FechaRecepcion?.substring(0,7); if(m) byMesCer[m]=(byMesCer[m]||0)+1; });
     const meses = [...new Set([...Object.keys(byMesIng),...Object.keys(byMesCer)])].sort();
     const MESES_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
     const mesesLabel = meses.map(m => { const[y,mo]=m.split("-"); return `${MESES_ES[+mo-1]} ${y.slice(2)}`; });
@@ -3149,108 +3180,183 @@ async function actualizarGraficos() {
     if (state.chartInstances["chart-mes"]) state.chartInstances["chart-mes"].destroy();
     const ctx3 = document.getElementById("chart-mes")?.getContext("2d");
     if (ctx3) {
-      const g1 = ctx3.createLinearGradient(0,0,0,220);
-      g1.addColorStop(0,"rgba(26,58,107,.18)"); g1.addColorStop(1,"rgba(26,58,107,0)");
-      const g2 = ctx3.createLinearGradient(0,0,0,220);
-      g2.addColorStop(0,"rgba(22,163,74,.14)"); g2.addColorStop(1,"rgba(22,163,74,0)");
+      const g1 = ctx3.createLinearGradient(0,0,0,200);
+      g1.addColorStop(0,"rgba(42,120,214,.15)"); g1.addColorStop(1,"rgba(42,120,214,0)");
+      const g2 = ctx3.createLinearGradient(0,0,0,200);
+      g2.addColorStop(0,"rgba(0,131,0,.12)"); g2.addColorStop(1,"rgba(0,131,0,0)");
       state.chartInstances["chart-mes"] = new Chart(ctx3, {
         type:"line",
         data:{ labels:mesesLabel, datasets:[
-          { label:"Ingresadas", data:meses.map(m=>byMesIng[m]||0), borderColor:"#1a3a6b", backgroundColor:g1, fill:true, tension:.45, pointRadius:4, pointHoverRadius:6, pointBackgroundColor:"#1a3a6b", borderWidth:2.5 },
-          { label:"Cerradas",   data:meses.map(m=>byMesCer[m]||0), borderColor:"#16a34a", backgroundColor:g2, fill:true, tension:.45, pointRadius:4, pointHoverRadius:6, pointBackgroundColor:"#16a34a", borderWidth:2, borderDash:[6,3] }
+          { label:esUnidad?"Recibidas":"Ingresadas", data:meses.map(m=>byMesIng[m]||0), borderColor:"#2a78d6", backgroundColor:g1, fill:true, tension:.42, pointRadius:3.5, pointHoverRadius:6, pointBackgroundColor:"#2a78d6", borderWidth:2 },
+          { label:"Cerradas", data:meses.map(m=>byMesCer[m]||0), borderColor:"#008300", backgroundColor:g2, fill:true, tension:.42, pointRadius:3.5, pointHoverRadius:6, pointBackgroundColor:"#008300", borderWidth:2, borderDash:[5,3] }
         ]},
-        options:{ responsive:true, animation:{ duration:900 },
-          plugins:{ legend:{ display:false }, tooltip:{ mode:"index", intersect:false } },
-          scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1, font:{ size:11 } }, grid:{ color:"#f1f5f9" } },
-                   x:{ ticks:{ font:{ size:11 } }, grid:{ display:false } } } }
+        options:{ responsive:true, animation:{ duration:800 },
+          plugins:{ legend:{ display:false }, tooltip:{ mode:"index", intersect:false,
+            callbacks:{ title: t => t[0].label } } },
+          scales:{
+            y:{ beginAtZero:true, ticks:{ stepSize:1, font:{size:10}, color:"#898781" }, grid:{ color:"#e1e0d9" }, border:{ display:false } },
+            x:{ ticks:{ font:{size:10}, color:"#898781" }, grid:{ display:false }, border:{ display:false } }
+          } }
       });
     }
 
-    // \u2500\u2500 Chart 3: Barras horizontales unidades \u2500\u2500
-    const byUnidad = {};
-    filtradas.filter(s=>s.UnidadDerivada).forEach(s => { byUnidad[(s.UnidadDerivada||"").trim()]=(byUnidad[(s.UnidadDerivada||"").trim()]||0)+1; });
-    const uLabels = Object.keys(byUnidad).sort((a,b)=>byUnidad[b]-byUnidad[a]);
-    const uData   = uLabels.map(u=>byUnidad[u]);
-    const uColors = ["#1a3a6b","#2563eb","#3b82f6","#60a5fa","#93c5fd"].slice(0,uLabels.length);
-
+    // \u2500\u2500 Chart 3: por estado (unidad) o por unidad (admin/director) \u2500\u2500
     if (state.chartInstances["chart-unidad"]) state.chartInstances["chart-unidad"].destroy();
     const ctx2 = document.getElementById("chart-unidad")?.getContext("2d");
     if (ctx2) {
-      state.chartInstances["chart-unidad"] = new Chart(ctx2, {
-        type:"bar",
-        data:{ labels:uLabels, datasets:[{ data:uData, backgroundColor:uColors, borderRadius:6, borderSkipped:false }] },
-        options:{ indexAxis:"y", responsive:true, animation:{ duration:800 },
-          plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c=>`  ${c.raw} solicitudes` } } },
-          scales:{ x:{ beginAtZero:true, ticks:{ stepSize:1, font:{size:11} }, grid:{ color:"#f1f5f9" } },
-                   y:{ ticks:{ font:{size:11} }, grid:{ display:false } } } }
-      });
+      if (esUnidad) {
+        // Barras horizontales por estado para esta unidad
+        const estOrden = ["En Proceso","Respondida","Pendiente de Cierre","Devuelta","Cerrada","Derivada","Ingresada"];
+        const estLabels = estOrden.filter(e => byEstado[e]);
+        const estData   = estLabels.map(e => byEstado[e]);
+        const estColors = estLabels.map(e => CE[e]||"#94a3b8");
+        state.chartInstances["chart-unidad"] = new Chart(ctx2, {
+          type:"bar",
+          data:{ labels:estLabels, datasets:[{ data:estData, backgroundColor:estColors, borderRadius:5, borderSkipped:false }] },
+          options:{ indexAxis:"y", responsive:true, animation:{ duration:700 },
+            plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c=>`  ${c.raw} solicitudes` } } },
+            scales:{ x:{ beginAtZero:true, ticks:{ stepSize:1, font:{size:10}, color:"#898781" }, grid:{ color:"#e1e0d9" }, border:{ display:false } },
+                     y:{ ticks:{ font:{size:11}, color:"#52514e" }, grid:{ display:false }, border:{ display:false } } } }
+        });
+      } else {
+        // Barras horizontales por unidad \u2014 ramp secuencial azul
+        const byUnidad = {};
+        filtradas.filter(s=>s.UnidadDerivada).forEach(s => { const u=(s.UnidadDerivada||"").trim(); byUnidad[u]=(byUnidad[u]||0)+1; });
+        const uLabels = Object.keys(byUnidad).sort((a,b)=>byUnidad[b]-byUnidad[a]);
+        const uData   = uLabels.map(u=>byUnidad[u]);
+        const uRamp   = ["#1c5cab","#256abf","#2a78d6","#5598e7","#86b6ef","#b7d3f6","#cde2fb"];
+        const uColors = uRamp.slice(0, uLabels.length);
+        state.chartInstances["chart-unidad"] = new Chart(ctx2, {
+          type:"bar",
+          data:{ labels:uLabels, datasets:[{ data:uData, backgroundColor:uColors, borderRadius:5, borderSkipped:false }] },
+          options:{ indexAxis:"y", responsive:true, animation:{ duration:700 },
+            plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c=>`  ${c.raw} solicitudes` } } },
+            scales:{ x:{ beginAtZero:true, ticks:{ stepSize:1, font:{size:10}, color:"#898781" }, grid:{ color:"#e1e0d9" }, border:{ display:false } },
+                     y:{ ticks:{ font:{size:11}, color:"#52514e" }, grid:{ display:false }, border:{ display:false } } } }
+        });
+      }
     }
 
-    // \u2500\u2500 Sem\u00E1foro de plazos (sobre solicitudes activas en todo el sistema) \u2500\u2500
-    const activas = all.filter(s => s.Estado===CONFIG.estados.DERIVADA||s.Estado===CONFIG.estados.EN_PROCESO);
-    const semVerde   = activas.filter(s => { const r=calcularSemaforo(s); return r&&r.dias>3; }).length;
-    const semAmarillo= activas.filter(s => { const r=calcularSemaforo(s); return r&&r.dias>0&&r.dias<=3; }).length;
-    const semRojo    = activas.filter(s => { const r=calcularSemaforo(s); return r&&r.dias<=0; }).length;
-    const semTotal   = semVerde+semAmarillo+semRojo;
+    // \u2500\u2500 Sem\u00E1foro de plazos \u2500\u2500
+    const activasSem = esUnidad
+      ? all.filter(s => (s.UnidadDerivada||"").trim()===miUnidad && (s.Estado===CONFIG.estados.DERIVADA||s.Estado===CONFIG.estados.EN_PROCESO))
+      : all.filter(s => s.Estado===CONFIG.estados.DERIVADA||s.Estado===CONFIG.estados.EN_PROCESO);
+    const semVerde    = activasSem.filter(s => { const r=calcularSemaforo(s); return r&&r.dias>3; }).length;
+    const semAmarillo = activasSem.filter(s => { const r=calcularSemaforo(s); return r&&r.dias>0&&r.dias<=3; }).length;
+    const semRojo     = activasSem.filter(s => { const r=calcularSemaforo(s); return r&&r.dias<=0; }).length;
+    const semTotal    = semVerde+semAmarillo+semRojo;
     const semCont = document.getElementById("dash-semaforo");
     if (semCont) {
       if (!semTotal) {
-        semCont.innerHTML = `<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px;">Sin solicitudes activas</div>`;
+        semCont.innerHTML = `<div style="text-align:center;color:#898781;padding:20px;font-size:13px;">Sin solicitudes activas</div>`;
       } else {
         const semItems = [
-          { n:semVerde,    label:"En plazo",    sub:">3 d\u00EDas restantes",  bg:"#f0fdf4", bc:"#86efac", tc:"#15803d", emoji:"\uD83D\uDFE2" },
-          { n:semAmarillo, label:"Por vencer",  sub:"1\u20133 d\u00EDas",           bg:"#fffbeb", bc:"#fde68a", tc:"#b45309", emoji:"\uD83D\uDFE1" },
-          { n:semRojo,     label:"Cr\u00EDtico",     sub:"Vencidas o hoy",     bg:"#fef2f2", bc:"#fca5a5", tc:"#b91c1c", emoji:"\uD83D\uDD34" },
+          { n:semVerde,    label:"En plazo",   sub:">3 d\u00EDas",      bg:"#f0fdf4", bc:"#86efac", tc:"#15803d", emoji:"\uD83D\uDFE2" },
+          { n:semAmarillo, label:"Por vencer", sub:"1\u20133 d\u00EDas",     bg:"#fffbeb", bc:"#fde68a", tc:"#b45309", emoji:"\uD83D\uDFE1" },
+          { n:semRojo,     label:"Cr\u00EDtico",    sub:"Hoy o vencido",bg:"#fef2f2", bc:"#fca5a5", tc:"#b91c1c", emoji:"\uD83D\uDD34" },
         ];
         semCont.innerHTML = semItems.map(s => `
           <div class="sem-box" style="background:${s.bg};border:1.5px solid ${s.bc};">
-            <span style="font-size:24px;">${s.emoji}</span>
+            <span style="font-size:20px;">${s.emoji}</span>
             <div style="flex:1;">
               <div style="display:flex;align-items:baseline;gap:6px;">
                 <span class="sem-num" style="color:${s.tc};">${s.n}</span>
                 <span class="sem-lbl" style="color:${s.tc};">${s.label}</span>
               </div>
-              <div style="font-size:11px;color:${s.tc};opacity:.7;margin-top:2px;">${s.sub}</div>
+              <div style="font-size:10px;color:${s.tc};opacity:.7;margin-top:1px;">${s.sub}</div>
             </div>
-            <div style="font-size:13px;font-weight:700;color:${s.tc};opacity:.6;">${semTotal?Math.round(s.n/semTotal*100):0}%</div>
+            <div style="font-size:12px;font-weight:800;color:${s.tc};opacity:.55;">${semTotal?Math.round(s.n/semTotal*100):0}%</div>
           </div>`).join("");
       }
     }
 
-    // \u2500\u2500 Tabla unidades \u2500\u2500
-    const unidades = [...new Set(filtradas.filter(s=>s.UnidadDerivada).map(s=>(s.UnidadDerivada||"").trim()))].sort();
-    const tbody = document.getElementById("tabla-unidades-body");
-    const per   = document.getElementById("tabla-periodo");
+    // \u2500\u2500 Tabla \u2500\u2500
+    const per = document.getElementById("tabla-periodo");
     if (per) per.textContent = desde && hasta ? `${desde} \u2014 ${hasta}` : "Todo el per\u00EDodo";
-    if (tbody) {
-      tbody.innerHTML = unidades.map((u,ri) => {
-        const sols = filtradas.filter(s=>(s.UnidadDerivada||"").trim()===u);
-        const der  = sols.length;
-        const resp = sols.filter(s=>s.Estado==="Respondida").length;
-        const cerr = sols.filter(s=>s.Estado==="Cerrada").length;
-        const penc = sols.filter(s=>s.Estado==="Pendiente de Cierre").length;
-        const proc = sols.filter(s=>s.Estado==="En Proceso").length;
-        const efe  = der>0 ? Math.round(((resp+cerr+penc)/der)*100) : 0;
-        const ec   = efe>=80?"#15803d":efe>=50?"#b45309":"#b91c1c";
-        const chip = (n,bg,tc) => `<span style="background:${bg};color:${tc};padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;">${n}</span>`;
-        return `<tr style="border-bottom:1px solid #f1f5f9;${ri%2?"background:#fafbfc":""}"
-          onmouseenter="this.style.background='#eff6ff'" onmouseleave="this.style.background='${ri%2?"#fafbfc":""}'">
-          <td style="padding:10px 16px;font-weight:700;color:#1a3a6b;">${u}</td>
-          <td style="padding:8px 10px;text-align:center;">${chip(der,"#dbeafe","#1d4ed8")}</td>
-          <td style="padding:8px 10px;text-align:center;">${chip(resp,"#dcfce7","#15803d")}</td>
-          <td style="padding:8px 10px;text-align:center;">${chip(cerr,"#f1f5f9","#475569")}</td>
-          <td style="padding:8px 10px;text-align:center;">${chip(penc,"#fdf4ff","#7e22ce")}</td>
-          <td style="padding:8px 10px;text-align:center;">${chip(proc,"#fef3c7","#b45309")}</td>
-          <td style="padding:10px 16px;min-width:160px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style="flex:1;height:7px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
-                <div style="height:100%;width:${efe}%;background:${ec};border-radius:4px;transition:width .8s ease;"></div>
-              </div>
-              <span style="font-size:12px;font-weight:800;color:${ec};min-width:34px;">${efe}%</span>
-            </div>
-          </td>
-        </tr>`;
-      }).join("") || `<tr><td colspan="7" style="padding:28px;text-align:center;color:#94a3b8;font-size:13px;">Sin datos para el per\u00EDodo</td></tr>`;
+    const wrap = document.getElementById("tabla-wrap");
+    if (wrap) {
+      if (esUnidad) {
+        // Tabla mensual de la unidad
+        const mesesTabla = [...new Set(dataDash.map(s=>s.FechaRecepcion?.substring(0,7)).filter(Boolean))].sort().reverse();
+        wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#f8fafc;">
+            <th style="padding:9px 16px;text-align:left;font-weight:700;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e8eef6;">Mes</th>
+            <th style="padding:9px 10px;text-align:center;color:#2a78d6;font-size:11px;border-bottom:1px solid #e8eef6;">Recibidas</th>
+            <th style="padding:9px 10px;text-align:center;color:#1baf7a;font-size:11px;border-bottom:1px solid #e8eef6;">En Proceso</th>
+            <th style="padding:9px 10px;text-align:center;color:#008300;font-size:11px;border-bottom:1px solid #e8eef6;">Respondidas</th>
+            <th style="padding:9px 10px;text-align:center;color:#898781;font-size:11px;border-bottom:1px solid #e8eef6;">Cerradas</th>
+            <th style="padding:9px 16px;text-align:left;font-size:11px;border-bottom:1px solid #e8eef6;min-width:140px;">Tasa resoluci\u00F3n</th>
+          </tr></thead>
+          <tbody>${mesesTabla.map((m,ri) => {
+            const mes = dataDash.filter(s=>s.FechaRecepcion?.substring(0,7)===m);
+            const rec  = mes.length;
+            const proc = mes.filter(s=>s.Estado==="En Proceso").length;
+            const resp = mes.filter(s=>s.Estado==="Respondida").length;
+            const cerr = mes.filter(s=>s.Estado==="Cerrada").length;
+            const penc = mes.filter(s=>s.Estado==="Pendiente de Cierre").length;
+            const t    = rec>0?Math.round(((resp+cerr+penc)/rec)*100):0;
+            const ec   = t>=80?"#008300":t>=50?"#b45309":"#b91c1c";
+            const [y,mo]=m.split("-");
+            return `<tr style="border-bottom:1px solid #f1f5f9;${ri%2?"background:#fafbfc":""}"
+              onmouseenter="this.style.background='#eff6ff'" onmouseleave="this.style.background='${ri%2?"#fafbfc":""}'">
+              <td style="padding:10px 16px;font-weight:700;color:#0f2547;">${MESES_ES[+mo-1]} ${y}</td>
+              <td style="padding:8px 10px;text-align:center;">${CHIP(rec,"#dbeafe","#1d4ed8")}</td>
+              <td style="padding:8px 10px;text-align:center;">${CHIP(proc,"#d1fae5","#065f46")}</td>
+              <td style="padding:8px 10px;text-align:center;">${CHIP(resp,"#dcfce7","#15803d")}</td>
+              <td style="padding:8px 10px;text-align:center;">${CHIP(cerr,"#f1f5f9","#475569")}</td>
+              <td style="padding:10px 16px;min-width:140px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="flex:1;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
+                    <div style="height:100%;width:${t}%;background:${ec};border-radius:3px;transition:width .8s ease;"></div>
+                  </div>
+                  <span style="font-size:12px;font-weight:800;color:${ec};min-width:30px;">${t}%</span>
+                </div>
+              </td>
+            </tr>`;
+          }).join("") || `<tr><td colspan="6" style="padding:28px;text-align:center;color:#898781;">Sin datos</td></tr>`}</tbody>
+        </table>`;
+      } else {
+        // Tabla comparativa entre unidades
+        const unidades = [...new Set(filtradas.filter(s=>s.UnidadDerivada).map(s=>(s.UnidadDerivada||"").trim()))].sort();
+        wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#f8fafc;">
+            <th style="padding:9px 16px;text-align:left;font-weight:700;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e8eef6;">Unidad</th>
+            <th style="padding:9px 10px;text-align:center;color:#2a78d6;font-size:11px;border-bottom:1px solid #e8eef6;">Recibidas</th>
+            <th style="padding:9px 10px;text-align:center;color:#008300;font-size:11px;border-bottom:1px solid #e8eef6;">Respondidas</th>
+            <th style="padding:9px 10px;text-align:center;color:#898781;font-size:11px;border-bottom:1px solid #e8eef6;">Cerradas</th>
+            <th style="padding:9px 10px;text-align:center;color:#4a3aa7;font-size:11px;border-bottom:1px solid #e8eef6;">Pend.</th>
+            <th style="padding:9px 10px;text-align:center;color:#1baf7a;font-size:11px;border-bottom:1px solid #e8eef6;">En Proc.</th>
+            <th style="padding:9px 16px;text-align:left;font-size:11px;border-bottom:1px solid #e8eef6;min-width:150px;">Efectividad</th>
+          </tr></thead>
+          <tbody>${unidades.map((u,ri) => {
+            const sols = filtradas.filter(s=>(s.UnidadDerivada||"").trim()===u);
+            const der  = sols.length;
+            const resp = sols.filter(s=>s.Estado==="Respondida").length;
+            const cerr = sols.filter(s=>s.Estado==="Cerrada").length;
+            const penc = sols.filter(s=>s.Estado==="Pendiente de Cierre").length;
+            const proc = sols.filter(s=>s.Estado==="En Proceso").length;
+            const efe  = der>0?Math.round(((resp+cerr+penc)/der)*100):0;
+            const ec   = efe>=80?"#008300":efe>=50?"#b45309":"#b91c1c";
+            return `<tr style="border-bottom:1px solid #f1f5f9;${ri%2?"background:#fafbfc":""}"
+              onmouseenter="this.style.background='#eff6ff'" onmouseleave="this.style.background='${ri%2?"#fafbfc":""}'">
+              <td style="padding:10px 16px;font-weight:700;color:#0f2547;">${u}</td>
+              <td style="padding:8px 10px;text-align:center;">${CHIP(der,"#dbeafe","#1d4ed8")}</td>
+              <td style="padding:8px 10px;text-align:center;">${CHIP(resp,"#dcfce7","#15803d")}</td>
+              <td style="padding:8px 10px;text-align:center;">${CHIP(cerr,"#f1f5f9","#475569")}</td>
+              <td style="padding:8px 10px;text-align:center;">${CHIP(penc,"#ede9fe","#4a3aa7")}</td>
+              <td style="padding:8px 10px;text-align:center;">${CHIP(proc,"#d1fae5","#065f46")}</td>
+              <td style="padding:10px 16px;min-width:150px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="flex:1;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
+                    <div style="height:100%;width:${efe}%;background:${ec};border-radius:3px;transition:width .8s ease;"></div>
+                  </div>
+                  <span style="font-size:12px;font-weight:800;color:${ec};min-width:30px;">${efe}%</span>
+                </div>
+              </td>
+            </tr>`;
+          }).join("")||`<tr><td colspan="7" style="padding:28px;text-align:center;color:#898781;">Sin datos para el per\u00EDodo</td></tr>`}</tbody>
+        </table>`;
+      }
     }
 
   } catch (e) {
