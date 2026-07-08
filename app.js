@@ -2393,19 +2393,81 @@ function filtrarAdmin() {
   }).join("");
 }
 
+function _modalJustificacion(sol, nuevoEstado) {
+  return new Promise(resolve => {
+    const irAIngresada = nuevoEstado === CONFIG.estados.INGRESADA;
+
+    const overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;";
+
+    const colorEstado = {
+      "Ingresada":"#1a3a6b","Derivada":"#b45309","En Proceso":"#0e7490",
+      "Respondida":"#15803d","Devuelta":"#b91c1c","Pendiente de Cierre":"#7e22ce","Cerrada":"#374151"
+    };
+    const cOld = colorEstado[sol.Estado] || "#374151";
+    const cNew = colorEstado[nuevoEstado] || "#374151";
+
+    overlay.innerHTML = `
+      <div style="background:white;border-radius:14px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
+        <div style="background:linear-gradient(90deg,#0f2547,#1a3a6b);color:white;padding:16px 20px;">
+          <div style="font-size:11px;opacity:0.75;font-weight:600;letter-spacing:0.5px;margin-bottom:4px;">CAMBIO DE ESTADO \u2014 ADMINISTRADOR</div>
+          <div style="font-size:17px;font-weight:800;">Solicitud ${sol.NroSolicitud}</div>
+          <div style="font-size:12px;opacity:0.8;margin-top:2px;">${sol.Solicitante || ""}</div>
+        </div>
+        <div style="padding:20px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;justify-content:center;">
+            <span style="background:${cOld}18;color:${cOld};border:1.5px solid ${cOld}40;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">${sol.Estado}</span>
+            <span style="font-size:18px;color:#9ca3af;">\u2192</span>
+            <span style="background:${cNew}18;color:${cNew};border:1.5px solid ${cNew}40;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">${nuevoEstado}</span>
+          </div>
+          <label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">
+            Justificaci\u00F3n del cambio <span style="color:#ef4444;">*</span>
+          </label>
+          <textarea id="modal-justif" rows="4" placeholder="Describe el motivo del cambio de estado..."
+            style="width:100%;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;font-family:inherit;line-height:1.5;"></textarea>
+          <div id="modal-justif-error" style="color:#ef4444;font-size:11px;margin-top:4px;display:none;">\u26A0 La justificaci\u00F3n es obligatoria.</div>
+          ${irAIngresada ? `
+          <label style="display:flex;align-items:flex-start;gap:10px;margin-top:14px;padding:12px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:8px;cursor:pointer;">
+            <input type="checkbox" id="modal-borrar-hist" style="margin-top:2px;width:15px;height:15px;cursor:pointer;">
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#b91c1c;">Eliminar historial y evidencias</div>
+              <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Borra todos los movimientos registrados y archivos de evidencia de esta solicitud.</div>
+            </div>
+          </label>` : ""}
+          <div style="display:flex;gap:10px;margin-top:18px;">
+            <button id="modal-cancelar" style="flex:1;padding:10px;border:1.5px solid #d1d5db;border-radius:8px;background:white;color:#374151;font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
+            <button id="modal-confirmar" style="flex:2;padding:10px;border:none;border-radius:8px;background:#312e81;color:white;font-size:13px;font-weight:700;cursor:pointer;">\u2713 Confirmar cambio</button>
+          </div>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    const txtArea = overlay.querySelector("#modal-justif");
+    const errEl   = overlay.querySelector("#modal-justif-error");
+    txtArea.focus();
+
+    overlay.querySelector("#modal-cancelar").onclick = () => { document.body.removeChild(overlay); resolve(null); };
+    overlay.querySelector("#modal-confirmar").onclick = () => {
+      const justif = txtArea.value.trim();
+      if (!justif) { errEl.style.display = "block"; txtArea.focus(); return; }
+      const borrarHistEvi = irAIngresada ? (overlay.querySelector("#modal-borrar-hist")?.checked || false) : false;
+      document.body.removeChild(overlay);
+      resolve({ justif, borrarHistEvi });
+    };
+    overlay.addEventListener("click", e => { if (e.target === overlay) { document.body.removeChild(overlay); resolve(null); } });
+  });
+}
+
 async function cambiarEstadoAdmin(solId) {
   const nuevoEstado = document.getElementById(`adm-sel-${solId}`)?.value;
   if (!nuevoEstado) { showToast("error","Selecciona un estado"); return; }
   const sol = _adminSolicitudes.find(s=>s.id===solId);
 
-  const irAIngresada = nuevoEstado === CONFIG.estados.INGRESADA;
-  const msgBase = `\u00BFCambiar ${sol?.NroSolicitud||solId}?\n${sol?.Estado} \u2192 ${nuevoEstado}\n\nSe limpiar\u00E1n los campos asociados (unidad, acciones, observaciones).`;
-  if (!confirm(msgBase)) return;
+  const resultado = await _modalJustificacion(sol, nuevoEstado);
+  if (!resultado) return;
 
-  let borrarHistEvi = false;
-  if (irAIngresada) {
-    borrarHistEvi = confirm(`\u00BFDeseas tambi\u00E9n eliminar el historial de movimientos y las evidencias de esta solicitud?\n\nAceptar = s\u00ED borrar historial y evidencias\nCancelar = solo cambiar estado`);
-  }
+  const { justif, borrarHistEvi } = resultado;
 
   showLoading("Actualizando...");
   try {
@@ -2426,13 +2488,14 @@ async function cambiarEstadoAdmin(solId) {
       ]);
     }
 
+    const obsHistorial = `[Admin] ${justif}${borrarHistEvi ? " (historial y evidencias eliminados)" : ""}`;
     registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
       Title: `[Admin] Estado \u2192 ${nuevoEstado}`,
       EstadoAnterior: sol.Estado, EstadoNuevo: nuevoEstado,
       UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
       Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(),
-      Observaciones: borrarHistEvi ? "Cambio manual por Administrador (historial y evidencias eliminados)" : "Cambio manual por Administrador"
+      Observaciones: obsHistorial
     }).catch(e => console.warn(e));
 
     showToast("success", `\u2705 ${sol?.NroSolicitud} \u2192 ${nuevoEstado}`);
