@@ -362,6 +362,18 @@ async function getConfiguracionDOM() {
   return cfg;
 }
 
+async function actualizarConfiguracionDOM(key, valor) {
+  _cacheInvalidate(CONFIG.lists.configuracion);
+  const items = await getListItems(CONFIG.lists.configuracion);
+  const existing = items.find(i => i.Title === key);
+  if (existing) {
+    await updateListItem(CONFIG.lists.configuracion, existing.id, { Valor: String(valor) });
+  } else {
+    await createListItem(CONFIG.lists.configuracion, { Title: key, Valor: String(valor) });
+  }
+  _cacheInvalidate(CONFIG.lists.configuracion);
+}
+
 async function getSolicitudes(extraFilter = "") {
   return getListItems(CONFIG.lists.solicitudes, extraFilter);
 }

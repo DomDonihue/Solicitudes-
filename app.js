@@ -2293,6 +2293,7 @@ async function renderAdmin(seccion = "solicitudes") {
       <button id="adm-tab-solicitudes" style="${admTabStyle(seccion==='solicitudes')}" onclick="renderAdmin('solicitudes')">\uD83D\uDCCB Solicitudes</button>
       <button id="adm-tab-unidades"    style="${admTabStyle(seccion==='unidades')}"    onclick="renderAdmin('unidades')">\uD83C\uDFE2 Unidades</button>
       <button id="adm-tab-usuarios"    style="${admTabStyle(seccion==='usuarios')}"    onclick="renderAdmin('usuarios')">\uD83D\uDC64 Usuarios</button>
+      <button id="adm-tab-config"      style="${admTabStyle(seccion==='config')}"      onclick="renderAdmin('config')">\u2699\uFE0F Configuraci\u00F3n</button>
     </div>
     <!-- Contenido din\u00E1mico -->
     <div id="adm-contenido" style="flex:1;overflow:hidden;display:flex;flex-direction:column;"></div>
@@ -2301,6 +2302,7 @@ async function renderAdmin(seccion = "solicitudes") {
   if (seccion === "solicitudes") await renderAdmSolicitudes();
   else if (seccion === "unidades") await renderAdmUnidades();
   else if (seccion === "usuarios") await renderAdmUsuarios();
+  else if (seccion === "config") await renderAdmConfiguracion();
 }
 
 // \u2500\u2500 Secci\u00F3n Solicitudes \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -2895,6 +2897,123 @@ async function guardarUsuarioAdmin() {
     cerrarModalUsuario();
     filtrarUsuarios();
   } catch(e) { showToast("error","Error: "+e.message); }
+  finally { hideLoading(); }
+}
+
+// ── Sección Configuración ───────────────────────────────────────────────────
+async function renderAdmConfiguracion() {
+  const cont = document.getElementById("adm-contenido");
+  cont.innerHTML = `<div style="flex:1;overflow-y:auto;padding:24px 20px;max-width:680px;margin:0 auto;">
+    <div style="margin-bottom:24px;">
+      <div style="font-size:16px;font-weight:800;color:#1e1b4b;margin-bottom:4px;">⚙️ Configuración del sistema</div>
+      <div style="font-size:12px;color:#6b7280;">Los cambios se guardan en SharePoint y se aplican de inmediato a todos los usuarios.</div>
+    </div>
+
+    <!-- Card plazos -->
+    <div style="background:white;border:1.5px solid #e8eef6;border-radius:14px;overflow:hidden;margin-bottom:16px;">
+      <div style="background:linear-gradient(90deg,#1e1b4b,#312e81);color:white;padding:14px 20px;">
+        <div style="font-size:13px;font-weight:700;">⏱️ Plazos de atención</div>
+        <div style="font-size:11px;opacity:0.75;margin-top:2px;">Controla los tiempos del semáforo de solicitudes activas</div>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:20px;">
+
+        <!-- Plazo máximo -->
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#1e1b4b;margin-bottom:4px;">Días máximos para resolver</div>
+          <div style="font-size:11px;color:#6b7280;margin-bottom:10px;">
+            Una solicitud Derivada o En Proceso que supere este plazo aparece en rojo en el semáforo.
+            Actualmente: <strong id="cfg-plazo-actual">${CONFIG.plazoDerivacionDias || 15} días</strong>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button onclick="_cfgStep('cfg-plazo-val',-1)" style="width:36px;height:36px;border:1.5px solid #d1d5db;border-radius:8px;background:#f9fafb;font-size:18px;cursor:pointer;font-weight:700;color:#374151;">−</button>
+            <input id="cfg-plazo-val" type="number" min="1" max="365" value="${CONFIG.plazoDerivacionDias || 15}"
+              style="width:80px;text-align:center;padding:7px;border:1.5px solid #d1d5db;border-radius:8px;font-size:18px;font-weight:800;color:#1e1b4b;">
+            <button onclick="_cfgStep('cfg-plazo-val',1)"  style="width:36px;height:36px;border:1.5px solid #d1d5db;border-radius:8px;background:#f9fafb;font-size:18px;cursor:pointer;font-weight:700;color:#374151;">+</button>
+            <span style="font-size:13px;color:#6b7280;margin-left:4px;">días</span>
+          </div>
+        </div>
+
+        <!-- Plazo alerta -->
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#1e1b4b;margin-bottom:4px;">Días de alerta antes del vencimiento</div>
+          <div style="font-size:11px;color:#6b7280;margin-bottom:10px;">
+            Una solicitud entra en amarillo cuando le quedan este número de días o menos.
+            Actualmente: <strong id="cfg-alerta-actual">${CONFIG.plazoAlertaDias ?? 1} día(s)</strong>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button onclick="_cfgStep('cfg-alerta-val',-1)" style="width:36px;height:36px;border:1.5px solid #d1d5db;border-radius:8px;background:#f9fafb;font-size:18px;cursor:pointer;font-weight:700;color:#374151;">−</button>
+            <input id="cfg-alerta-val" type="number" min="0" max="30" value="${CONFIG.plazoAlertaDias ?? 1}"
+              style="width:80px;text-align:center;padding:7px;border:1.5px solid #d1d5db;border-radius:8px;font-size:18px;font-weight:800;color:#1e1b4b;">
+            <button onclick="_cfgStep('cfg-alerta-val',1)"  style="width:36px;height:36px;border:1.5px solid #d1d5db;border-radius:8px;background:#f9fafb;font-size:18px;cursor:pointer;font-weight:700;color:#374151;">+</button>
+            <span style="font-size:13px;color:#6b7280;margin-left:4px;">día(s)</span>
+          </div>
+        </div>
+
+        <!-- Preview semáforo -->
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;display:flex;gap:10px;flex-wrap:wrap;">
+          <div style="font-size:11px;color:#6b7280;width:100%;margin-bottom:4px;font-weight:600;">Vista previa del semáforo con estos valores:</div>
+          <div id="cfg-sem-preview" style="display:flex;gap:10px;flex-wrap:wrap;width:100%;"></div>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button onclick="renderAdmin('config')" style="padding:9px 18px;border:1.5px solid #d1d5db;border-radius:8px;background:white;color:#374151;font-size:13px;cursor:pointer;">Cancelar</button>
+          <button onclick="guardarConfiguracionAdmin()" class="btn-primary" style="padding:9px 22px;font-size:13px;font-weight:700;">💾 Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  _cfgActualizarPreview();
+  document.getElementById("cfg-plazo-val")?.addEventListener("input", _cfgActualizarPreview);
+  document.getElementById("cfg-alerta-val")?.addEventListener("input", _cfgActualizarPreview);
+}
+
+function _cfgStep(inputId, delta) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  const min = parseInt(el.min ?? 0);
+  const max = parseInt(el.max ?? 9999);
+  el.value = Math.max(min, Math.min(max, parseInt(el.value || 0) + delta));
+  _cfgActualizarPreview();
+}
+
+function _cfgActualizarPreview() {
+  const plazo  = parseInt(document.getElementById("cfg-plazo-val")?.value) || 15;
+  const alerta = parseInt(document.getElementById("cfg-alerta-val")?.value) ?? 1;
+  const prev   = document.getElementById("cfg-sem-preview");
+  if (!prev) return;
+  const items = [
+    { emoji:"🟢", label:"En plazo",   desc:`Más de ${alerta} día(s) restante(s)`,  bg:"#f0fdf4", bc:"#86efac", tc:"#15803d" },
+    { emoji:"🟡", label:"Por vencer", desc:`${alerta} día(s) o menos`,              bg:"#fffbeb", bc:"#fde68a", tc:"#b45309" },
+    { emoji:"🔴", label:"Crítico",    desc:"Vencida o vence hoy",                   bg:"#fef2f2", bc:"#fca5a5", tc:"#b91c1c" },
+  ];
+  prev.innerHTML = items.map(s => `
+    <div style="flex:1;min-width:140px;background:${s.bg};border:1.5px solid ${s.bc};border-radius:8px;padding:10px 12px;">
+      <div style="font-size:14px;">${s.emoji} <span style="font-weight:700;color:${s.tc};">${s.label}</span></div>
+      <div style="font-size:10px;color:${s.tc};opacity:.8;margin-top:3px;">${s.desc}</div>
+    </div>`).join("");
+  const plazoEl = document.getElementById("cfg-plazo-actual");
+  if (plazoEl) plazoEl.textContent = `${plazo} días`;
+  const alertaEl = document.getElementById("cfg-alerta-actual");
+  if (alertaEl) alertaEl.textContent = `${alerta} día(s)`;
+}
+
+async function guardarConfiguracionAdmin() {
+  const plazo  = parseInt(document.getElementById("cfg-plazo-val")?.value);
+  const alerta = parseInt(document.getElementById("cfg-alerta-val")?.value);
+  if (isNaN(plazo) || plazo < 1)  { showToast("error", "El plazo debe ser al menos 1 día");   return; }
+  if (isNaN(alerta) || alerta < 0) { showToast("error", "El plazo de alerta no puede ser negativo"); return; }
+  showLoading("Guardando configuración...");
+  try {
+    await Promise.all([
+      actualizarConfiguracionDOM("PlazoDerivacionDias", plazo),
+      actualizarConfiguracionDOM("PlazoAlertaDias",     alerta),
+    ]);
+    CONFIG.plazoDerivacionDias = plazo;
+    CONFIG.plazoAlertaDias     = alerta;
+    showToast("success", `✅ Guardado: ${plazo} días máx, alerta a ${alerta} día(s)`);
+    renderAdmin("config");
+  } catch(e) { showToast("error", "Error al guardar: " + e.message); }
   finally { hideLoading(); }
 }
 
