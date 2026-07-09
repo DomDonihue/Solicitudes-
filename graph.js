@@ -355,27 +355,11 @@ async function crearCamposHistorial() {
   ]);
 }
 
-async function crearCamposConfiguracion() {
-  // ValorMultilinea permite almacenar contenido extenso (imágenes base64, JSON)
-  await _crearCamposLista(CONFIG.lists.configuracion, [
-    { Title: "ValorMultilinea", FieldTypeKind: 3, __metadata: { type: "SP.FieldMultiLineText" } },
-  ]);
-}
-
-// Claves que usan el campo multi-línea (contenido extenso, ej: imágenes base64)
-const _CFG_MULTILINEA = new Set(["FirmaDirector"]);
 
 async function getConfiguracionDOM() {
   const items = await getListItems(CONFIG.lists.configuracion);
   const cfg = {};
-  items.forEach(i => {
-    if (!i.Title) return;
-    // Prefiere ValorMultilinea si la clave lo requiere, cae a Valor si no hay
-    const v = _CFG_MULTILINEA.has(i.Title)
-      ? (i.ValorMultilinea || i.Valor || "")
-      : (i.Valor !== undefined ? i.Valor : (i.ValorMultilinea || ""));
-    cfg[i.Title] = v;
-  });
+  items.forEach(i => { if (i.Title && i.Valor !== undefined) cfg[i.Title] = i.Valor; });
   return cfg;
 }
 
@@ -383,15 +367,80 @@ async function actualizarConfiguracionDOM(key, valor) {
   _cacheInvalidate(CONFIG.lists.configuracion);
   const items = await getListItems(CONFIG.lists.configuracion);
   const existing = items.find(i => i.Title === key);
-  const esMultilinea = _CFG_MULTILINEA.has(key);
-  const fields = esMultilinea
-    ? { ValorMultilinea: String(valor) }
-    : { Valor: String(valor) };
   if (existing) {
-    await updateListItem(CONFIG.lists.configuracion, existing.id, fields);
+    await updateListItem(CONFIG.lists.configuracion, existing.id, { Valor: String(valor) });
   } else {
-    await createListItem(CONFIG.lists.configuracion, { Title: key, ...fields });
+    await createListItem(CONFIG.lists.configuracion, { Title: key, Valor: String(valor) });
   }
+  _cacheInvalidate(CONFIG.lists.configuracion);
+}
+
+// ── Firma Director (almacenada como adjunto al ítem FirmaDirector) ──────────
+async function subirFirmaDirector(dataUrl) {
+  // Convertir data URL a blob binario
+  const fetchRes = await fetch(dataUrl);
+  const blob = await fetchRes.blob();
+
+  // Buscar o crear el ítem ancla en ConfiguracionDom
+  _cacheInvalidate(CONFIG.lists.configuracion);
+  let items = await getListItems(CONFIG.lists.configuracion);
+  let item = items.find(i => i.Title === "FirmaDirector");
+  if (!item) {
+    const nuevo = await createListItem(CONFIG.lists.configuracion, { Title: "FirmaDirector", Valor: "img" });
+    item = { id: String(nuevo.Id || nuevo.id || "") };
+  }
+
+  // Borrar adjunto anterior si existe (ignorar error si no hay)
+  const token = await getSharePointToken();
+  await fetch(
+    `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(CONFIG.lists.configuracion)}')/items(${item.id})/AttachmentFiles/getByFileName('firma.jpg')`,
+    { method: "POST", headers: { Authorization: `Bearer ${token}`, "IF-MATCH": "*", "X-HTTP-Method": "DELETE" } }
+  ).catch(() => {});
+
+  // Subir nuevo adjunto
+  const uploadRes = await fetch(
+    `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(CONFIG.lists.configuracion)}')/items(${item.id})/AttachmentFiles/add(FileName='firma.jpg')`,
+    { method: "POST", headers: { Authorization: `Bearer ${token}`, Accept: "application/json;odata=nometadata", "Content-Type": "application/octet-stream" }, body: blob }
+  );
+  if (!uploadRes.ok) throw new Error(`Error subiendo firma: ${await uploadRes.text()}`);
+  _cacheInvalidate(CONFIG.lists.configuracion);
+}
+
+async function cargarFirmaDirector() {
+  try {
+    const items = await getListItems(CONFIG.lists.configuracion);
+    const item  = items.find(i => i.Title === "FirmaDirector");
+    if (!item) return null;
+    const atts  = await getListItemAttachments(CONFIG.lists.configuracion, item.id);
+    const att   = atts.find(a => a.name === "firma.jpg");
+    if (!att) return null;
+    // Descargar con token y convertir a data URL para uso en ventanas de impresión
+    const relUrl  = att.serverRelativeUrl;
+    const safeUrl = relUrl.replace(/'/g, "''");
+    const token   = await getSharePointToken();
+    const res     = await fetch(`${SP_BASE}/web/getfilebyserverrelativeurl('${safeUrl}')/$value`,
+      { headers: { Authorization: `Bearer ${token}`, Accept: "application/octet-stream,*/*" } });
+    if (!res.ok) return null;
+    const imgBlob = await res.blob();
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload  = e => resolve(e.target.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(imgBlob);
+    });
+  } catch { return null; }
+}
+
+async function eliminarFirmaDirector() {
+  _cacheInvalidate(CONFIG.lists.configuracion);
+  const items = await getListItems(CONFIG.lists.configuracion);
+  const item  = items.find(i => i.Title === "FirmaDirector");
+  if (!item) return;
+  const token = await getSharePointToken();
+  await fetch(
+    `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(CONFIG.lists.configuracion)}')/items(${item.id})/AttachmentFiles/getByFileName('firma.jpg')`,
+    { method: "POST", headers: { Authorization: `Bearer ${token}`, "IF-MATCH": "*", "X-HTTP-Method": "DELETE" } }
+  );
   _cacheInvalidate(CONFIG.lists.configuracion);
 }
 

@@ -48,10 +48,9 @@ async function initApp() {
     CONFIG.plazoDerivacionDias = parseInt(cfgSP.PlazoDerivacionDias) || 15;
     CONFIG.plazoAlertaDias     = parseInt(cfgSP.PlazoAlertaDias)     || 1;
     CONFIG.correoSoporte       = cfgSP.CorreoSoporte                 || "enovo@mdonihue.cl";
-    CONFIG.firmaDirector       = cfgSP.FirmaDirector                 || null;
+    CONFIG.firmaDirector       = await cargarFirmaDirector().catch(() => null);
     crearCamposEvidencia().catch(console.warn);
     crearCamposHistorial().catch(console.warn);
-    crearCamposConfiguracion().catch(console.warn);
     // Indexar columnas cr\u00EDticas (idempotente \u2014 no hace nada si ya est\u00E1n indexadas)
     crearIndicesSharePoint().catch(console.warn);
     hideLoading();
@@ -3119,7 +3118,7 @@ async function guardarFirmaAdmin() {
   if (!b64) { showToast("error", "Selecciona una imagen primero"); return; }
   showLoading("Guardando firma...");
   try {
-    await actualizarConfiguracionDOM("FirmaDirector", b64);
+    await subirFirmaDirector(b64);
     CONFIG.firmaDirector = b64;
     showToast("success", "✅ Firma guardada correctamente");
     renderAdmin("config");
@@ -3131,7 +3130,7 @@ async function eliminarFirmaAdmin() {
   if (!confirm("¿Eliminar la firma del Director? Ya no aparecerá en los documentos impresos.")) return;
   showLoading("Eliminando firma...");
   try {
-    await actualizarConfiguracionDOM("FirmaDirector", "");
+    await eliminarFirmaDirector();
     CONFIG.firmaDirector = null;
     showToast("success", "Firma eliminada");
     renderAdmin("config");
