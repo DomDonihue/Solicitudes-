@@ -19,6 +19,16 @@ const state = {
   chartInstances: {}
 };
 
+// ===== SEGURIDAD: escape HTML para datos de usuario en innerHTML =====
+function esc(v) {
+  if (v == null) return '';
+  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// Wrapper para abrir adjuntos desde atributos HTML (evita inyeccion en onclick)
+function _openAdj(el, isPdf) {
+  abrirAdjuntoUnidad(el.dataset.durl, el.dataset.rel, el.dataset.name, isPdf);
+}
+
 // ===== INIT =====
 async function initApp() {
   showLoading("Iniciando sesi\u00F3n...");
@@ -275,11 +285,11 @@ function renderListaSolicitudes() {
     pagina.map(s => `
       <div class="sol-card ${state.solicitudSeleccionada?.id === s.id ? 'selected' : ''}" onclick="seleccionarSolicitud('${s.id}')">
         <div class="sol-card-top">
-          <span class="sol-nro">${s.NroSolicitud}</span>
-          <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
+          <span class="sol-nro">${esc(s.NroSolicitud)}</span>
+          <span class="estado-badge estado-${esc(s.Estado)}">${esc(s.Estado)}</span>
         </div>
-        <div class="sol-card-name">${s.Solicitante}</div>
-        <div class="sol-card-dir">\uD83D\uDCCD ${s.Direccion || ""}</div>
+        <div class="sol-card-name">${esc(s.Solicitante)}</div>
+        <div class="sol-card-dir">\uD83D\uDCCD ${esc(s.Direccion || "")}</div>
       </div>`).join("");
 
   const counter = document.getElementById("sec-lista-count");
@@ -744,15 +754,15 @@ function renderDirLista() {
           style="border-left-color:${sem&&sem.dias<=1?'#dc2626':esUrgente?'#ef4444':esAccion?'var(--azul)':'var(--borde)'};"
           onclick="seleccionarSolicitudDirector('${s.id}')">
           <div class="sol-card-top">
-            <span class="sol-nro">${s.NroSolicitud}</span>
-            <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
+            <span class="sol-nro">${esc(s.NroSolicitud)}</span>
+            <span class="estado-badge estado-${esc(s.Estado)}">${esc(s.Estado)}</span>
           </div>
-          <div class="sol-card-name">${s.Solicitante}</div>
+          <div class="sol-card-name">${esc(s.Solicitante)}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px;">
-            <div class="sol-card-dir" style="margin-top:0;">\uD83D\uDCCD ${s.Direccion||""}</div>
+            <div class="sol-card-dir" style="margin-top:0;">\uD83D\uDCCD ${esc(s.Direccion||"")}</div>
             ${semBadge}
           </div>
-          ${s.UnidadDerivada?`<div style="font-size:11px;color:#888;margin-top:3px;">\uD83C\uDFE2 ${s.UnidadDerivada}</div>`:""}
+          ${s.UnidadDerivada?`<div style="font-size:11px;color:#888;margin-top:3px;">\uD83C\uDFE2 ${esc(s.UnidadDerivada)}</div>`:""}
           ${esUrgente?`<div style="font-size:11px;color:#b91c1c;margin-top:3px;font-weight:600;">\u26A0\uFE0F Requiere re-derivaci\u00F3n</div>`:""}
         </div>`;
     }).join("");
@@ -853,8 +863,8 @@ function renderDetalleDirector(sol) {
       </button>
       <div style="display:flex;align-items:center;gap:8px;flex:1;padding:10px 14px;">
         <span>${esDerivable?'\uD83D\uDCE4':esPendienteCierre?'\u23F3':esCerrable?'\u2705':'\uD83D\uDCCB'}</span>
-        <span style="font-weight:700;">${sol.NroSolicitud}</span>
-        <span class="estado-badge estado-${sol.Estado}" style="font-size:11px;">${sol.Estado}</span>
+        <span style="font-weight:700;">${esc(sol.NroSolicitud)}</span>
+        <span class="estado-badge estado-${esc(sol.Estado)}" style="font-size:11px;">${esc(sol.Estado)}</span>
       </div>`;
   }
 
@@ -883,12 +893,12 @@ function renderDetalleDirector(sol) {
     <!-- Datos b\u00E1sicos: solicitante, fecha, nro -->
     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 14px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;margin-bottom:6px;">
-        <div><span style="color:#888;font-size:11px;display:block;">Nro Solicitud</span><strong>${sol.NroSolicitud}</strong></div>
+        <div><span style="color:#888;font-size:11px;display:block;">Nro Solicitud</span><strong>${esc(sol.NroSolicitud)}</strong></div>
         <div><span style="color:#888;font-size:11px;display:block;">Fecha</span>${formatFecha(sol.FechaRecepcion)}</div>
       </div>
-      <div style="font-size:13px;margin-bottom:4px;"><span style="color:#888;font-size:11px;display:block;">Solicitante</span>${sol.Solicitante}</div>
-      <div style="font-size:13px;"><span style="color:#888;font-size:11px;display:block;">Direcci\u00F3n</span>${sol.Direccion||"-"}</div>
-      ${sol.UnidadDerivada?`<div style="margin-top:8px;padding:5px 10px;background:#fef3c7;border-radius:6px;font-size:12px;color:#b45309;">\uD83C\uDFE2 Derivada a: <strong>${sol.UnidadDerivada}</strong></div>`:""}
+      <div style="font-size:13px;margin-bottom:4px;"><span style="color:#888;font-size:11px;display:block;">Solicitante</span>${esc(sol.Solicitante)}</div>
+      <div style="font-size:13px;"><span style="color:#888;font-size:11px;display:block;">Direcci\u00F3n</span>${esc(sol.Direccion||"-")}</div>
+      ${sol.UnidadDerivada?`<div style="margin-top:8px;padding:5px 10px;background:#fef3c7;border-radius:6px;font-size:12px;color:#b45309;">\uD83C\uDFE2 Derivada a: <strong>${esc(sol.UnidadDerivada)}</strong></div>`:""}
     </div>
 
     <!-- DESCRIPCI\u00D3N DE LA SOLICITUD \u2014 siempre visible y prominente -->
@@ -897,7 +907,7 @@ function renderDetalleDirector(sol) {
         \uD83D\uDCCB Descripci\u00F3n de la Solicitud
       </div>
       <div style="padding:12px 14px;font-size:13px;color:#374151;line-height:1.7;min-height:48px;">
-        ${sol.Solicitud ? sol.Solicitud : '<span style="color:#9ca3af;font-style:italic;">Sin descripci\u00F3n registrada</span>'}
+        ${sol.Solicitud ? esc(sol.Solicitud) : '<span style="color:#9ca3af;font-style:italic;">Sin descripci\u00F3n registrada</span>'}
       </div>
     </div>
 
@@ -906,7 +916,7 @@ function renderDetalleDirector(sol) {
     <div class="accion-panel">
       <div class="accion-header devuelta">\u21A9\uFE0F Motivo de Devoluci\u00F3n</div>
       <div class="accion-body" style="background:#fff5f5;">
-        <p style="font-size:13px;color:#b91c1c;margin:0;">${sol.MotivoDevolucion||"Sin motivo registrado"}</p>
+        <p style="font-size:13px;color:#b91c1c;margin:0;">${esc(sol.MotivoDevolucion||"Sin motivo registrado")}</p>
       </div>
     </div>` : ""}
 
@@ -1055,7 +1065,7 @@ function renderDetalleDirector(sol) {
 
     <!-- Historial -->
     <div class="form-section">
-      <div class="form-section-header verde" style="font-size:11px;cursor:pointer;" onclick="cargarHistorialDir('${sol.NroSolicitud}')">
+      <div class="form-section-header verde" style="font-size:11px;cursor:pointer;" onclick="cargarHistorialDir('${esc(sol.NroSolicitud)}')">
         \uD83D\uDD50 Historial de Movimientos <span style="float:right;font-weight:400;">ver \u25BC</span>
       </div>
       <div class="form-section-body" id="dir-historial" style="max-height:200px;overflow-y:auto;padding:8px;">
@@ -1104,8 +1114,8 @@ async function cargarEvidenciaDir(sol) {
         <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
           <div style="width:32px;height:32px;border-radius:50%;background:var(--azul);color:white;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">\uD83C\uDFE2</div>
           <div>
-            <div style="font-size:13px;font-weight:700;color:#1a3a6b;">${ev.Unidad||"Unidad"}</div>
-            <div style="font-size:11px;color:#888;">\uD83D\uDC64 ${ev.Responsable||""} &nbsp;\u00B7&nbsp; \uD83D\uDCC5 ${formatFecha(ev.FechaCarga)}</div>
+            <div style="font-size:13px;font-weight:700;color:#1a3a6b;">${esc(ev.Unidad||"Unidad")}</div>
+            <div style="font-size:11px;color:#888;">\uD83D\uDC64 ${esc(ev.Responsable||"")} &nbsp;\u00B7&nbsp; \uD83D\uDCC5 ${formatFecha(ev.FechaCarga)}</div>
           </div>
         </div>
         <div style="padding:12px 14px 8px;">
@@ -1131,7 +1141,7 @@ async function cargarEvidenciaDir(sol) {
         for (const pdf of pdfs) {
           const pdfBlock = document.createElement("div");
           pdfBlock.style.cssText = "margin-bottom:10px;";
-          pdfBlock.innerHTML = `<div style="font-size:11px;color:#888;margin-bottom:4px;display:flex;align-items:center;gap:4px;">\uD83D\uDCC4 <strong>${pdf.name}</strong></div>`;
+          pdfBlock.innerHTML = `<div style="font-size:11px;color:#888;margin-bottom:4px;display:flex;align-items:center;gap:4px;">\uD83D\uDCC4 <strong>${esc(pdf.name)}</strong></div>`;
           mediaCont.appendChild(pdfBlock);
           try {
             const blobUrl = await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl);
@@ -1272,7 +1282,7 @@ function abrirLightbox(blobUrl, nombre) {
   overlay.innerHTML = `
     <div style="position:absolute;top:16px;right:20px;color:white;font-size:24px;cursor:pointer;opacity:0.7;" onclick="this.closest('div').remove()">\u2715</div>
     <img src="${blobUrl}" style="max-width:90vw;max-height:85vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
-    <div style="margin-top:12px;color:rgba(255,255,255,0.6);font-size:13px;">${nombre}</div>`;
+    <div style="margin-top:12px;color:rgba(255,255,255,0.6);font-size:13px;">${esc(nombre)}</div>`;
   overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
   document.body.appendChild(overlay);
 }
@@ -1333,10 +1343,10 @@ async function cargarHistorialDir(nroSolicitud, containerId = "dir-historial") {
             ${ev.tipo==='respuesta'?'\uD83C\uDFE2 ':''}${ev.accion}
           </div>
           <div style="font-size:11px;color:#888;">
-            ${formatFechaHora(ev.fecha)}${ev.usuario?' \u00B7 '+ev.usuario:''}${ev.unidad?' \u00B7 <strong>'+ev.unidad+'</strong>':''}
+            ${formatFechaHora(ev.fecha)}${ev.usuario?' \u00B7 '+esc(ev.usuario):''}${ev.unidad?' \u00B7 <strong>'+esc(ev.unidad)+'</strong>':''}
           </div>
-          ${ev.estAnt?`<div style="font-size:10px;color:#aaa;margin-top:1px;">${ev.estAnt} \u2192 ${ev.estNuevo}</div>`:""}
-          ${ev.obs?`<div style="font-size:12px;color:#374151;background:${ev.tipo==='respuesta'?'#f0fdf4':'#f8fafc'};border-left:3px solid ${dot(ev.tipo,ev.accion)};padding:6px 8px;border-radius:0 6px 6px 0;margin-top:4px;line-height:1.5;">${ev.obs}</div>`:""}
+          ${ev.estAnt?`<div style="font-size:10px;color:#aaa;margin-top:1px;">${esc(ev.estAnt)} \u2192 ${esc(ev.estNuevo)}</div>`:""}
+          ${ev.obs?`<div style="font-size:12px;color:#374151;background:${ev.tipo==='respuesta'?'#f0fdf4':'#f8fafc'};border-left:3px solid ${dot(ev.tipo,ev.accion)};padding:6px 8px;border-radius:0 6px 6px 0;margin-top:4px;line-height:1.5;">${esc(ev.obs)}</div>`:""}
           ${ev.tipo==='respuesta'?`<div id="dir-ev-atts-${ev.evId}" style="margin-top:4px;font-size:11px;color:#9ca3af;">Cargando adjuntos...</div>`:""}
         </div>
       </div>`).join("");
@@ -1370,7 +1380,7 @@ async function cargarHistorialDir(nroSolicitud, containerId = "dir-historial") {
         pdfs.forEach(pdf => {
           const row = document.createElement("div");
           row.style.cssText = "font-size:11px;padding:4px 6px;background:#f8fafc;border:1px solid var(--borde);border-radius:4px;margin-bottom:3px;cursor:pointer;color:var(--azul);";
-          row.innerHTML = `\uD83D\uDCC4 ${pdf.name}`;
+          row.innerHTML = `\uD83D\uDCC4 ${esc(pdf.name)}`;
           row.onclick = async () => { try { window.open(await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl),"_blank"); } catch{} };
           cont.appendChild(row);
         });
@@ -1754,12 +1764,12 @@ function _renderUniLista() {
         return `
         <div class="sol-card ${state.solicitudSeleccionada?.id === s.id ? 'selected' : ''}" onclick="seleccionarSolicitudUnidad('${s.id}')">
           <div class="sol-card-top">
-            <span class="sol-nro">${s.NroSolicitud}</span>
-            <span class="estado-badge estado-${s.Estado}">${s.Estado}</span>
+            <span class="sol-nro">${esc(s.NroSolicitud)}</span>
+            <span class="estado-badge estado-${esc(s.Estado)}">${esc(s.Estado)}</span>
           </div>
-          <div class="sol-card-name">${s.Solicitante}</div>
+          <div class="sol-card-name">${esc(s.Solicitante)}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:2px;">
-            <div class="sol-card-dir" style="margin-top:0;">\uD83D\uDCCD ${s.Direccion || ""}</div>
+            <div class="sol-card-dir" style="margin-top:0;">\uD83D\uDCCD ${esc(s.Direccion || "")}</div>
             ${semBadge}
           </div>
         </div>`;
@@ -1834,7 +1844,7 @@ async function seleccionarSolicitudUnidad(id) {
     if (pdfHeader) {
       pdfHeader.style.display = "flex";
       pdfHeader.innerHTML = `
-        \uD83D\uDCC4 <span style="font-weight:700;margin-left:4px;">${sol.NroSolicitud}</span>
+        \uD83D\uDCC4 <span style="font-weight:700;margin-left:4px;">${esc(sol.NroSolicitud)}</span>
         <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">\u2014 ${first.name}</span>
         <div style="display:flex;align-items:center;gap:4px;margin-left:8px;flex-shrink:0;">
           ${isPdf ? `
@@ -1966,7 +1976,7 @@ ${sem ? `<div class="semaforo" style="background:${sem.bg};color:${sem.color};bo
 <div class="section-title">Solicitante</div>
 <table>
   <tr><th>Nombre</th><td>${sol.Solicitante||"-"}</td><th>RUT</th><td>${sol.Rut||"-"}</td></tr>
-  <tr><th>Direcci\u00F3n</th><td colspan="3">${sol.Direccion||"-"}</td></tr>
+  <tr><th>Direcci\u00F3n</th><td colspan="3">${esc(sol.Direccion||"-")}</td></tr>
   ${sol.Correo?`<tr><th>Correo</th><td colspan="3">${sol.Correo}</td></tr>`:""}
   ${sol.Telefono?`<tr><th>Tel\u00E9fono</th><td colspan="3">${sol.Telefono}</td></tr>`:""}
 </table>
@@ -2036,7 +2046,7 @@ function imprimirSolicitudDirector(sol) {
 <div class="section-title">Solicitante</div>
 <table>
   <tr><th>Nombre</th><td>${sol.Solicitante||"-"}</td><th>RUT</th><td>${sol.Rut||"-"}</td></tr>
-  <tr><th>Direcci\u00F3n</th><td colspan="3">${sol.Direccion||"-"}</td></tr>
+  <tr><th>Direcci\u00F3n</th><td colspan="3">${esc(sol.Direccion||"-")}</td></tr>
   ${sol.Correo?`<tr><th>Correo</th><td colspan="3">${sol.Correo}</td></tr>`:""}
   ${sol.Telefono?`<tr><th>Tel\u00E9fono</th><td colspan="3">${sol.Telefono}</td></tr>`:""}
 </table>
@@ -2111,7 +2121,7 @@ async function renderDetalleUnidad(sol) {
     <div style="overflow-y:auto;height:100%;display:flex;flex-direction:column;gap:0;">
       <button class="mobile-back-bar" onclick="volverAListaMovil('.uni-layout')">\u2190 Volver a lista</button>
       <div class="panel-header" style="background:#f8fafc;border-bottom:1px solid var(--borde);display:flex;align-items:center;gap:8px;">
-        <span style="flex:1;">\uD83D\uDCCB ${sol.NroSolicitud} \u2014 ${sol.Solicitante}</span>
+        <span style="flex:1;">\uD83D\uDCCB ${esc(sol.NroSolicitud)} \u2014 ${esc(sol.Solicitante)}</span>
         <button onclick="imprimirSolicitudUnidad(state.solicitudSeleccionada)"
           style="background:#1a3a6b;color:white;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;"
           title="Imprimir ficha de esta solicitud">\uD83D\uDDA8 Imprimir</button>
@@ -2122,10 +2132,10 @@ async function renderDetalleUnidad(sol) {
       <div style="padding:12px;background:#f8fafc;border-bottom:1px solid var(--borde);">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
           <div><span style="color:#666">Fecha: </span>${formatFecha(sol.FechaRecepcion)}</div>
-          <div><span style="color:#666">Estado: </span><span class="estado-badge estado-${sol.Estado}">${sol.Estado}</span></div>
-          <div style="grid-column:1/-1;"><span style="color:#666">Direcci\u00F3n: </span>${sol.Direccion||"-"}</div>
+          <div><span style="color:#666">Estado: </span><span class="estado-badge estado-${esc(sol.Estado)}">${esc(sol.Estado)}</span></div>
+          <div style="grid-column:1/-1;"><span style="color:#666">Direcci\u00F3n: </span>${esc(sol.Direccion||"-")}</div>
           <div style="grid-column:1/-1;"><span style="color:#666">Solicitud: </span>${sol.Solicitud||"-"}</div>
-          ${sol.ObservacionesDirector ? `<div style="grid-column:1/-1;"><span style="color:#666">Obs. Director: </span>${sol.ObservacionesDirector}</div>` : ""}
+          ${sol.ObservacionesDirector ? `<div style="grid-column:1/-1;"><span style="color:#666">Obs. Director: </span>${esc(sol.ObservacionesDirector)}</div>` : ""}
         </div>
       </div>
 
@@ -2136,7 +2146,7 @@ async function renderDetalleUnidad(sol) {
         ${plazoCierreTexto ? `<div style="font-size:12px;color:#6b21a8;margin-bottom:4px;">\uD83D\uDCC5 Plazo fijado por Director: <strong>${plazoCierreTexto}</strong></div>` : ""}
         ${instruccionDirector ? `
         <div style="background:#ede9fe;border-left:3px solid #7c3aed;padding:8px 10px;border-radius:0 6px 6px 0;font-size:13px;color:#4c1d95;margin-top:4px;">
-          \uD83C\uDFDB\uFE0F <strong>Instrucci\u00F3n del Director:</strong><br>${instruccionDirector}
+          \uD83C\uDFDB\uFE0F <strong>Instrucci\u00F3n del Director:</strong><br>${esc(instruccionDirector)}
         </div>` : ""}
         <div style="font-size:11px;color:#7e22ce;margin-top:8px;">Registra una nueva respuesta para cerrar esta solicitud.</div>
       </div>` : ""}
@@ -2145,7 +2155,7 @@ async function renderDetalleUnidad(sol) {
       ${!esPendienteCierre && instruccionDirector ? `
       <div style="background:#eff6ff;border-left:4px solid #1a3a6b;padding:10px 14px;border-bottom:1px solid #bfdbfe;">
         <div style="font-size:11px;font-weight:700;color:#1a3a6b;margin-bottom:4px;">\uD83C\uDFDB\uFE0F Instrucciones del Director</div>
-        <div style="font-size:13px;color:#1e3a5f;">${instruccionDirector}</div>
+        <div style="font-size:13px;color:#1e3a5f;">${esc(instruccionDirector)}</div>
       </div>` : ""}
 
       <!-- Documentos de la solicitud -->
@@ -2157,8 +2167,8 @@ async function renderDetalleUnidad(sol) {
               const isPdf = a.name?.toLowerCase().endsWith('.pdf');
               const isImg = /\.(jpg|jpeg|png|gif)$/i.test(a.name||'');
               return `<div class="file-item" style="cursor:pointer;border-left:3px solid ${isPdf?'#ef4444':isImg?'#3b82f6':'#6b7280'};"
-                onclick="abrirAdjuntoUnidad('${a.downloadUrl}','${a.serverRelativeUrl}','${a.name}',${isPdf})">
-                <span>${isPdf?'\uD83D\uDCC4':isImg?'\uD83D\uDDBC\uFE0F':'\uD83D\uDCCE'} <strong>${a.name}</strong></span>
+                onclick="_openAdj(this,${isPdf})" data-durl="${esc(a.downloadUrl)}" data-rel="${esc(a.serverRelativeUrl)}" data-name="${esc(a.name)}">
+                <span>${isPdf?'\uD83D\uDCC4':isImg?'\uD83D\uDDBC\uFE0F':'\uD83D\uDCCE'} <strong>${esc(a.name)}</strong></span>
                 <span style="font-size:11px;color:var(--azul);">Ver \u2197</span>
               </div>`;
             }).join('')
@@ -2285,7 +2295,7 @@ async function renderDetalleUnidad(sol) {
       for (const pdf of pdfs) {
         const pdfRow = document.createElement("div");
         pdfRow.style.cssText = "font-size:12px;padding:6px 8px;background:#f8fafc;border:1px solid var(--borde);border-radius:6px;margin-bottom:4px;cursor:pointer;color:var(--azul);font-weight:600;";
-        pdfRow.innerHTML = `\uD83D\uDCC4 ${pdf.name}`;
+        pdfRow.innerHTML = `\uD83D\uDCC4 ${esc(pdf.name)}`;
         pdfRow.onclick = async () => {
           try {
             const blobUrl = await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl);
@@ -2601,10 +2611,10 @@ function filtrarAdmin() {
     const c = ESTADO_COLOR[s.Estado]||"#94a3b8";
     return `<tr style="border-bottom:1px solid var(--borde);" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''">
       <td style="padding:7px 10px;font-weight:700;color:#1a3a6b;">${s.NroSolicitud||`#${s.id}`}</td>
-      <td style="padding:7px 10px;">${s.Solicitante||""}</td>
-      <td style="padding:7px 10px;color:#6b7280;">${s.Direccion||""}</td>
+      <td style="padding:7px 10px;">${esc(s.Solicitante||"")}</td>
+      <td style="padding:7px 10px;color:#6b7280;">${esc(s.Direccion||"")}</td>
       <td style="padding:7px 10px;color:#6b7280;white-space:nowrap;">${formatFecha(s.FechaRecepcion)}</td>
-      <td style="padding:7px 10px;text-align:center;"><span style="background:${c}20;color:${c};padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid ${c}40;">${s.Estado}</span></td>
+      <td style="padding:7px 10px;text-align:center;"><span style="background:${c}20;color:${c};padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid ${c}40;">${esc(s.Estado)}</span></td>
       <td style="padding:7px 10px;font-size:11px;">${s.UnidadDerivada||"\u2014"}</td>
       <td style="padding:7px 10px;text-align:center;">
         <div style="display:flex;gap:5px;align-items:center;justify-content:center;">
@@ -2637,14 +2647,14 @@ function _modalJustificacion(sol, nuevoEstado) {
       <div style="background:white;border-radius:14px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
         <div style="background:linear-gradient(90deg,#0f2547,#1a3a6b);color:white;padding:16px 20px;">
           <div style="font-size:11px;opacity:0.75;font-weight:600;letter-spacing:0.5px;margin-bottom:4px;">CAMBIO DE ESTADO \u2014 ADMINISTRADOR</div>
-          <div style="font-size:17px;font-weight:800;">Solicitud ${sol.NroSolicitud}</div>
-          <div style="font-size:12px;opacity:0.8;margin-top:2px;">${sol.Solicitante || ""}</div>
+          <div style="font-size:17px;font-weight:800;">Solicitud ${esc(sol.NroSolicitud)}</div>
+          <div style="font-size:12px;opacity:0.8;margin-top:2px;">${esc(sol.Solicitante || "")}</div>
         </div>
         <div style="padding:20px;">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;justify-content:center;">
-            <span style="background:${cOld}18;color:${cOld};border:1.5px solid ${cOld}40;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">${sol.Estado}</span>
+            <span style="background:${cOld}18;color:${cOld};border:1.5px solid ${cOld}40;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">${esc(sol.Estado)}</span>
             <span style="font-size:18px;color:#9ca3af;">\u2192</span>
-            <span style="background:${cNew}18;color:${cNew};border:1.5px solid ${cNew}40;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">${nuevoEstado}</span>
+            <span style="background:${cNew}18;color:${cNew};border:1.5px solid ${cNew}40;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;">${esc(nuevoEstado)}</span>
           </div>
           <label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">
             Justificaci\u00F3n del cambio <span style="color:#ef4444;">*</span>
@@ -2850,7 +2860,7 @@ function renderListaUnidades() {
     <div style="background:white;border:1.5px solid ${activo?'var(--borde)':'#fecaca'};border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;">
       <div id="adm-uni-view-${u.id}" style="flex:1;display:flex;align-items:center;gap:10px;">
         <span style="font-size:16px;">\uD83C\uDFE2</span>
-        <span style="font-size:14px;font-weight:600;color:${activo?'#1a3a6b':'#9ca3af'};${activo?'':'text-decoration:line-through;'}">${u.Title}</span>
+        <span style="font-size:14px;font-weight:600;color:${activo?'#1a3a6b':'#9ca3af'};${activo?'':'text-decoration:line-through;'}">${esc(u.Title)}</span>
         <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${activo?'#dcfce7':'#fee2e2'};color:${activo?'#15803d':'#b91c1c'};font-weight:600;">${activo?'Activa':'Inactiva'}</span>
       </div>
       <div id="adm-uni-edit-${u.id}" style="flex:1;display:none;gap:8px;">
@@ -3916,7 +3926,7 @@ function cargarSolicitudEnFormulario(sol) {
       <div style="display:flex;align-items:center;gap:10px;flex:1;padding:10px 16px;">
         <span style="font-size:16px;">${editable ? '\u270F\uFE0F' : '\uD83D\uDC41\uFE0F'}</span>
         <span style="font-weight:600;font-size:13px;opacity:0.9;">${editable ? 'Editando' : 'Viendo'}</span>
-        <span style="font-weight:800;font-size:16px;letter-spacing:0.5px;color:white;">Solicitud #${sol.NroSolicitud}</span>
+        <span style="font-weight:800;font-size:16px;letter-spacing:0.5px;color:white;">Solicitud #${esc(sol.NroSolicitud)}</span>
         <span style="background:rgba(255,255,255,0.2);color:white;font-size:11px;font-weight:700;
               padding:3px 10px;border-radius:12px;letter-spacing:0.3px;">${sol.Estado}</span>
         <button onclick="limpiarSeleccion()" title="Cerrar"
@@ -3941,7 +3951,7 @@ function cargarSolicitudEnFormulario(sol) {
                    display:flex;align-items:center;gap:10px;font-size:13px;color:#64748b;">
          <span style="font-size:20px;">\uD83D\uDC41\uFE0F</span>
          <div>
-           <strong>Solicitud en estado "${sol.Estado}"</strong> \u2014 solo lectura<br>
+           <strong>Solicitud en estado "${esc(sol.Estado)}"</strong> \u2014 solo lectura<br>
            <span style="font-size:12px;">Los datos no pueden modificarse en este estado.</span>
          </div>
        </div>`;
@@ -3981,7 +3991,7 @@ function cargarSolicitudEnFormulario(sol) {
           ${sol.UnidadDerivada?`
           <div class="form-group">
             <label>\uD83D\uDCE4 Unidad Derivada</label>
-            <input type="text" value="${sol.UnidadDerivada}" readonly style="color:#b45309;font-weight:700;">
+            <input type="text" value="${esc(sol.UnidadDerivada)}" readonly style="color:#b45309;font-weight:700;">
           </div>`:''}
           ${sol.MotivoDevolucion?`
           <div class="form-group">
@@ -4071,8 +4081,8 @@ function cargarSolicitudEnFormulario(sol) {
           const isPdf = a.name?.toLowerCase().endsWith('.pdf');
           const isImg = /\.(jpg|jpeg|png)$/i.test(a.name||'');
           return `<div class="file-item" style="cursor:pointer;border-left:3px solid ${isPdf?'#ef4444':isImg?'#3b82f6':'#6b7280'};"
-            onclick="mostrarEnVisor('${a.downloadUrl}','${a.name}',${isPdf},'${sol.NroSolicitud}','${a.serverRelativeUrl}')">
-            <span>${isPdf?'\uD83D\uDCC4':isImg?'\uD83D\uDDBC\uFE0F':'\uD83D\uDCCE'} <strong>${a.name}</strong></span>
+            onclick="mostrarEnVisor('${a.downloadUrl}','${esc(a.name)}',${isPdf},'${esc(sol.NroSolicitud)}','${a.serverRelativeUrl}')">
+            <span>${isPdf?'\uD83D\uDCC4':isImg?'\uD83D\uDDBC\uFE0F':'\uD83D\uDCCE'} <strong>${esc(a.name)}</strong></span>
             <span style="font-size:11px;color:var(--azul);">Ver \u2197</span>
           </div>`;
         }).join('');
@@ -4207,7 +4217,7 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
     header.style.display = "flex";
     header.innerHTML = `
       \uD83D\uDCC4 <span style="font-weight:700;">${nroSolicitud}</span>
-      <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;">\u2014 ${nombre}</span>
+      <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;">\u2014 ${esc(nombre)}</span>
       <span id="visor-loader" style="margin-left:auto;font-size:12px;opacity:0.7;">\u23F3 Cargando...</span>`;
   }
 
@@ -4234,7 +4244,7 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
     if (header) {
       header.innerHTML = `
         \uD83D\uDCC4 <span style="font-weight:700;">${nroSolicitud}</span>
-        <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;">\u2014 ${nombre}</span>
+        <span style="font-weight:400;font-size:12px;opacity:0.8;margin-left:4px;">\u2014 ${esc(nombre)}</span>
         <div style="margin-left:auto;display:flex;gap:6px;">
           <a href="${blobUrl}" download="${nombre}"
             style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);
@@ -4311,7 +4321,7 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
     } else {
       panel.innerHTML = `
         <div class="pdf-visor-empty">
-          <span>\uD83D\uDCCE</span><p>${nombre}</p>
+          <span>\uD83D\uDCCE</span><p>${esc(nombre)}</p>
           <a href="${blobUrl}" download="${nombre}"
             style="color:var(--azul);font-size:13px;font-weight:600;padding:8px 20px;border:1.5px solid var(--azul);border-radius:8px;">
             \u2B07 Descargar archivo
@@ -4324,7 +4334,7 @@ async function mostrarEnVisor(downloadUrl, nombre, isPdf, nroSolicitud, serverRe
     panel.innerHTML = `
       <div class="pdf-visor-empty" style="gap:16px;">
         <span>\uD83D\uDCC4</span>
-        <p style="color:#374151;font-weight:600;">${nombre}</p>
+        <p style="color:#374151;font-weight:600;">${esc(nombre)}</p>
         <p style="color:#9ca3af;font-size:12px;">No se puede mostrar el documento aqu\u00ED,<br>pero puedes abrirlo en SharePoint:</p>
         <a href="${downloadUrl}" target="_blank"
           style="background:var(--azul);color:white;padding:10px 24px;border-radius:8px;

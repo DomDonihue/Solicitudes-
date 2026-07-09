@@ -1,3 +1,12 @@
+// ===== SEGURIDAD: escape para filtros OData (evita inyeccion via comilla simple) =====
+function _odata(s) { return String(s ?? '').replace(/'/g, "''"); }
+
+// ===== SEGURIDAD: escape HTML para plantillas de email =====
+function _escHtml(v) {
+  if (v == null) return '';
+  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 // ===== Cache en memoria con TTL =====
 const _cache = {};
 const _cacheTTL = {
@@ -286,7 +295,7 @@ async function sendEmail(toEmail, subject, body) {
 // ===== Helpers de dominio =====
 
 async function getUserByEmail(email) {
-  const items = await getListItems(CONFIG.lists.usuarios, `Correo eq '${email}'`);
+  const items = await getListItems(CONFIG.lists.usuarios, `Correo eq '${_odata(email)}'`);
   return items[0] || null;
 }
 
@@ -490,7 +499,7 @@ async function registrarHistorial(fields) {
 }
 
 async function getHistorialBySolicitud(nroSolicitud) {
-  return getListItems(CONFIG.lists.historial, `NroSolicitud eq '${nroSolicitud}'`);
+  return getListItems(CONFIG.lists.historial, `NroSolicitud eq '${_odata(nroSolicitud)}'`);
 }
 
 async function getEvidenciasBySolicitud(nroSolicitud, solicitudId = null) {
@@ -551,7 +560,7 @@ async function getDirectores() {
 }
 
 async function getUsuariosByUnidad(unidad) {
-  return getListItems(CONFIG.lists.usuarios, `Unidad eq '${unidad}' and Activo eq 1`);
+  return getListItems(CONFIG.lists.usuarios, `Unidad eq '${_odata(unidad)}' and Activo eq 1`);
 }
 
 // ===== Unidades (SharePoint list UnidadesDOM) =====
@@ -652,13 +661,13 @@ function emailTemplate(sol, accion) {
         <p style="margin:4px 0 0;font-size:13px;opacity:0.85;">Direcci\u00F3n de Obras \u2014 Sistema de Solicitudes</p>
       </div>
       <div style="background:white;padding:24px;border-radius:0 0 8px 8px;border:1px solid #ddd;">
-        <h3 style="color:#1a3a6b;margin-top:0;">${accion}</h3>
+        <h3 style="color:#1a3a6b;margin-top:0;">${_escHtml(accion)}</h3>
         <table style="width:100%;border-collapse:collapse;font-size:14px;">
-          <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;color:#666;width:140px;">Nro Solicitud</td><td style="padding:8px;font-weight:bold;">${sol.NroSolicitud||''}</td></tr>
-          <tr style="border-bottom:1px solid #eee;background:#fafafa;"><td style="padding:8px;color:#666;">Solicitante</td><td style="padding:8px;">${sol.Solicitante||''}</td></tr>
-          <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;color:#666;">Direcci\u00F3n</td><td style="padding:8px;">${sol.Direccion||''}</td></tr>
-          <tr style="border-bottom:1px solid #eee;background:#fafafa;"><td style="padding:8px;color:#666;">Solicitud</td><td style="padding:8px;">${sol.Solicitud||''}</td></tr>
-          <tr><td style="padding:8px;color:#666;">Estado</td><td style="padding:8px;"><span style="background:#1a3a6b;color:white;padding:3px 10px;border-radius:12px;font-size:13px;">${sol.Estado||''}</span></td></tr>
+          <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;color:#666;width:140px;">Nro Solicitud</td><td style="padding:8px;font-weight:bold;">${_escHtml(sol.NroSolicitud||'')}</td></tr>
+          <tr style="border-bottom:1px solid #eee;background:#fafafa;"><td style="padding:8px;color:#666;">Solicitante</td><td style="padding:8px;">${_escHtml(sol.Solicitante||'')}</td></tr>
+          <tr style="border-bottom:1px solid #eee;"><td style="padding:8px;color:#666;">Direcci\u00F3n</td><td style="padding:8px;">${_escHtml(sol.Direccion||'')}</td></tr>
+          <tr style="border-bottom:1px solid #eee;background:#fafafa;"><td style="padding:8px;color:#666;">Solicitud</td><td style="padding:8px;">${_escHtml(sol.Solicitud||'')}</td></tr>
+          <tr><td style="padding:8px;color:#666;">Estado</td><td style="padding:8px;"><span style="background:#1a3a6b;color:white;padding:3px 10px;border-radius:12px;font-size:13px;">${_escHtml(sol.Estado||'')}</span></td></tr>
         </table>
         <div style="margin-top:20px;text-align:center;">
           <a href="${CONFIG.redirectUri}" style="background:#1a3a6b;color:white;padding:12px 28px;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;">Ingresar al Sistema</a>
