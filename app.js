@@ -1375,6 +1375,112 @@ async function cargarHistorialDir(nroSolicitud, containerId = "dir-historial") {
   }
 }
 
+async function generarPDFDerivacion(sol) {
+  const { jsPDF } = window.jspdf;
+  const doc  = new jsPDF({ unit:"mm", format:"a4", orientation:"portrait" });
+  const pw   = 210, margin = 18, cw = pw - 2 * margin;
+  let y = 0;
+
+  // Cabecera azul
+  doc.setFillColor(30, 58, 107);
+  doc.rect(0, 0, pw, 32, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("Direcci\u00F3n de Obras \u2014 Municipalidad de Do\u00F1ihue", margin, 14);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.text("Notificaci\u00F3n de Derivaci\u00F3n de Solicitud \u00B7 Sistema DOM", margin, 23);
+  y = 44;
+
+  // Secci\u00F3n utilitaria
+  const seccion = (titulo) => {
+    doc.setFillColor(30, 58, 107);
+    doc.rect(margin, y, 3, 6, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(30, 58, 107);
+    doc.text(titulo, margin + 5, y + 4.5);
+    y += 11;
+  };
+  const campo = (etiqueta, valor) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(107, 114, 128);
+    doc.text(etiqueta, margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(26, 32, 44);
+    const lineas = doc.splitTextToSize(String(valor || "\u2014"), cw - 44);
+    doc.text(lineas, margin + 44, y);
+    y += Math.max(lineas.length * 4.8, 5.5) + 0.5;
+  };
+
+  seccion("DATOS DE LA SOLICITUD");
+  campo("Nro Solicitud:", sol.NroSolicitud);
+  campo("Fecha de Recepci\u00F3n:", formatFecha(sol.FechaRecepcion));
+  campo("Fecha de Derivaci\u00F3n:", new Date().toLocaleDateString("es-CL", { day:"2-digit", month:"long", year:"numeric" }));
+  campo("Derivado a:", sol.UnidadDerivada || "\u2014");
+  y += 3;
+
+  seccion("ANTECEDENTES DEL SOLICITANTE");
+  campo("Nombre:", sol.Solicitante);
+  campo("RUT:", sol.Rut || "\u2014");
+  campo("Direcci\u00F3n:", sol.Direccion || "\u2014");
+  if (sol.Correo)   campo("Correo:", sol.Correo);
+  if (sol.Telefono) campo("Tel\u00E9fono:", sol.Telefono);
+  y += 3;
+
+  seccion("DESCRIPCI\u00D3N DE LA SOLICITUD");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(55, 65, 81);
+  const descLineas = doc.splitTextToSize(sol.Solicitud || "Sin descripci\u00F3n registrada.", cw);
+  doc.text(descLineas, margin, y);
+  y += descLineas.length * 4.8 + 5;
+
+  if (sol.Acciones) {
+    seccion("INSTRUCCIONES DEL DIRECTOR");
+    const acLineas = doc.splitTextToSize(sol.Acciones, cw);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(55, 65, 81);
+    doc.text(acLineas, margin, y);
+    y += acLineas.length * 4.8 + 5;
+  }
+
+  // Firma \u2014 fija en la parte inferior
+  const fy = 248;
+  const fx = pw - margin - 68;
+
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.25);
+  doc.line(margin, fy - 6, pw - margin, fy - 6);
+
+  if (CONFIG.firmaDirector) {
+    try { doc.addImage(CONFIG.firmaDirector, "JPEG", fx, fy - 34, 68, 28); }
+    catch(e) { console.warn("Error insertar firma:", e); }
+  }
+  doc.setDrawColor(30, 58, 107);
+  doc.setLineWidth(0.6);
+  doc.line(fx, fy, fx + 68, fy);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(30, 58, 107);
+  doc.text("Douglas Seguef Cisterna", fx, fy + 5);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(55, 65, 81);
+  doc.text("Director de Obras Municipales", fx, fy + 10);
+  doc.text("I. Municipalidad de Do\u00F1ihue", fx, fy + 15);
+
+  // Pie
+  doc.setFontSize(7);
+  doc.setTextColor(156, 163, 175);
+  doc.text(`DOM \u00B7 Municipalidad de Do\u00F1ihue \u00B7 ${new Date().toLocaleString("es-CL")}`, margin, 289);
+
+  return doc.output("blob");
+}
+
 async function derivarSolicitud(solId) {
   const unidad = document.getElementById("dir-unidad-derivar")?.value;
   const obs    = document.getElementById("dir-accion-obs")?.value.trim();
@@ -1386,6 +1492,9 @@ async function derivarSolicitud(solId) {
     const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad, FechaDerivacion:new Date().toISOString() };
     if (obs) updateFields.Acciones = obs;
     await actualizarSolicitud(solId, updateFields);
+    sol.UnidadDerivada = unidad;
+    sol.Estado = CONFIG.estados.DERIVADA;
+    if (obs) sol.Acciones = obs;
     registrarHistorial({
       NroSolicitud:sol.NroSolicitud,
       Title:esRederivar ? "Re-derivada a unidad" : "Derivada a unidad",
@@ -1394,7 +1503,15 @@ async function derivarSolicitud(solId) {
       Unidad:unidad, FechaAccion:new Date().toISOString(), Observaciones:obs
     }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
     notificarUnidad({...sol,Estado:CONFIG.estados.DERIVADA},unidad);
-    showToast("success",`\u2705 Derivada a ${unidad}`);
+    // Generar PDF firmado y subir como adjunto
+    showLoading("Generando notificaci\u00F3n firmada...");
+    try {
+      const pdfBlob = await generarPDFDerivacion(sol);
+      await subirBlobAdjunto(CONFIG.lists.solicitudes, solId, pdfBlob, "notificacion-director.pdf");
+    } catch(pdfErr) {
+      console.warn("PDF de derivaci\u00F3n (no cr\u00EDtico):", pdfErr.message);
+    }
+    showToast("success",`\u2705 Derivada a ${unidad} \u00B7 PDF firmado adjunto`);
     await renderDirector();
   } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }

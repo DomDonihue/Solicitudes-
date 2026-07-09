@@ -227,6 +227,21 @@ function comprimirImagen(file, maxPx = 1200, quality = 0.82) {
   });
 }
 
+async function subirBlobAdjunto(listName, itemId, blob, filename) {
+  const token = await getSharePointToken();
+  // Borrar si ya existe (re-derivación)
+  await fetch(
+    `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles/getByFileName('${filename}')`,
+    { method: "POST", headers: { Authorization: `Bearer ${token}`, "IF-MATCH": "*", "X-HTTP-Method": "DELETE" } }
+  ).catch(() => {});
+  const res = await fetch(
+    `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles/add(FileName='${filename}')`,
+    { method: "POST", headers: { Authorization: `Bearer ${token}`, Accept: "application/json;odata=nometadata" }, body: blob }
+  );
+  if (!res.ok) throw new Error(`Error subiendo PDF: ${await res.text()}`);
+  _cacheInvalidate(listName);
+}
+
 async function uploadAttachment(listName, itemId, file) {
   const compressed = await comprimirImagen(file);
   const token = await getSharePointToken();
