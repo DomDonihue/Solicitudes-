@@ -859,16 +859,22 @@ function renderDetalleDirector(sol) {
   }
 
   const sem = calcularSemaforo(sol);
+  const _semTexto = sem ? (
+    sem.dias > 0 ? (sem.dias===1 ? "Vence ma\u00F1ana" : `${sem.dias} d\u00EDas restantes`)
+    : sem.dias===0 ? "\u26A0\uFE0F Vence hoy"
+    : `\u26A0\uFE0F Vencido hace ${Math.abs(sem.dias)} d\u00EDa${Math.abs(sem.dias)>1?'s':''}`) : "";
   const semBanner = sem ? `
     <div style="background:${sem.bg};border-bottom:2px solid ${sem.color};padding:8px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
       <span style="font-size:20px;">${sem.emoji}</span>
       <div style="flex:1;">
         <div style="font-size:12px;font-weight:700;color:${sem.color};">
-          ${sem.dias > 0
-            ? `Plazo: ${sem.dias === 1 ? "Vence ma\u00F1ana" : `${sem.dias} d\u00EDas restantes`}`
-            : sem.dias === 0 ? "\u26A0\uFE0F Vence hoy" : `\u26A0\uFE0F Plazo vencido hace ${Math.abs(sem.dias)} d\u00EDa${Math.abs(sem.dias)>1?'s':''}`}
+          ${sem.tipo==="cierre" ? "Plazo de cierre" : "Plazo de atenci\u00F3n"}: ${_semTexto}
         </div>
-        <div style="font-size:11px;color:${sem.color};opacity:0.8;">L\u00EDmite ${CONFIG.plazoDerivacionDias||15} d\u00EDas \u00B7 Vence el ${formatFecha(sem.vencimiento.toISOString())}</div>
+        <div style="font-size:11px;color:${sem.color};opacity:0.8;">
+          ${sem.tipo==="cierre"
+            ? `Plazo fijado por Director \u00B7 Vence el ${formatFecha(sem.vencimiento.toISOString())}`
+            : `L\u00EDmite ${CONFIG.plazoDerivacionDias||15} d\u00EDas \u00B7 Vence el ${formatFecha(sem.vencimiento.toISOString())}`}
+        </div>
       </div>
     </div>` : "";
 
@@ -1780,14 +1786,25 @@ function verificarVencimientosUnidad() {
     return sem && sem.dias <= umbral;
   });
   if (!criticas.length) return;
-  const hoy    = criticas.filter(s => calcularSemaforo(s).dias === 0);
-  const manana = criticas.filter(s => calcularSemaforo(s).dias === 1);
-  const venc   = criticas.filter(s => calcularSemaforo(s).dias < 0);
-  const partes = [];
-  if (venc.length)   partes.push(`${venc.length} vencida${venc.length>1?'s':''}`);
-  if (hoy.length)    partes.push(`${hoy.length} vence hoy`);
-  if (manana.length) partes.push(`${manana.length} vence ma\u00F1ana`);
-  showToast("error", `\u23F0 Plazo cr\u00EDtico: ${partes.join(" \u00B7 ")}`);
+  // Separar por tipo: atenci\u00F3n (derivadas/en proceso) vs cierre (pendientes de cierre)
+  const atencion = criticas.filter(s => calcularSemaforo(s).tipo !== "cierre");
+  const cierre   = criticas.filter(s => calcularSemaforo(s).tipo === "cierre");
+  const _resumen = (arr, etiqueta) => {
+    if (!arr.length) return null;
+    const venc   = arr.filter(s => calcularSemaforo(s).dias < 0).length;
+    const hoy    = arr.filter(s => calcularSemaforo(s).dias === 0).length;
+    const manana = arr.filter(s => calcularSemaforo(s).dias === 1).length;
+    const partes = [];
+    if (venc)   partes.push(`${venc} vencida${venc>1?'s':''}`);
+    if (hoy)    partes.push(`${hoy} vence hoy`);
+    if (manana) partes.push(`${manana} vence ma\u00F1ana`);
+    return partes.length ? `${etiqueta}: ${partes.join(" \u00B7 ")}` : null;
+  };
+  const msgs = [
+    _resumen(atencion, "\u23F0 Atenci\u00F3n"),
+    _resumen(cierre,   "\uD83D\uDD50 Cierre")
+  ].filter(Boolean);
+  if (msgs.length) showToast("error", msgs.join(" | "));
 }
 function cambiarPaginaUni(p) { state.pagina = p; _renderUniLista(); }
 
@@ -2071,16 +2088,22 @@ async function renderDetalleUnidad(sol) {
   const plazoCierreTexto = placoBruto ? formatFecha(placoBruto) : null;
 
   const sem = calcularSemaforo(sol);
+  const _semTxt2 = sem ? (
+    sem.dias > 0 ? (sem.dias===1 ? "Vence mañana" : `${sem.dias} días restantes`)
+    : sem.dias===0 ? "⚠️ Vence hoy"
+    : `⚠️ Vencido hace ${Math.abs(sem.dias)} día${Math.abs(sem.dias)>1?'s':''}`) : "";
   const semBanner = sem ? `
     <div style="background:${sem.bg};border-bottom:2px solid ${sem.color};padding:8px 14px;display:flex;align-items:center;gap:10px;">
       <span style="font-size:20px;">${sem.emoji}</span>
       <div style="flex:1;">
         <div style="font-size:12px;font-weight:700;color:${sem.color};">
-          ${sem.dias > 0
-            ? `Plazo: ${sem.dias === 1 ? "Vence ma\u00F1ana" : `${sem.dias} d\u00EDas restantes`}`
-            : sem.dias === 0 ? "\u26A0\uFE0F Vence hoy" : `\u26A0\uFE0F Plazo vencido hace ${Math.abs(sem.dias)} d\u00EDa${Math.abs(sem.dias)>1?'s':''}`}
+          ${sem.tipo==="cierre" ? "Plazo de cierre" : "Plazo de atención"}: ${_semTxt2}
         </div>
-        <div style="font-size:11px;color:${sem.color};opacity:0.8;">L\u00EDmite ${CONFIG.plazoDerivacionDias||15} d\u00EDas \u00B7 Vence el ${formatFecha(sem.vencimiento.toISOString())}</div>
+        <div style="font-size:11px;color:${sem.color};opacity:0.8;">
+          ${sem.tipo==="cierre"
+            ? `Plazo fijado por Director · Vence el ${formatFecha(sem.vencimiento.toISOString())}`
+            : `Límite ${CONFIG.plazoDerivacionDias||15} días · Vence el ${formatFecha(sem.vencimiento.toISOString())}`}
+        </div>
       </div>
     </div>` : "";
 
@@ -3659,9 +3682,12 @@ async function actualizarGraficos() {
     }
 
     // \u2500\u2500 Sem\u00E1foro de plazos \u2500\u2500
+    const _esSemaforable = s =>
+      s.Estado===CONFIG.estados.DERIVADA || s.Estado===CONFIG.estados.EN_PROCESO ||
+      (s.Estado===CONFIG.estados.PENDIENTE_CIERRE && !!s.FechaCierre);
     const activasSem = esUnidad
-      ? all.filter(s => (s.UnidadDerivada||"").trim()===miUnidad && (s.Estado===CONFIG.estados.DERIVADA||s.Estado===CONFIG.estados.EN_PROCESO))
-      : all.filter(s => s.Estado===CONFIG.estados.DERIVADA||s.Estado===CONFIG.estados.EN_PROCESO);
+      ? all.filter(s => (s.UnidadDerivada||"").trim()===miUnidad && _esSemaforable(s))
+      : all.filter(_esSemaforable);
     const semVerde    = activasSem.filter(s => { const r=calcularSemaforo(s); return r&&r.dias>3; }).length;
     const semAmarillo = activasSem.filter(s => { const r=calcularSemaforo(s); return r&&r.dias>0&&r.dias<=3; }).length;
     const semRojo     = activasSem.filter(s => { const r=calcularSemaforo(s); return r&&r.dias<=0; }).length;
@@ -4349,6 +4375,20 @@ async function guardarEdicionSolicitud(solId) {
 }
 
 function calcularSemaforo(sol) {
+  // PENDIENTE DE CIERRE: sem\u00E1foro basado en FechaCierre fijada por el Director
+  if (sol.Estado === CONFIG.estados.PENDIENTE_CIERRE) {
+    if (!sol.FechaCierre) return null;
+    const vencimiento = new Date(sol.FechaCierre);
+    if (isNaN(vencimiento)) return null;
+    vencimiento.setHours(23, 59, 59, 999); // fin del d\u00EDa l\u00EDmite
+    const dias = Math.ceil((vencimiento - new Date()) / 864e5);
+    if (dias > 7)  return { color:"#7e22ce", bg:"#fdf4ff", emoji:"\uD83D\uDFE3", texto:`${dias}d`, dias, vencimiento, tipo:"cierre" };
+    if (dias > 3)  return { color:"#7e22ce", bg:"#fdf4ff", emoji:"\uD83D\uDFE1", texto:`${dias}d`, dias, vencimiento, tipo:"cierre" };
+    if (dias > 0)  return { color:"#7f1d1d", bg:"#fecaca", emoji:"\uD83D\uDD34", texto:`${dias}d`, dias, vencimiento, tipo:"cierre" };
+    if (dias === 0) return { color:"#7f1d1d", bg:"#fecaca", emoji:"\uD83D\uDD34", texto:"Hoy",     dias, vencimiento, tipo:"cierre" };
+    return           { color:"#450a0a", bg:"#fee2e2", emoji:"\u26AB", texto:`+${Math.abs(dias)}d`, dias, vencimiento, tipo:"cierre" };
+  }
+  // DERIVADA / EN PROCESO: sem\u00E1foro basado en FechaDerivacion + plazo configurado
   const activos = [CONFIG.estados.DERIVADA, CONFIG.estados.EN_PROCESO];
   if (!activos.includes(sol.Estado)) return null;
   const inicio      = new Date(sol.FechaDerivacion || sol.FechaRecepcion);
