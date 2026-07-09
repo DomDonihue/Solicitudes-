@@ -355,10 +355,27 @@ async function crearCamposHistorial() {
   ]);
 }
 
+async function crearCamposConfiguracion() {
+  // ValorMultilinea permite almacenar contenido extenso (imágenes base64, JSON)
+  await _crearCamposLista(CONFIG.lists.configuracion, [
+    { Title: "ValorMultilinea", FieldTypeKind: 3, __metadata: { type: "SP.FieldMultiLineText" } },
+  ]);
+}
+
+// Claves que usan el campo multi-línea (contenido extenso, ej: imágenes base64)
+const _CFG_MULTILINEA = new Set(["FirmaDirector"]);
+
 async function getConfiguracionDOM() {
   const items = await getListItems(CONFIG.lists.configuracion);
   const cfg = {};
-  items.forEach(i => { if (i.Title && i.Valor !== undefined) cfg[i.Title] = i.Valor; });
+  items.forEach(i => {
+    if (!i.Title) return;
+    // Prefiere ValorMultilinea si la clave lo requiere, cae a Valor si no hay
+    const v = _CFG_MULTILINEA.has(i.Title)
+      ? (i.ValorMultilinea || i.Valor || "")
+      : (i.Valor !== undefined ? i.Valor : (i.ValorMultilinea || ""));
+    cfg[i.Title] = v;
+  });
   return cfg;
 }
 
@@ -366,10 +383,14 @@ async function actualizarConfiguracionDOM(key, valor) {
   _cacheInvalidate(CONFIG.lists.configuracion);
   const items = await getListItems(CONFIG.lists.configuracion);
   const existing = items.find(i => i.Title === key);
+  const esMultilinea = _CFG_MULTILINEA.has(key);
+  const fields = esMultilinea
+    ? { ValorMultilinea: String(valor) }
+    : { Valor: String(valor) };
   if (existing) {
-    await updateListItem(CONFIG.lists.configuracion, existing.id, { Valor: String(valor) });
+    await updateListItem(CONFIG.lists.configuracion, existing.id, fields);
   } else {
-    await createListItem(CONFIG.lists.configuracion, { Title: key, Valor: String(valor) });
+    await createListItem(CONFIG.lists.configuracion, { Title: key, ...fields });
   }
   _cacheInvalidate(CONFIG.lists.configuracion);
 }

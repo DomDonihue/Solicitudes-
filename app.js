@@ -48,8 +48,10 @@ async function initApp() {
     CONFIG.plazoDerivacionDias = parseInt(cfgSP.PlazoDerivacionDias) || 15;
     CONFIG.plazoAlertaDias     = parseInt(cfgSP.PlazoAlertaDias)     || 1;
     CONFIG.correoSoporte       = cfgSP.CorreoSoporte                 || "enovo@mdonihue.cl";
+    CONFIG.firmaDirector       = cfgSP.FirmaDirector                 || null;
     crearCamposEvidencia().catch(console.warn);
     crearCamposHistorial().catch(console.warn);
+    crearCamposConfiguracion().catch(console.warn);
     // Indexar columnas cr\u00EDticas (idempotente \u2014 no hace nada si ya est\u00E1n indexadas)
     crearIndicesSharePoint().catch(console.warn);
     hideLoading();
@@ -1837,6 +1839,25 @@ ${sol.Acciones?`<div class="section-title">Instrucciones del Director</div><div 
   <div style="height:80px;border-bottom:1px dashed #d1d5db;"></div>
   <div style="height:80px;"></div>
 </div>
+${CONFIG.firmaDirector ? `
+<div style="margin-top:28px;display:flex;justify-content:flex-end;">
+  <div style="text-align:center;min-width:220px;">
+    <img src="${CONFIG.firmaDirector}" style="max-height:110px;max-width:260px;object-fit:contain;display:block;margin:0 auto 6px;">
+    <div style="border-top:1.5px solid #1a3a6b;padding-top:6px;font-size:11px;color:#1a3a6b;font-weight:700;">
+      Director de Obras Municipales<br>
+      <span style="font-weight:400;color:#374151;">I. Municipalidad de Do\u00F1ihue</span>
+    </div>
+  </div>
+</div>` : `
+<div style="margin-top:28px;display:flex;justify-content:flex-end;">
+  <div style="text-align:center;min-width:220px;">
+    <div style="height:70px;border-bottom:1.5px solid #1a3a6b;margin-bottom:6px;"></div>
+    <div style="font-size:11px;color:#1a3a6b;font-weight:700;">
+      Director de Obras Municipales<br>
+      <span style="font-weight:400;color:#374151;">I. Municipalidad de Do\u00F1ihue</span>
+    </div>
+  </div>
+</div>`}
 <div class="footer">
   <span>DOM \u00B7 Municipalidad de Do\u00F1ihue</span>
   <span>Impreso: ${new Date().toLocaleString("es-CL")}</span>
@@ -2961,6 +2982,39 @@ async function renderAdmConfiguracion() {
         </div>
       </div>
     </div>
+
+    <!-- Card firma -->
+    <div style="background:white;border:1.5px solid #e8eef6;border-radius:14px;overflow:hidden;margin-bottom:16px;">
+      <div style="background:linear-gradient(90deg,#1e1b4b,#312e81);color:white;padding:14px 20px;">
+        <div style="font-size:13px;font-weight:700;">✍️ Firma y timbre del Director</div>
+        <div style="font-size:11px;opacity:0.75;margin-top:2px;">Aparecerá en la parte inferior de cada solicitud impresa</div>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;">
+          <!-- Vista previa -->
+          <div style="flex:1;min-width:220px;">
+            <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;">Vista previa actual</div>
+            <div id="cfg-firma-preview" style="border:2px dashed #d1d5db;border-radius:10px;min-height:120px;display:flex;align-items:center;justify-content:center;background:#fafafa;overflow:hidden;padding:8px;">
+              ${CONFIG.firmaDirector
+                ? `<img src="${CONFIG.firmaDirector}" style="max-height:110px;max-width:100%;object-fit:contain;">`
+                : `<span style="font-size:12px;color:#9ca3af;text-align:center;">Sin firma cargada</span>`}
+            </div>
+          </div>
+          <!-- Controles -->
+          <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-size:12px;font-weight:700;color:#374151;">Cargar nueva firma</div>
+            <div style="font-size:11px;color:#6b7280;">PNG o JPG con fondo blanco o transparente. Se comprimirá automáticamente.</div>
+            <label style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#f1f5f9;border:1.5px solid #d1d5db;border-radius:8px;cursor:pointer;font-size:13px;color:#374151;font-weight:600;">
+              📁 Seleccionar imagen
+              <input type="file" id="cfg-firma-file" accept="image/png,image/jpeg,image/jpg" style="display:none;" onchange="_cfgFirmaPreview(this)">
+            </label>
+            <div id="cfg-firma-err" style="display:none;font-size:11px;color:#dc2626;"></div>
+            <button id="cfg-firma-save" onclick="guardarFirmaAdmin()" class="btn-primary" style="padding:9px 18px;font-size:13px;font-weight:700;display:none;">💾 Guardar firma</button>
+            ${CONFIG.firmaDirector ? `<button onclick="eliminarFirmaAdmin()" style="padding:8px 14px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:8px;color:#b91c1c;font-size:12px;font-weight:600;cursor:pointer;">🗑️ Eliminar firma</button>` : ""}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>`;
 
   _cfgActualizarPreview();
@@ -3014,6 +3068,74 @@ async function guardarConfiguracionAdmin() {
     showToast("success", `✅ Guardado: ${plazo} días máx, alerta a ${alerta} día(s)`);
     renderAdmin("config");
   } catch(e) { showToast("error", "Error al guardar: " + e.message); }
+  finally { hideLoading(); }
+}
+
+function _cfgFirmaPreview(input) {
+  const file = input.files[0];
+  const errEl = document.getElementById("cfg-firma-err");
+  const saveBtn = document.getElementById("cfg-firma-save");
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    errEl.textContent = "La imagen no puede superar 5 MB.";
+    errEl.style.display = "block";
+    return;
+  }
+  errEl.style.display = "none";
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      // Redimensionar a máximo 500x250 para reducir tamaño de base64
+      const MAX_W = 500, MAX_H = 250;
+      let w = img.width, h = img.height;
+      if (w > MAX_W || h > MAX_H) {
+        const ratio = Math.min(MAX_W/w, MAX_H/h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      const b64 = canvas.toDataURL("image/jpeg", 0.85);
+      // Mostrar preview
+      const prev = document.getElementById("cfg-firma-preview");
+      if (prev) prev.innerHTML = `<img src="${b64}" style="max-height:110px;max-width:100%;object-fit:contain;">`;
+      // Guardar en input temporal para usar al guardar
+      input._b64 = b64;
+      if (saveBtn) saveBtn.style.display = "inline-flex";
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function guardarFirmaAdmin() {
+  const input = document.getElementById("cfg-firma-file");
+  const b64 = input?._b64;
+  if (!b64) { showToast("error", "Selecciona una imagen primero"); return; }
+  showLoading("Guardando firma...");
+  try {
+    await actualizarConfiguracionDOM("FirmaDirector", b64);
+    CONFIG.firmaDirector = b64;
+    showToast("success", "✅ Firma guardada correctamente");
+    renderAdmin("config");
+  } catch(e) { showToast("error", "Error al guardar firma: " + e.message); }
+  finally { hideLoading(); }
+}
+
+async function eliminarFirmaAdmin() {
+  if (!confirm("¿Eliminar la firma del Director? Ya no aparecerá en los documentos impresos.")) return;
+  showLoading("Eliminando firma...");
+  try {
+    await actualizarConfiguracionDOM("FirmaDirector", "");
+    CONFIG.firmaDirector = null;
+    showToast("success", "Firma eliminada");
+    renderAdmin("config");
+  } catch(e) { showToast("error", "Error: " + e.message); }
   finally { hideLoading(); }
 }
 
