@@ -837,6 +837,7 @@ function renderDetalleDirector(sol) {
     if (cont) cont.innerHTML = `<div class="pdf-visor-empty" style="height:100%;"><span>\uD83C\uDFDB\uFE0F</span><p>Selecciona una solicitud</p></div>`;
     return;
   }
+  window._solDirActual = sol;
 
   const esDerivable       = sol.Estado === CONFIG.estados.INGRESADA || sol.Estado === CONFIG.estados.DEVUELTA;
   const esCerrable        = sol.Estado === CONFIG.estados.RESPONDIDA || sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
@@ -1055,6 +1056,12 @@ function renderDetalleDirector(sol) {
         <div style="text-align:center;color:#9ca3af;font-size:12px;padding:10px;">Clic en "ver" para cargar</div>
       </div>
     </div>
+
+    <!-- Bot\u00F3n imprimir -->
+    <button onclick="imprimirSolicitudDirector(window._solDirActual)"
+      style="width:100%;padding:11px;background:#1e3a5f;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;">
+      \uD83D\uDDA8\uFE0F Imprimir / Guardar PDF
+    </button>
 
   </div>`;
 
@@ -1838,25 +1845,82 @@ ${sol.Acciones?`<div class="section-title">Instrucciones del Director</div><div 
   <div style="height:80px;border-bottom:1px dashed #d1d5db;"></div>
   <div style="height:80px;"></div>
 </div>
-${CONFIG.firmaDirector ? `
-<div style="margin-top:28px;display:flex;justify-content:flex-end;">
-  <div style="text-align:center;min-width:220px;">
-    <img src="${CONFIG.firmaDirector}" style="max-height:110px;max-width:260px;object-fit:contain;display:block;margin:0 auto 6px;">
-    <div style="border-top:1.5px solid #1a3a6b;padding-top:6px;font-size:11px;color:#1a3a6b;font-weight:700;">
-      Director de Obras Municipales<br>
+<div class="footer">
+  <span>DOM \u00B7 Municipalidad de Do\u00F1ihue</span>
+  <span>Impreso: ${new Date().toLocaleString("es-CL")}</span>
+</div>
+</body></html>`);
+  w.document.close();
+  w.focus();
+}
+
+function imprimirSolicitudDirector(sol) {
+  if (!sol) return;
+  const w = window.open("", "_blank");
+  if (!w) { showToast("error","El navegador bloque\u00F3 la ventana emergente. Permite ventanas emergentes para este sitio."); return; }
+  const firma = CONFIG.firmaDirector;
+  w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Solicitud ${sol.NroSolicitud} \u2014 DOM Do\u00F1ihue</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Segoe UI',Arial,sans-serif; font-size:13px; color:#1a202c; background:#fff; padding:28px; }
+  .header { display:flex; align-items:center; gap:16px; border-bottom:3px solid #1a3a6b; padding-bottom:14px; margin-bottom:18px; }
+  .header h1 { font-size:17px; color:#1a3a6b; font-weight:800; }
+  .header p  { font-size:11px; color:#6b7280; margin-top:2px; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;
+    background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+  table { width:100%; border-collapse:collapse; margin-bottom:14px; }
+  th { background:#f1f5f9; color:#475569; font-size:10px; font-weight:700; letter-spacing:0.5px;
+    text-transform:uppercase; padding:7px 10px; text-align:left; border:1px solid #e2e8f0; }
+  td { padding:8px 10px; border:1px solid #e2e8f0; vertical-align:top; line-height:1.5; }
+  .section-title { font-size:11px; font-weight:800; color:#1a3a6b; text-transform:uppercase;
+    letter-spacing:0.5px; margin:16px 0 6px; border-left:3px solid #1a3a6b; padding-left:8px; }
+  .descripcion { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px;
+    padding:12px; font-size:13px; line-height:1.7; margin-bottom:14px; white-space:pre-wrap; }
+  .footer { margin-top:24px; border-top:1px solid #e2e8f0; padding-top:10px;
+    font-size:10px; color:#9ca3af; display:flex; justify-content:space-between; }
+  @media print {
+    body { padding:12px; }
+    .no-print { display:none !important; }
+  }
+</style></head><body>
+<div class="header">
+  <div>
+    <h1>Direcci\u00F3n de Obras \u2014 Municipalidad de Do\u00F1ihue</h1>
+    <p>Registro de Solicitud \u00B7 Sistema DOM</p>
+  </div>
+</div>
+<button class="no-print" onclick="window.print()"
+  style="margin-bottom:16px;padding:8px 18px;background:#1a3a6b;color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">
+  \uD83D\uDDA8\uFE0F Imprimir / Guardar PDF
+</button>
+<div class="section-title">Datos de la Solicitud</div>
+<table>
+  <tr><th>Nro Solicitud</th><td><strong>${sol.NroSolicitud||"-"}</strong></td><th>Estado</th><td><span class="badge">${sol.Estado||"-"}</span></td></tr>
+  <tr><th>Fecha Recepci\u00F3n</th><td>${formatFecha(sol.FechaRecepcion)}</td><th>Unidad</th><td>${sol.UnidadDerivada||"-"}</td></tr>
+</table>
+<div class="section-title">Solicitante</div>
+<table>
+  <tr><th>Nombre</th><td>${sol.Solicitante||"-"}</td><th>RUT</th><td>${sol.Rut||"-"}</td></tr>
+  <tr><th>Direcci\u00F3n</th><td colspan="3">${sol.Direccion||"-"}</td></tr>
+  ${sol.Correo?`<tr><th>Correo</th><td colspan="3">${sol.Correo}</td></tr>`:""}
+  ${sol.Telefono?`<tr><th>Tel\u00E9fono</th><td colspan="3">${sol.Telefono}</td></tr>`:""}
+</table>
+<div class="section-title">Descripci\u00F3n</div>
+<div class="descripcion">${sol.Solicitud||"Sin descripci\u00F3n registrada"}</div>
+${sol.Acciones?`<div class="section-title">Instrucciones del Director</div><div class="descripcion">${sol.Acciones}</div>`:""}
+<div style="margin-top:32px;display:flex;justify-content:flex-end;">
+  <div style="text-align:center;min-width:240px;">
+    ${firma
+      ? `<img src="${firma}" style="max-height:120px;max-width:280px;object-fit:contain;display:block;margin:0 auto 8px;">`
+      : `<div style="height:80px;"></div>`}
+    <div style="border-top:2px solid #1a3a6b;padding-top:8px;font-size:11px;color:#1a3a6b;font-weight:800;">
+      Douglas Seguef Cisterna<br>
+      <span style="font-weight:600;">Director de Obras Municipales</span><br>
       <span style="font-weight:400;color:#374151;">I. Municipalidad de Do\u00F1ihue</span>
     </div>
   </div>
-</div>` : `
-<div style="margin-top:28px;display:flex;justify-content:flex-end;">
-  <div style="text-align:center;min-width:220px;">
-    <div style="height:70px;border-bottom:1.5px solid #1a3a6b;margin-bottom:6px;"></div>
-    <div style="font-size:11px;color:#1a3a6b;font-weight:700;">
-      Director de Obras Municipales<br>
-      <span style="font-weight:400;color:#374151;">I. Municipalidad de Do\u00F1ihue</span>
-    </div>
-  </div>
-</div>`}
+</div>
 <div class="footer">
   <span>DOM \u00B7 Municipalidad de Do\u00F1ihue</span>
   <span>Impreso: ${new Date().toLocaleString("es-CL")}</span>
