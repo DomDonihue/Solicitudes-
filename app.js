@@ -962,7 +962,7 @@ function renderDetalleDirector(sol) {
         <!-- Desde Respondida: marcar pendiente o cerrar directo -->
         <div style="background:#fdf4ff;border:1.5px solid #d8b4fe;border-radius:10px;padding:12px;margin-bottom:10px;">
           <div style="font-size:12px;font-weight:700;color:#7e22ce;margin-bottom:6px;">\u23F3 Marcar Pendiente de Cierre</div>
-          <p style="font-size:11px;color:#6b21a8;margin:0 0 8px;">Queda en evaluaci\u00F3n hasta generar el parte final (inspecci\u00F3n, multa o soluci\u00F3n).</p>
+          <p style="font-size:11px;color:#6b21a8;margin:0 0 8px;">Queda en evaluaci\u00F3n hasta generar el parte final (inspecci\u00F3n o notificaci\u00F3n).</p>
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
             <label style="font-size:11px;font-weight:600;color:#7e22ce;white-space:nowrap;">Plazo hasta:</label>
             <input type="date" id="dir-plazo-cierre" style="flex:1;padding:5px 8px;border:1.5px solid #d8b4fe;border-radius:6px;font-size:12px;">
@@ -981,44 +981,22 @@ function renderDetalleDirector(sol) {
           </button>
         </div>` : `
 
-        <!-- Desde Pendiente de Cierre: Soluci\u00F3n o Multa -->
-        <p style="font-size:12px;color:#555;margin:0 0 12px;">\u23F3 En plazo de evaluaci\u00F3n. Selecciona c\u00F3mo se resolvi\u00F3:</p>
+        <!-- Desde Pendiente de Cierre: Cierre por soluci\u00F3n -->
+        <p style="font-size:12px;color:#555;margin:0 0 12px;">\u23F3 En plazo de evaluaci\u00F3n. Registra c\u00F3mo se resolvi\u00F3 la solicitud:</p>
 
-        <!-- OPCI\u00D3N A: Soluci\u00F3n ejecutada -->
-        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:8px;">\u2705 Se Solucion\u00F3</div>
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;">
+          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:8px;">\u2705 Cierre de Solicitud</div>
           <label style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">N\u00B0 Parte / Informe <span style="color:#ef4444;">*</span></label>
           <input type="text" id="dir-cierre-parte"
             placeholder="Ej: Parte N\u00B0 123-2026"
             style="width:100%;padding:7px 9px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;box-sizing:border-box;margin-bottom:8px;">
-          <label style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Descripci\u00F3n de la soluci\u00F3n <span style="color:#ef4444;">*</span></label>
+          <label style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Descripci\u00F3n del cierre <span style="color:#ef4444;">*</span></label>
           <textarea id="dir-cierre-solucion-obs" rows="2"
-            placeholder="Detalla c\u00F3mo se resolvi\u00F3 (obra ejecutada, inspecci\u00F3n realizada, etc.)"
+            placeholder="Detalla c\u00F3mo se resolvi\u00F3 (obra ejecutada, inspecci\u00F3n realizada, notificaci\u00F3n emitida, etc.)"
             style="width:100%;padding:7px 9px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;resize:vertical;box-sizing:border-box;margin-bottom:8px;"></textarea>
           <button onclick="cerrarPorSolucion('${sol.id}')"
             style="width:100%;padding:10px;background:#15803d;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">
-            \u2705 Cerrar \u2014 Soluci\u00F3n Ejecutada
-          </button>
-        </div>
-
-        <!-- OPCI\u00D3N B: Multa aplicada -->
-        <div style="background:#fefce8;border:1.5px solid #fde047;border-radius:10px;padding:12px;">
-          <div style="font-size:12px;font-weight:700;color:#854d0e;margin-bottom:8px;">\uD83D\uDCCB Se Aplic\u00F3 Multa</div>
-          <label style="font-size:10px;font-weight:700;color:#854d0e;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">N\u00B0 Informe de Multa <span style="color:#ef4444;">*</span></label>
-          <input type="text" id="dir-multa-nro"
-            placeholder="Ej: Informe N\u00B0 045-2026"
-            style="width:100%;padding:7px 9px;border:1.5px solid #fde047;border-radius:7px;font-size:12px;box-sizing:border-box;margin-bottom:8px;">
-          <label style="font-size:10px;font-weight:700;color:#854d0e;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Monto de la multa (UTM)</label>
-          <input type="text" id="dir-multa-monto"
-            placeholder="Ej: 5 UTM (opcional)"
-            style="width:100%;padding:7px 9px;border:1.5px solid #fde047;border-radius:7px;font-size:12px;box-sizing:border-box;margin-bottom:8px;">
-          <label style="font-size:10px;font-weight:700;color:#854d0e;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Observaciones <span style="color:#ef4444;">*</span></label>
-          <textarea id="dir-multa-obs" rows="2"
-            placeholder="Motivo y detalle de la multa aplicada"
-            style="width:100%;padding:7px 9px;border:1.5px solid #fde047;border-radius:7px;font-size:12px;resize:vertical;box-sizing:border-box;margin-bottom:8px;"></textarea>
-          <button onclick="cerrarPorMulta('${sol.id}')"
-            style="width:100%;padding:10px;background:#b45309;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">
-            \uD83D\uDCCB Cerrar \u2014 Multa Aplicada
+            \u2705 Cerrar Solicitud
           </button>
         </div>`}
 
@@ -1608,30 +1586,6 @@ async function cerrarPorSolucion(solId) {
   finally { hideLoading(); }
 }
 
-async function cerrarPorMulta(solId) {
-  const nro   = document.getElementById("dir-multa-nro")?.value.trim();
-  const monto = document.getElementById("dir-multa-monto")?.value.trim();
-  const obs   = document.getElementById("dir-multa-obs")?.value.trim();
-  if (!nro) { showToast("error", "Ingresa el N\u00B0 de Informe de Multa."); return; }
-  if (!obs) { showToast("error", "Ingresa las observaciones de la multa."); return; }
-  if (!confirm(`\u00BFCerrar solicitud como "Multa Aplicada"?\nInforme: ${nro}${monto ? ' | ' + monto : ''}`)) return;
-  showLoading("Cerrando solicitud...");
-  try {
-    const sol = state.solicitudes.find(s => s.id === solId);
-    await actualizarSolicitud(solId, { Estado: CONFIG.estados.CERRADA });
-    await registrarHistorial({
-      NroSolicitud: sol.NroSolicitud,
-      Title: `Cierre por Multa \u2014 ${nro}`,
-      EstadoAnterior: sol.Estado, EstadoNuevo: CONFIG.estados.CERRADA,
-      UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
-      Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(),
-      Observaciones: `Informe multa: ${nro}${monto ? ' | Monto: ' + monto : ''} | ${obs}`
-    });
-    showToast("success", `\uD83D\uDCCB Solicitud ${sol.NroSolicitud} cerrada \u2014 Multa aplicada`);
-    await renderDirector();
-  } catch(e) { showToast("error", "Error: " + e.message); }
-  finally { hideLoading(); }
-}
 
 async function reabrirSolicitud(solId) {
   const nuevoEstado = document.getElementById("dir-reabrir-estado")?.value;
