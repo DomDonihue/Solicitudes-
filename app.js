@@ -1473,8 +1473,10 @@ async function generarPDFDerivacion(sol) {
   doc.line(margin, fy - 6, pw - margin, fy - 6);
 
   if (CONFIG.firmaDirector) {
-    try { doc.addImage(CONFIG.firmaDirector, "JPEG", fx, fy - 34, 68, 28); }
-    catch(e) { console.warn("Error insertar firma:", e); }
+    try {
+      const fmt = CONFIG.firmaDirector.startsWith("data:image/png") ? "PNG" : "JPEG";
+      doc.addImage(CONFIG.firmaDirector, fmt, fx, fy - 34, 68, 28);
+    } catch(e) { console.warn("Error insertar firma:", e); }
   }
   doc.setDrawColor(30, 58, 107);
   doc.setLineWidth(0.6);
@@ -1482,7 +1484,7 @@ async function generarPDFDerivacion(sol) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(30, 58, 107);
-  doc.text("Douglas Seguef Cisterna", fx, fy + 5);
+  doc.text("Douglas Seguel Cisterna", fx, fy + 5);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(55, 65, 81);
@@ -1519,15 +1521,22 @@ async function derivarSolicitud(solId) {
       Unidad:unidad, FechaAccion:new Date().toISOString(), Observaciones:obs
     }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
     notificarUnidad({...sol,Estado:CONFIG.estados.DERIVADA},unidad);
-    // Generar PDF firmado y subir como adjunto
-    showLoading("Generando notificaci\u00F3n firmada...");
+    // Generar PDF firmado y reemplazar adjuntos PDF del ciudadano
+    showLoading("Generando documento firmado...");
     try {
       const pdfBlob = await generarPDFDerivacion(sol);
+      // Eliminar PDFs originales del ciudadano para que quede solo el firmado
+      const adjActuales = await getListItemAttachments(CONFIG.lists.solicitudes, solId).catch(() => []);
+      await Promise.all(
+        adjActuales
+          .filter(a => /\.pdf$/i.test(a.name) && a.name !== "notificacion-director.pdf")
+          .map(a => eliminarAdjuntoItem(CONFIG.lists.solicitudes, solId, a.name).catch(() => {}))
+      );
       await subirBlobAdjunto(CONFIG.lists.solicitudes, solId, pdfBlob, "notificacion-director.pdf");
     } catch(pdfErr) {
       console.warn("PDF de derivaci\u00F3n (no cr\u00EDtico):", pdfErr.message);
     }
-    showToast("success",`\u2705 Derivada a ${unidad} \u00B7 PDF firmado adjunto`);
+    showToast("success",`\u2705 Derivada a ${unidad} \u00B7 Documento firmado`);
     await renderDirector();
   } catch(e) { showToast("error","Error: "+e.message); }
   finally { hideLoading(); }

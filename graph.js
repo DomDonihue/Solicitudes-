@@ -251,6 +251,14 @@ async function subirBlobAdjunto(listName, itemId, blob, filename) {
   _cacheInvalidate(listName);
 }
 
+async function eliminarAdjuntoItem(listName, itemId, filename) {
+  const token = await getSharePointToken();
+  await fetch(
+    `${SP_BASE}/web/lists/getbytitle('${encodeURIComponent(listName)}')/items(${itemId})/AttachmentFiles/getByFileName('${filename.replace(/'/g, "''")}')`,
+    { method: "POST", headers: { Authorization: `Bearer ${token}`, "IF-MATCH": "*", "X-HTTP-Method": "DELETE" } }
+  );
+}
+
 async function uploadAttachment(listName, itemId, file) {
   const compressed = await comprimirImagen(file);
   const token = await getSharePointToken();
