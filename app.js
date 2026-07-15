@@ -981,22 +981,16 @@ function renderDetalleDirector(sol) {
           </button>
         </div>` : `
 
-        <!-- Desde Pendiente de Cierre: Cierre por soluci\u00F3n -->
-        <p style="font-size:12px;color:#555;margin:0 0 12px;">\u23F3 En plazo de evaluaci\u00F3n. Registra c\u00F3mo se resolvi\u00F3 la solicitud:</p>
-
-        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;">
-          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:8px;">\u2705 Cierre de Solicitud</div>
-          <label style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">N\u00B0 Parte / Informe <span style="color:#ef4444;">*</span></label>
-          <input type="text" id="dir-cierre-parte"
-            placeholder="Ej: Parte N\u00B0 123-2026"
-            style="width:100%;padding:7px 9px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;box-sizing:border-box;margin-bottom:8px;">
-          <label style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Descripci\u00F3n del cierre <span style="color:#ef4444;">*</span></label>
-          <textarea id="dir-cierre-solucion-obs" rows="2"
-            placeholder="Detalla c\u00F3mo se resolvi\u00F3 (obra ejecutada, inspecci\u00F3n realizada, notificaci\u00F3n emitida, etc.)"
-            style="width:100%;padding:7px 9px;border:1.5px solid #86efac;border-radius:7px;font-size:12px;resize:vertical;box-sizing:border-box;margin-bottom:8px;"></textarea>
+        <!-- Desde Pendiente de Cierre: dos botones simples -->
+        <p style="font-size:12px;color:#555;margin:0 0 12px;">\u23F3 En plazo de evaluaci\u00F3n. Revisa la respuesta de la unidad y decide:</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
           <button onclick="cerrarPorSolucion('${sol.id}')"
-            style="width:100%;padding:10px;background:#15803d;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">
-            \u2705 Cerrar Solicitud
+            style="width:100%;padding:12px;background:#15803d;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">
+            \u2705 Cerrar Solicitud \u2014 Conforme con la respuesta
+          </button>
+          <button onclick="devolverAUnidad('${sol.id}')"
+            style="width:100%;padding:12px;background:#b45309;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">
+            \uD83D\uDD04 Devolver a la Unidad \u2014 No conforme con la respuesta
           </button>
         </div>`}
 
@@ -1563,24 +1557,40 @@ async function cerrarSolicitud(solId) {
 }
 
 async function cerrarPorSolucion(solId) {
-  const parte = document.getElementById("dir-cierre-parte")?.value.trim();
-  const obs   = document.getElementById("dir-cierre-solucion-obs")?.value.trim();
-  if (!parte) { showToast("error", "Ingresa el N\u00B0 de Parte o Informe."); return; }
-  if (!obs)   { showToast("error", "Describe la soluci\u00F3n ejecutada."); return; }
-  if (!confirm(`\u00BFCerrar solicitud como "Soluci\u00F3n Ejecutada"?\nParte: ${parte}`)) return;
+  if (!confirm("\u00BFConfirmas el cierre de la solicitud?")) return;
   showLoading("Cerrando solicitud...");
   try {
     const sol = state.solicitudes.find(s => s.id === solId);
     await actualizarSolicitud(solId, { Estado: CONFIG.estados.CERRADA });
     await registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Title: `Cierre por Soluci\u00F3n \u2014 ${parte}`,
+      Title: "Solicitud cerrada \u2014 Conforme con respuesta",
       EstadoAnterior: sol.Estado, EstadoNuevo: CONFIG.estados.CERRADA,
       UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
       Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(),
-      Observaciones: `Parte/Informe: ${parte} | ${obs}`
+      Observaciones: "Director conforme con la respuesta de la unidad"
     });
-    showToast("success", `\u2705 Solicitud ${sol.NroSolicitud} cerrada \u2014 Soluci\u00F3n ejecutada`);
+    showToast("success", `\u2705 Solicitud ${sol.NroSolicitud} cerrada`);
+    await renderDirector();
+  } catch(e) { showToast("error", "Error: " + e.message); }
+  finally { hideLoading(); }
+}
+
+async function devolverAUnidad(solId) {
+  if (!confirm("\u00BFDevolver la solicitud a la unidad para que completen la respuesta?")) return;
+  showLoading("Devolviendo a la unidad...");
+  try {
+    const sol = state.solicitudes.find(s => s.id === solId);
+    await actualizarSolicitud(solId, { Estado: CONFIG.estados.EN_PROCESO });
+    await registrarHistorial({
+      NroSolicitud: sol.NroSolicitud,
+      Title: "Devuelta a unidad \u2014 Director no conforme",
+      EstadoAnterior: sol.Estado, EstadoNuevo: CONFIG.estados.EN_PROCESO,
+      UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
+      Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(),
+      Observaciones: "Director no conforme con la respuesta. Solicitud devuelta para nueva gesti\u00F3n."
+    });
+    showToast("success", `\uD83D\uDD04 Solicitud ${sol.NroSolicitud} devuelta a la unidad`);
     await renderDirector();
   } catch(e) { showToast("error", "Error: " + e.message); }
   finally { hideLoading(); }
