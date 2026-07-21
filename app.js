@@ -129,9 +129,10 @@ function buildTabs() {
 
   const tabs = [];
   if (rol === CONFIG.roles.ADMIN) {
-    tabs.push({ id: "admin",     icon: "\uD83D\uDEE1\uFE0F", label: "Administraci\u00F3n" });
-    tabs.push({ id: "gestion",   icon: "\u2699\uFE0F", label: "Gesti\u00F3n" });
-    tabs.push({ id: "graficos",  icon: "\uD83D\uDCCA", label: "Reportes" });
+    tabs.push({ id: "admin",       icon: "\uD83D\uDEE1\uFE0F", label: "Administraci\u00F3n" });
+    tabs.push({ id: "solicitudes", icon: "\uD83D\uDCCB", label: "Ingreso Solicitudes" });
+    tabs.push({ id: "gestion",     icon: "\u2699\uFE0F", label: "Gesti\u00F3n" });
+    tabs.push({ id: "graficos",    icon: "\uD83D\uDCCA", label: "Reportes" });
   }
   if (rol === CONFIG.roles.SECRETARIA) {
     tabs.push({ id: "solicitudes", icon: "\uD83D\uDCCB", label: "Ingreso Solicitudes" });
