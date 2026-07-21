@@ -1492,11 +1492,11 @@ async function derivarSolicitud(solId) {
     showLoading("Generando documento firmado...");
     try {
       const pdfBlob = await generarPDFDerivacion(sol);
-      // Eliminar PDFs originales del ciudadano para que quede solo el firmado
+      // Eliminar TODOS los adjuntos previos (PDF e imágenes) para que quede solo el firmado
       const adjActuales = await getListItemAttachments(CONFIG.lists.solicitudes, solId).catch(() => []);
       await Promise.all(
         adjActuales
-          .filter(a => /\.pdf$/i.test(a.name) && a.name !== "notificacion-director.pdf")
+          .filter(a => !/^notificacion-director\.pdf$/i.test(a.name))
           .map(a => eliminarAdjuntoItem(CONFIG.lists.solicitudes, solId, a.name).catch(() => {}))
       );
       await subirBlobAdjunto(CONFIG.lists.solicitudes, solId, pdfBlob, "notificacion-director.pdf");
