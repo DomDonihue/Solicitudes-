@@ -1045,12 +1045,6 @@ function renderDetalleDirector(sol) {
       </div>
     </div>
 
-    <!-- Bot\u00F3n imprimir -->
-    <button onclick="imprimirSolicitudDirector(window._solDirActual)"
-      style="width:100%;padding:11px;background:#1e3a5f;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;">
-      \uD83D\uDDA8\uFE0F Imprimir / Guardar PDF
-    </button>
-
   </div>`;
 
   // Setear fecha plazo siempre en tiempo real (evita cach\u00E9 del template)
@@ -1936,10 +1930,6 @@ function imprimirSolicitudUnidad(sol) {
     <p>Registro de Solicitud \u00B7 Sistema DOM</p>
   </div>
 </div>
-<button class="no-print" onclick="window.print()"
-  style="margin-bottom:16px;padding:8px 18px;background:#1a3a6b;color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">
-  \uD83D\uDDA8 Imprimir / Guardar PDF
-</button>
 ${sem ? `<div class="semaforo" style="background:${sem.bg};color:${sem.color};border-color:${sem.color}40;">${semTexto}</div>` : ""}
 <div class="section-title">Datos de la Solicitud</div>
 <table>
@@ -2007,10 +1997,6 @@ function imprimirSolicitudDirector(sol) {
     <p>Registro de Solicitud \u00B7 Sistema DOM</p>
   </div>
 </div>
-<button class="no-print" onclick="window.print()"
-  style="margin-bottom:16px;padding:8px 18px;background:#1a3a6b;color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">
-  \uD83D\uDDA8\uFE0F Imprimir / Guardar PDF
-</button>
 <div class="section-title">Datos de la Solicitud</div>
 <table>
   <tr><th>Nro Solicitud</th><td><strong>${sol.NroSolicitud||"-"}</strong></td><th>Estado</th><td><span class="badge">${sol.Estado||"-"}</span></td></tr>
