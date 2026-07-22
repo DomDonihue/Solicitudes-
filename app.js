@@ -1531,7 +1531,7 @@ async function generarPDFDerivacion(sol) {
 
 // Estampa la firma del Director sobre el documento del ciudadano (PDF o imagen)
 async function firmarAdjuntoConFirma(blob, filename, firmaDataUrl) {
-  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const { PDFDocument } = PDFLib;
   let pdfDoc;
 
   const esPdf = /\.pdf$/i.test(filename) || blob.type.includes('pdf');
@@ -1565,22 +1565,6 @@ async function firmarAdjuntoConFirma(blob, filename, firmaDataUrl) {
   const fy = margin + 55; // base de la imagen desde el pie
 
   lastPage.drawImage(firmaImg, { x: fx, y: fy, width: fw, height: fh });
-
-  // Línea separadora y texto de identificación
-  lastPage.drawLine({
-    start: { x: fx, y: fy - 3 }, end: { x: fx + fw, y: fy - 3 },
-    thickness: 0.6, color: rgb(0.12, 0.23, 0.42)
-  });
-
-  try {
-    const bold   = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    const normal = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    lastPage.drawText('Douglas Seguel Cisterna',     { x: fx, y: fy - 13, size: 7.5, font: bold,   color: rgb(0.12, 0.23, 0.42) });
-    lastPage.drawText('Director de Obras Municipales', { x: fx, y: fy - 23, size: 7,   font: normal, color: rgb(0.22, 0.25, 0.28) });
-    lastPage.drawText('I. Municipalidad de Donihue',   { x: fx, y: fy - 32, size: 7,   font: normal, color: rgb(0.22, 0.25, 0.28) });
-    const fecha = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
-    lastPage.drawText(fecha, { x: fx, y: fy - 42, size: 6.5, font: normal, color: rgb(0.4, 0.4, 0.4) });
-  } catch(e) { console.warn("Texto firma (no crítico):", e); }
 
   const bytes = await pdfDoc.save();
   return new Blob([bytes], { type: 'application/pdf' });
