@@ -2716,10 +2716,132 @@ function filtrarAdmin() {
             ${TODOS_ESTADOS.filter(e=>e!==s.Estado).map(e=>`<option value="${e}">${e}</option>`).join("")}
           </select>
           <button onclick="cambiarEstadoAdmin('${s.id}')" style="padding:4px 9px;background:#312e81;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600;">\u2713</button>
+          <button onclick="abrirEditorSolicitudAdmin('${s.id}')" style="padding:4px 9px;background:#0e7490;color:white;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600;" title="Editar datos y adjuntos">\u270f\ufe0f</button>
         </div>
       </td>
     </tr>`;
   }).join("");
+}
+
+// ===== EDITOR DE SOLICITUD (solo Administrador) =====
+async function abrirEditorSolicitudAdmin(solId) {
+  const sol = _adminSolicitudes.find(s => s.id === solId);
+  if (!sol) return;
+
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;";
+  overlay.id = "adm-editor-overlay";
+
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:14px;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden;">
+      <div style="background:linear-gradient(90deg,#0e7490,#0891b2);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="color:white;font-weight:700;font-size:15px;">✏️ Editar Solicitud ${esc(sol.NroSolicitud)} <span style="font-weight:400;font-size:12px;opacity:0.8;">— Estado: ${esc(sol.Estado)}</span></div>
+        <button onclick="document.getElementById('adm-editor-overlay').remove()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Nombre Solicitante</label>
+          <input id="adm-ed-nombre" value="${esc(sol.Solicitante||'')}" style="width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Dirección</label>
+          <input id="adm-ed-dir" value="${esc(sol.Direccion||'')}" style="width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Teléfono</label>
+          <input id="adm-ed-tel" value="${esc(sol.Telefono||'')}" style="width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Descripción</label>
+          <textarea id="adm-ed-desc" rows="3" style="width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:13px;resize:vertical;box-sizing:border-box;">${esc(sol.Solicitud||'')}</textarea>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">📎 Adjuntos actuales</label>
+          <div id="adm-ed-adjuntos" style="font-size:12px;color:#9ca3af;">Cargando...</div>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">📤 Agregar adjuntos</label>
+          <input type="file" id="adm-ed-files" multiple accept=".pdf,.jpg,.jpeg,.png"
+            style="width:100%;font-size:12px;padding:6px;border:1.5px dashed #d1d5db;border-radius:7px;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <button onclick="guardarEdicionAdmin('${solId}')"
+            style="flex:1;padding:11px;background:#0e7490;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;">
+            💾 Guardar cambios
+          </button>
+          <button onclick="document.getElementById('adm-editor-overlay').remove()"
+            style="padding:11px 18px;border:1.5px solid #d1d5db;border-radius:8px;background:white;cursor:pointer;font-size:13px;color:#666;">
+            Cancelar
+          </button>
+        </div>
+        <p style="font-size:10px;color:#9ca3af;margin:0;text-align:center;">El estado de la solicitud no cambia al guardar.</p>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  // Cargar adjuntos actuales
+  try {
+    const atts = await getListItemAttachments(CONFIG.lists.solicitudes, solId);
+    const cont = document.getElementById("adm-ed-adjuntos");
+    if (!cont) return;
+    if (!atts.length) { cont.innerHTML = `<span style="color:#9ca3af;">Sin adjuntos</span>`; return; }
+    cont.innerHTML = atts.map(a => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:#f8fafc;border-radius:6px;margin-bottom:4px;">
+        <span style="font-size:12px;">📄 ${esc(a.name)}</span>
+        <button onclick="eliminarAdjAdmin('${solId}','${esc(a.name)}')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;font-weight:700;">Eliminar</button>
+      </div>`).join("");
+  } catch { }
+}
+
+async function eliminarAdjAdmin(solId, nombre) {
+  if (!confirm(`¿Eliminar "${nombre}"?`)) return;
+  try {
+    await eliminarAdjuntoItem(CONFIG.lists.solicitudes, solId, nombre);
+    // Refrescar la lista de adjuntos en el modal
+    const atts = await getListItemAttachments(CONFIG.lists.solicitudes, solId);
+    const cont = document.getElementById("adm-ed-adjuntos");
+    if (!cont) return;
+    if (!atts.length) { cont.innerHTML = `<span style="color:#9ca3af;">Sin adjuntos</span>`; return; }
+    cont.innerHTML = atts.map(a => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:#f8fafc;border-radius:6px;margin-bottom:4px;">
+        <span style="font-size:12px;">📄 ${esc(a.name)}</span>
+        <button onclick="eliminarAdjAdmin('${solId}','${esc(a.name)}')" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;font-weight:700;">Eliminar</button>
+      </div>`).join("");
+    showToast("success", "Adjunto eliminado");
+  } catch(e) { showToast("error", "Error: " + e.message); }
+}
+
+async function guardarEdicionAdmin(solId) {
+  const nombre = document.getElementById("adm-ed-nombre")?.value.trim();
+  const dir    = document.getElementById("adm-ed-dir")?.value.trim();
+  const tel    = document.getElementById("adm-ed-tel")?.value.trim();
+  const desc   = document.getElementById("adm-ed-desc")?.value.trim();
+  const files  = document.getElementById("adm-ed-files")?.files;
+
+  if (!nombre) { showToast("error", "El nombre es obligatorio"); return; }
+
+  showLoading("Guardando...");
+  try {
+    const updates = { Solicitante: nombre, Direccion: dir, Solicitud: desc };
+    if (tel) updates.Telefono = tel;
+    await actualizarSolicitud(solId, updates);
+
+    if (files && files.length > 0) {
+      for (const file of Array.from(files)) {
+        await uploadAttachment(CONFIG.lists.solicitudes, solId, file).catch(e => console.warn("Adjunto:", e));
+      }
+    }
+
+    // Actualizar en memoria sin cambiar estado
+    const sol = _adminSolicitudes.find(s => s.id === solId);
+    if (sol) { sol.Solicitante = nombre; sol.Direccion = dir; sol.Solicitud = desc; if (tel) sol.Telefono = tel; }
+
+    document.getElementById("adm-editor-overlay")?.remove();
+    filtrarAdmin();
+    showToast("success", "✅ Solicitud actualizada");
+  } catch(e) { showToast("error", "Error: " + e.message); }
+  finally { hideLoading(); }
 }
 
 function _modalJustificacion(sol, nuevoEstado) {
