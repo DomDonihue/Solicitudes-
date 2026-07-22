@@ -488,6 +488,25 @@ async function actualizarSolicitud(itemId, fields) {
   return updateListItem(CONFIG.lists.solicitudes, itemId, fields);
 }
 
+// ===== SOLICITANTES =====
+async function getSolicitantes() {
+  return getListItems(CONFIG.lists.solicitantes);
+}
+
+async function guardarOActualizarSolicitante({ nombre, direccion, telefono }) {
+  if (!nombre) return;
+  _cacheInvalidate(CONFIG.lists.solicitantes);
+  const existentes = await getListItems(CONFIG.lists.solicitantes, `Title eq '${_odata(nombre)}'`);
+  if (existentes.length > 0) {
+    const updates = {};
+    if (direccion) updates.Direccion = direccion;
+    if (telefono)  updates.Telefono  = telefono;
+    if (Object.keys(updates).length) await updateListItem(CONFIG.lists.solicitantes, existentes[0].id, updates);
+  } else {
+    await createListItem(CONFIG.lists.solicitantes, { Title: nombre, Direccion: direccion || "", Telefono: telefono || "" });
+  }
+}
+
 async function registrarHistorial(fields) {
   const mapped = { ...fields };
   if (mapped.Title !== undefined && mapped.Accion === undefined) mapped.Accion = mapped.Title;

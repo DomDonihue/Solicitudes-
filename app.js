@@ -384,9 +384,11 @@ function renderFormNueva() {
             <input type="date" id="nueva-fecha" value="${new Date().toISOString().split('T')[0]}">
           </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="position:relative;">
           <label>* Nombre Solicitante</label>
-          <input type="text" id="nueva-solicitante" placeholder="Nombre completo del solicitante">
+          <input type="text" id="nueva-solicitante" placeholder="Nombre completo del solicitante"
+            oninput="sugerirSolicitante(this.value)" autocomplete="off">
+          <div id="sol-sugerencias" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #d1d5db;border-top:none;border-radius:0 0 8px 8px;z-index:200;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.12);"></div>
         </div>
         <div class="form-group">
           <label>* Direcci\u00F3n</label>
@@ -498,6 +500,56 @@ function limpiarFormNueva() {
   renderFormNueva();
 }
 
+// ===== AUTOCOMPLETE SOLICITANTES =====
+let _solSugerencias = [];
+let _solSugTimer = null;
+
+async function sugerirSolicitante(query) {
+  clearTimeout(_solSugTimer);
+  const cont = document.getElementById("sol-sugerencias");
+  if (!cont) return;
+  if (!query || query.length < 2) { cont.style.display = "none"; return; }
+
+  _solSugTimer = setTimeout(async () => {
+    try {
+      const todos = await getSolicitantes();
+      const q = query.toLowerCase();
+      _solSugerencias = todos
+        .filter(s => s.Title && s.Title.toLowerCase().includes(q))
+        .slice(0, 8);
+
+      if (!_solSugerencias.length) { cont.style.display = "none"; return; }
+
+      cont.innerHTML = _solSugerencias.map((s, i) => `
+        <div onmousedown="seleccionarSolicitante(${i})"
+          style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #f3f4f6;">
+          <div style="font-weight:600;font-size:13px;">${esc(s.Title)}</div>
+          ${s.Direccion ? `<div style="font-size:11px;color:#6b7280;">${esc(s.Direccion)}${s.Telefono ? ' · ' + esc(s.Telefono) : ''}</div>` : ''}
+        </div>`).join('');
+      cont.style.display = "block";
+    } catch { cont.style.display = "none"; }
+  }, 300);
+}
+
+function seleccionarSolicitante(idx) {
+  const s = _solSugerencias[idx];
+  if (!s) return;
+  const nameEl = document.getElementById("nueva-solicitante");
+  const dirEl  = document.getElementById("nueva-dir");
+  const telEl  = document.getElementById("nueva-telefono");
+  const cont   = document.getElementById("sol-sugerencias");
+  if (nameEl) nameEl.value = s.Title || "";
+  if (dirEl  && s.Direccion) dirEl.value  = s.Direccion;
+  if (telEl  && s.Telefono)  telEl.value  = s.Telefono;
+  if (cont) cont.style.display = "none";
+}
+
+document.addEventListener("click", e => {
+  const cont = document.getElementById("sol-sugerencias");
+  if (cont && !cont.contains(e.target) && e.target.id !== "nueva-solicitante")
+    cont.style.display = "none";
+});
+
 async function guardarSolicitud() {
   const nro = document.getElementById("nueva-nro")?.value.trim();
   const fecha = document.getElementById("nueva-fecha")?.value;
@@ -553,6 +605,10 @@ async function guardarSolicitud() {
 
     // Notificar director (fire-and-forget)
     notificarDirector(item, "Nueva solicitud ingresada");
+
+    // Guardar/actualizar registro del solicitante (fire-and-forget)
+    guardarOActualizarSolicitante({ nombre: sol, direccion: dir, telefono: tel })
+      .catch(e => console.warn("Solicitante (no cr\u00edtico):", e.message));
 
     state.adjuntosNueva = [];
     showToast("success", `\u2705 Solicitud ${nro} guardada correctamente`);
