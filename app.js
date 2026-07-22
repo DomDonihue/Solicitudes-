@@ -1529,6 +1529,63 @@ async function generarPDFDerivacion(sol) {
   return doc.output("blob");
 }
 
+// Estampa la firma del Director sobre el documento del ciudadano (PDF o imagen)
+async function firmarAdjuntoConFirma(blob, filename, firmaDataUrl) {
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  let pdfDoc;
+
+  const esPdf = /\.pdf$/i.test(filename) || blob.type.includes('pdf');
+  if (esPdf) {
+    const buf = await blob.arrayBuffer();
+    pdfDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
+  } else {
+    // Imagen: incrustar como página PDF
+    pdfDoc = await PDFDocument.create();
+    const imgBuf = await blob.arrayBuffer();
+    const esJpg = /\.(jpg|jpeg)$/i.test(filename) || blob.type.includes('jpeg');
+    const img = esJpg ? await pdfDoc.embedJpg(imgBuf) : await pdfDoc.embedPng(imgBuf);
+    const scale = Math.min(595 / img.width, 842 / img.height);
+    const w = img.width * scale, h = img.height * scale;
+    const page = pdfDoc.addPage([595, 842]);
+    page.drawImage(img, { x: (595 - w) / 2, y: (842 - h) / 2, width: w, height: h });
+  }
+
+  // Estampar firma en la última página
+  const lastPage = pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+  const { width } = lastPage.getSize();
+
+  const base64 = firmaDataUrl.split(',')[1];
+  const firmaBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  const firmaImg = firmaDataUrl.startsWith('data:image/png')
+    ? await pdfDoc.embedPng(firmaBytes)
+    : await pdfDoc.embedJpg(firmaBytes);
+
+  const margin = 36, fw = 150, fh = 60;
+  const fx = width - fw - margin;
+  const fy = margin + 55; // base de la imagen desde el pie
+
+  lastPage.drawImage(firmaImg, { x: fx, y: fy, width: fw, height: fh });
+
+  // Línea separadora y texto de identificación
+  lastPage.drawLine({
+    start: { x: fx, y: fy - 3 }, end: { x: fx + fw, y: fy - 3 },
+    thickness: 0.6, color: rgb(0.12, 0.23, 0.42)
+  });
+
+  try {
+    const bold   = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const normal = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    lastPage.drawText('Douglas Seguel Cisterna',     { x: fx, y: fy - 13, size: 7.5, font: bold,   color: rgb(0.12, 0.23, 0.42) });
+    lastPage.drawText('Director de Obras Municipales', { x: fx, y: fy - 23, size: 7,   font: normal, color: rgb(0.22, 0.25, 0.28) });
+    lastPage.drawText('I. Municipalidad de Donihue',   { x: fx, y: fy - 32, size: 7,   font: normal, color: rgb(0.22, 0.25, 0.28) });
+    const fecha = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
+    lastPage.drawText(fecha, { x: fx, y: fy - 42, size: 6.5, font: normal, color: rgb(0.4, 0.4, 0.4) });
+  } catch(e) { console.warn("Texto firma (no crítico):", e); }
+
+  const bytes = await pdfDoc.save();
+  return new Blob([bytes], { type: 'application/pdf' });
+}
+
 async function derivarSolicitud(solId) {
   const unidad = document.getElementById("dir-unidad-derivar")?.value;
   const obs    = document.getElementById("dir-accion-obs")?.value.trim();
@@ -1551,20 +1608,33 @@ async function derivarSolicitud(solId) {
       Unidad:unidad, FechaAccion:new Date().toISOString(), Observaciones:obs
     }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
     notificarUnidad({...sol,Estado:CONFIG.estados.DERIVADA},unidad);
-    // Generar PDF firmado y reemplazar adjuntos PDF del ciudadano
-    showLoading("Generando documento firmado...");
+    // Estampar firma del Director sobre el documento del ciudadano
+    showLoading("Firmando documento...");
     try {
-      const pdfBlob = await generarPDFDerivacion(sol);
-      // Solo eliminar notificacion-director.pdf anterior (re-derivación), conservar docs del ciudadano
       const adjActuales = await getListItemAttachments(CONFIG.lists.solicitudes, solId).catch(() => []);
-      await Promise.all(
-        adjActuales
-          .filter(a => /^notificacion-director\.pdf$/i.test(a.name))
-          .map(a => eliminarAdjuntoItem(CONFIG.lists.solicitudes, solId, a.name).catch(() => {}))
-      );
-      await subirBlobAdjunto(CONFIG.lists.solicitudes, solId, pdfBlob, "notificacion-director.pdf");
+      // Eliminar firmado.pdf anterior si existe (re-derivacion)
+      const firmadoAnterior = adjActuales.find(a => /^firmado\.pdf$/i.test(a.name));
+      if (firmadoAnterior) await eliminarAdjuntoItem(CONFIG.lists.solicitudes, solId, firmadoAnterior.name).catch(() => {});
+
+      const docCiudadano = adjActuales.find(a => /\.pdf$/i.test(a.name) && !/^firmado\.pdf$/i.test(a.name))
+                        || adjActuales.find(a => /\.(jpg|jpeg|png)$/i.test(a.name));
+
+      if (docCiudadano && CONFIG.firmaDirector) {
+        const token = await getSharePointToken();
+        const safeUrl = docCiudadano.serverRelativeUrl.replace(/'/g, "''");
+        const res = await fetch(`${SP_BASE}/web/getfilebyserverrelativeurl('${safeUrl}')/$value`,
+          { headers: { Authorization: `Bearer ${token}`, Accept: "application/octet-stream,*/*" } });
+        if (!res.ok) throw new Error("No se pudo descargar el documento");
+        const blob = await res.blob();
+        const firmadoBlob = await firmarAdjuntoConFirma(blob, docCiudadano.name, CONFIG.firmaDirector);
+        await subirBlobAdjunto(CONFIG.lists.solicitudes, solId, firmadoBlob, "firmado.pdf");
+      } else if (CONFIG.firmaDirector) {
+        // Sin documento del ciudadano: generar PDF estandar con datos de la solicitud
+        const pdfBlob = await generarPDFDerivacion(sol);
+        await subirBlobAdjunto(CONFIG.lists.solicitudes, solId, pdfBlob, "firmado.pdf");
+      }
     } catch(pdfErr) {
-      console.warn("PDF de derivaci\u00F3n (no cr\u00EDtico):", pdfErr.message);
+      console.warn("Firma (no critico):", pdfErr.message);
     }
     showToast("success",`\u2705 Derivada a ${unidad} \u00B7 Documento firmado`);
     await renderDirector();
