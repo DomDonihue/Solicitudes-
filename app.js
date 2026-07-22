@@ -524,7 +524,7 @@ async function sugerirSolicitante(query) {
         <div onmousedown="seleccionarSolicitante(${i})"
           style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #f3f4f6;">
           <div style="font-weight:600;font-size:13px;">${esc(s.Title)}</div>
-          ${s.Direccion ? `<div style="font-size:11px;color:#6b7280;">${esc(s.Direccion)}${s.Telefono ? ' · ' + esc(s.Telefono) : ''}</div>` : ''}
+          ${s.Telefono ? `<div style="font-size:11px;color:#6b7280;">📞 ${esc(s.Telefono)}</div>` : ''}
         </div>`).join('');
       cont.style.display = "block";
     } catch { cont.style.display = "none"; }
@@ -535,13 +535,13 @@ function seleccionarSolicitante(idx) {
   const s = _solSugerencias[idx];
   if (!s) return;
   const nameEl = document.getElementById("nueva-solicitante");
-  const dirEl  = document.getElementById("nueva-dir");
   const telEl  = document.getElementById("nueva-telefono");
   const cont   = document.getElementById("sol-sugerencias");
   if (nameEl) nameEl.value = s.Title || "";
-  if (dirEl  && s.Direccion) dirEl.value  = s.Direccion;
-  if (telEl  && s.Telefono)  telEl.value  = s.Telefono;
+  if (telEl && s.Telefono) telEl.value = s.Telefono;
+  // Dirección no se rellena: varía por cada solicitud
   if (cont) cont.style.display = "none";
+  document.getElementById("nueva-dir")?.focus();
 }
 
 document.addEventListener("click", e => {
@@ -607,7 +607,7 @@ async function guardarSolicitud() {
     notificarDirector(item, "Nueva solicitud ingresada");
 
     // Guardar/actualizar registro del solicitante (fire-and-forget)
-    guardarOActualizarSolicitante({ nombre: sol, direccion: dir, telefono: tel })
+    guardarOActualizarSolicitante({ nombre: sol, telefono: tel })
       .catch(e => console.warn("Solicitante (no cr\u00edtico):", e.message));
 
     state.adjuntosNueva = [];

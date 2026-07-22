@@ -493,17 +493,14 @@ async function getSolicitantes() {
   return getListItems(CONFIG.lists.solicitantes);
 }
 
-async function guardarOActualizarSolicitante({ nombre, direccion, telefono }) {
+async function guardarOActualizarSolicitante({ nombre, telefono }) {
   if (!nombre) return;
   _cacheInvalidate(CONFIG.lists.solicitantes);
   const existentes = await getListItems(CONFIG.lists.solicitantes, `Title eq '${_odata(nombre)}'`);
   if (existentes.length > 0) {
-    const updates = {};
-    if (direccion) updates.Direccion = direccion;
-    if (telefono)  updates.Telefono  = telefono;
-    if (Object.keys(updates).length) await updateListItem(CONFIG.lists.solicitantes, existentes[0].id, updates);
+    if (telefono) await updateListItem(CONFIG.lists.solicitantes, existentes[0].id, { Telefono: telefono });
   } else {
-    await createListItem(CONFIG.lists.solicitantes, { Title: nombre, Direccion: direccion || "", Telefono: telefono || "" });
+    await createListItem(CONFIG.lists.solicitantes, { Title: nombre, Telefono: telefono || "" });
   }
 }
 
