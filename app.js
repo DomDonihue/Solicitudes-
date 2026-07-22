@@ -393,6 +393,10 @@ function renderFormNueva() {
           <input type="text" id="nueva-dir" placeholder="Calle, n\u00FAmero, villa/sector">
         </div>
         <div class="form-group">
+          <label>Tel\u00E9fono</label>
+          <input type="tel" id="nueva-telefono" placeholder="Ej: +56 9 1234 5678">
+        </div>
+        <div class="form-group">
           <label>Descripci\u00F3n de la solicitud</label>
           <textarea id="nueva-solicitud" rows="3" placeholder="Resumen del motivo de la solicitud..."></textarea>
         </div>
@@ -499,6 +503,7 @@ async function guardarSolicitud() {
   const fecha = document.getElementById("nueva-fecha")?.value;
   const sol = document.getElementById("nueva-solicitante")?.value.trim();
   const dir = document.getElementById("nueva-dir")?.value.trim();
+  const tel = document.getElementById("nueva-telefono")?.value.trim();
   const desc = document.getElementById("nueva-solicitud")?.value.trim();
 
   if (!nro || !fecha || !sol || !dir) {
@@ -515,14 +520,16 @@ async function guardarSolicitud() {
 
   showLoading("Guardando solicitud...");
   try {
-    const item = await crearSolicitud({
+    const fields = {
       NroSolicitud: nro,
       FechaRecepcion: fecha,
       Solicitante: sol,
       Direccion: dir,
       Solicitud: desc,
       Estado: CONFIG.estados.INGRESADA
-    });
+    };
+    if (tel) fields.Telefono = tel;
+    const item = await crearSolicitud(fields);
 
     // Upload attachments
     if (state.adjuntosNueva.length > 0) {
@@ -1492,11 +1499,11 @@ async function derivarSolicitud(solId) {
     showLoading("Generando documento firmado...");
     try {
       const pdfBlob = await generarPDFDerivacion(sol);
-      // Eliminar TODOS los adjuntos previos (PDF e imágenes) para que quede solo el firmado
+      // Solo eliminar notificacion-director.pdf anterior (re-derivación), conservar docs del ciudadano
       const adjActuales = await getListItemAttachments(CONFIG.lists.solicitudes, solId).catch(() => []);
       await Promise.all(
         adjActuales
-          .filter(a => !/^notificacion-director\.pdf$/i.test(a.name))
+          .filter(a => /^notificacion-director\.pdf$/i.test(a.name))
           .map(a => eliminarAdjuntoItem(CONFIG.lists.solicitudes, solId, a.name).catch(() => {}))
       );
       await subirBlobAdjunto(CONFIG.lists.solicitudes, solId, pdfBlob, "notificacion-director.pdf");
