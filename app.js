@@ -1886,7 +1886,7 @@ ${sem ? `<div class="semaforo" style="background:${sem.bg};color:${sem.color};bo
 </table>
 <div class="section-title">Descripci\u00F3n</div>
 <div class="descripcion">${sol.Solicitud||"Sin descripci\u00F3n registrada"}</div>
-${sol.Acciones?`<div class="section-title">Instrucciones del Director</div><div class="descripcion">${sol.Acciones}</div>`:""}
+${sol.Acciones?`<div class="section-title">Instrucciones / Notas de Derivación</div><div class="descripcion">${sol.Acciones}</div>`:""}
 <div style="margin-top:20px;border:1px solid #e2e8f0;border-radius:6px;padding:14px;">
   <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">Observaciones / Respuesta de la Unidad</div>
   <div style="height:80px;border-bottom:1px dashed #d1d5db;"></div>
@@ -1952,7 +1952,7 @@ function imprimirSolicitudDirector(sol) {
 </table>
 <div class="section-title">Descripci\u00F3n</div>
 <div class="descripcion">${sol.Solicitud||"Sin descripci\u00F3n registrada"}</div>
-${sol.Acciones?`<div class="section-title">Instrucciones del Director</div><div class="descripcion">${sol.Acciones}</div>`:""}
+${sol.Acciones?`<div class="section-title">Instrucciones / Notas de Derivación</div><div class="descripcion">${sol.Acciones}</div>`:""}
 <div style="margin-top:32px;display:flex;justify-content:flex-end;">
   <div style="text-align:center;min-width:240px;">
     ${firma
@@ -2054,7 +2054,7 @@ async function renderDetalleUnidad(sol) {
       <!-- Instrucciones del director (otros estados) -->
       ${!esPendienteCierre && instruccionDirector ? `
       <div style="background:#eff6ff;border-left:4px solid #1a3a6b;padding:10px 14px;border-bottom:1px solid #bfdbfe;">
-        <div style="font-size:11px;font-weight:700;color:#1a3a6b;margin-bottom:4px;">\uD83C\uDFDB\uFE0F Instrucciones del Director</div>
+        <div style="font-size:11px;font-weight:700;color:#1a3a6b;margin-bottom:4px;">\uD83C\uDFDB\uFE0F Instrucciones / Notas de Derivaci\u00F3n</div>
         <div style="font-size:13px;color:#1e3a5f;">${esc(instruccionDirector)}</div>
       </div>` : ""}
 
@@ -2124,6 +2124,19 @@ async function renderDetalleUnidad(sol) {
             <div id="uni-ev-preview" style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;"></div>
           </div>
         </div>
+        ${!esPendienteCierre ? `
+        <div class="form-section">
+          <div class="form-section-body" style="display:flex;align-items:center;gap:8px;padding:10px;">
+            <input type="checkbox" id="uni-derivar-al-responder" onchange="document.getElementById('uni-derivar-al-responder-wrap').style.display=this.checked?'block':'none'" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+            <label for="uni-derivar-al-responder" style="font-size:12px;font-weight:600;color:#374151;cursor:pointer;">\uD83D\uDCE4 Esta respuesta resuelve mi parte \u2014 derivar a otra unidad</label>
+          </div>
+          <div id="uni-derivar-al-responder-wrap" style="display:none;padding:0 10px 10px;">
+            <select id="uni-unidad-derivar-resp" style="width:100%;">
+              <option value="">\u2014 Seleccionar unidad de destino \u2014</option>
+              ${CONFIG.unidades.filter(u=>u!==state.usuario.Unidad).map(u=>`<option>${u}</option>`).join("")}
+            </select>
+          </div>
+        </div>` : ""}
         <button class="btn-success" onclick="responderSolicitud('${sol.id}')"
           style="width:100%;padding:13px;font-size:14px;${esPendienteCierre?'background:linear-gradient(90deg,#7e22ce,#9333ea);':''}">
           ${esPendienteCierre ? "\uD83D\uDCCB Registrar 2\u00AA Respuesta" : "\u2705 Responder \u2014 Registrar Soluci\u00F3n"}
@@ -2132,6 +2145,20 @@ async function renderDetalleUnidad(sol) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <button class="btn-primary" style="background:#0e7490;padding:10px;" onclick="enProcesoSolicitud('${sol.id}')">\u2699\uFE0F En Proceso</button>
           <button class="btn-warning" style="padding:10px;" onclick="devolverSolicitudUnidad('${sol.id}')">\u21A9\uFE0F Devolver</button>
+        </div>` : ""}
+        ${!esPendienteCierre ? `
+        <div class="accion-panel">
+          <div class="accion-header derivar">\uD83D\uDCE4 Derivar a otra unidad</div>
+          <div class="accion-body">
+            <label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Unidad de destino</label>
+            <select id="uni-unidad-derivar">
+              <option value="">\u2014 Seleccionar unidad \u2014</option>
+              ${CONFIG.unidades.filter(u=>u!==state.usuario.Unidad).map(u=>`<option>${u}</option>`).join("")}
+            </select>
+            <label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin:8px 0 6px;">Nota para la unidad destino (opcional)</label>
+            <textarea id="uni-derivar-obs" rows="2" placeholder="Ej: Ya se realiz\u00F3 la poda, falta retiro de escombros..."></textarea>
+            <button class="btn-primary" style="width:100%;padding:10px;margin-top:8px;" onclick="derivarSolicitudUnidad('${sol.id}')">\uD83D\uDCE4 Derivar a otra unidad</button>
+          </div>
         </div>` : ""}
       </div>` : `
       <div style="padding:14px;">
@@ -2238,14 +2265,26 @@ async function responderSolicitud(solId) {
   const files = _evFiles.length > 0 ? _evFiles : Array.from(document.getElementById("uni-ev-files")?.files||[]);
   if (!obs) { showToast("error", "Ingresa una observaci\u00F3n"); return; }
 
+  const sol = state.solicitudes.find(s => s.id === solId);
+  const esPendienteCierre = sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
+  const derivarAlResponder = !esPendienteCierre && document.getElementById("uni-derivar-al-responder")?.checked;
+  const unidadDestinoResp = derivarAlResponder ? document.getElementById("uni-unidad-derivar-resp")?.value : "";
+  if (derivarAlResponder && !unidadDestinoResp) { showToast("error", "Selecciona la unidad de destino"); return; }
+
   showLoading("Respondiendo...");
   try {
-    const sol = state.solicitudes.find(s => s.id === solId);
-    const esPendienteCierre = sol.Estado === CONFIG.estados.PENDIENTE_CIERRE;
-    // Si est\u00E1 en Pendiente de Cierre, se mantiene ese estado (el Director cierra)
-    // Si es cualquier otro estado activo, pasa a Respondida
-    if (!esPendienteCierre) {
-      await actualizarSolicitud(solId, { Estado: CONFIG.estados.RESPONDIDA });
+    // Pendiente de Cierre: se mantiene ese estado (el Director cierra).
+    // Con derivaci\u00F3n: pasa Derivada a la unidad destino y reinicia el plazo.
+    // Caso normal: pasa a Respondida.
+    let nuevoEstado;
+    if (esPendienteCierre) {
+      nuevoEstado = CONFIG.estados.PENDIENTE_CIERRE;
+    } else if (derivarAlResponder) {
+      nuevoEstado = CONFIG.estados.DERIVADA;
+      await actualizarSolicitud(solId, { Estado: nuevoEstado, UnidadDerivada: unidadDestinoResp, FechaDerivacion: new Date().toISOString() });
+    } else {
+      nuevoEstado = CONFIG.estados.RESPONDIDA;
+      await actualizarSolicitud(solId, { Estado: nuevoEstado });
     }
 
     const evItem = await crearEvidencia({
@@ -2263,22 +2302,28 @@ async function responderSolicitud(solId) {
       }
     }
 
-    const nuevoEstado = esPendienteCierre ? CONFIG.estados.PENDIENTE_CIERRE : CONFIG.estados.RESPONDIDA;
     registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Title: esPendienteCierre ? "2\u00AA respuesta registrada (Pend. Cierre)" : "Solicitud respondida",
+      Title: esPendienteCierre ? "2\u00AA respuesta registrada (Pend. Cierre)"
+           : derivarAlResponder ? `Respondida por ${state.usuario.Unidad} y derivada a ${unidadDestinoResp}`
+           : "Solicitud respondida",
       EstadoAnterior: sol.Estado,
       EstadoNuevo: nuevoEstado,
       UsuarioAccion: state.usuario.NombreCompleto,
       RolUsuario: state.usuario.Rol,
-      Unidad: state.usuario.Unidad,
+      Unidad: derivarAlResponder ? unidadDestinoResp : state.usuario.Unidad,
       FechaAccion: new Date().toISOString(),
       Observaciones: obs
     }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
 
-    const accionNotif = esPendienteCierre ? "2\u00AA respuesta registrada \u2014 Pendiente de Cierre" : "Solicitud respondida por unidad";
-    notificarDirector({ ...sol, Estado: nuevoEstado }, accionNotif);
-    showToast("success", esPendienteCierre ? "\uD83D\uDCCB 2\u00AA respuesta registrada" : "\u2705 Solicitud respondida");
+    if (derivarAlResponder) {
+      notificarUnidad({ ...sol, Estado: nuevoEstado }, unidadDestinoResp);
+      showToast("success", `\u2705 Respondida y derivada a ${unidadDestinoResp}`);
+    } else {
+      const accionNotif = esPendienteCierre ? "2\u00AA respuesta registrada \u2014 Pendiente de Cierre" : "Solicitud respondida por unidad";
+      notificarDirector({ ...sol, Estado: nuevoEstado }, accionNotif);
+      showToast("success", esPendienteCierre ? "\uD83D\uDCCB 2\u00AA respuesta registrada" : "\u2705 Solicitud respondida");
+    }
     _evFiles.splice(0);
     await renderUnidad();
   } catch (e) {
@@ -2306,6 +2351,39 @@ async function enProcesoSolicitud(solId) {
       Observaciones: obs
     }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
     showToast("info", "\u2699\uFE0F Solicitud marcada En Proceso");
+    await renderUnidad();
+  } catch (e) {
+    showToast("error", "Error: " + e.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+async function derivarSolicitudUnidad(solId) {
+  const unidadDestino = document.getElementById("uni-unidad-derivar")?.value;
+  const obs = document.getElementById("uni-derivar-obs")?.value.trim();
+  if (!unidadDestino) { showToast("error", "Selecciona la unidad de destino"); return; }
+
+  showLoading("Derivando a otra unidad...");
+  try {
+    const sol = state.solicitudes.find(s => s.id === solId);
+    const unidadOrigen = state.usuario.Unidad;
+    const updateFields = { Estado: CONFIG.estados.DERIVADA, UnidadDerivada: unidadDestino, FechaDerivacion: new Date().toISOString() };
+    if (obs) updateFields.Acciones = obs;
+    await actualizarSolicitud(solId, updateFields);
+    registrarHistorial({
+      NroSolicitud: sol.NroSolicitud,
+      Title: `Derivada de ${unidadOrigen} a ${unidadDestino}`,
+      EstadoAnterior: sol.Estado,
+      EstadoNuevo: CONFIG.estados.DERIVADA,
+      UsuarioAccion: state.usuario.NombreCompleto,
+      RolUsuario: state.usuario.Rol,
+      Unidad: unidadDestino,
+      FechaAccion: new Date().toISOString(),
+      Observaciones: obs
+    }).catch(e => console.warn("Historial (no crítico):", e.message));
+    notificarUnidad({ ...sol, Estado: CONFIG.estados.DERIVADA }, unidadDestino);
+    showToast("success", `📤 Derivada a ${unidadDestino}`);
     await renderUnidad();
   } catch (e) {
     showToast("error", "Error: " + e.message);
