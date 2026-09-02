@@ -1269,7 +1269,7 @@ async function cargarEvidenciaDir(sol) {
 async function abrirAdjuntoUnidad(downloadUrl, serverRelativeUrl, nombre, isPdf) {
   try {
     showLoading("Cargando documento...");
-    const blobUrl = await getAttachmentBlobUrl(downloadUrl, serverRelativeUrl);
+    const blobUrl = await getAttachmentBlobUrl(downloadUrl, serverRelativeUrl, nombre);
     hideLoading();
     if (isPdf) {
       // Mostrar en el panel PDF central
@@ -1411,7 +1411,7 @@ async function cargarHistorialDir(nroSolicitud, containerId = "dir-historial") {
           const row = document.createElement("div");
           row.style.cssText = "font-size:11px;padding:4px 6px;background:#f8fafc;border:1px solid var(--borde);border-radius:4px;margin-bottom:3px;cursor:pointer;color:var(--azul);";
           row.innerHTML = `\uD83D\uDCC4 ${esc(pdf.name)}`;
-          row.onclick = async () => { try { window.open(await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl),"_blank"); } catch{} };
+          row.onclick = async () => { try { window.open(await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl, pdf.name),"_blank"); } catch{} };
           cont.appendChild(row);
         });
       }).catch(()=>{ if(cont) cont.remove(); });
@@ -2128,7 +2128,7 @@ async function renderDetalleUnidad(sol) {
         <div class="form-section">
           <div class="form-section-body" style="display:flex;align-items:center;gap:8px;padding:10px;">
             <input type="checkbox" id="uni-derivar-al-responder" onchange="document.getElementById('uni-derivar-al-responder-wrap').style.display=this.checked?'block':'none'" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">
-            <label for="uni-derivar-al-responder" style="font-size:12px;font-weight:600;color:#374151;cursor:pointer;">\uD83D\uDCE4 Esta respuesta resuelve mi parte \u2014 derivar a otra unidad</label>
+            <label for="uni-derivar-al-responder" style="font-size:12px;font-weight:600;color:#374151;cursor:pointer;">\uD83D\uDCE4 Derivar a otra unidad para terminar requerimiento o solicitud</label>
           </div>
           <div id="uni-derivar-al-responder-wrap" style="display:none;padding:0 10px 10px;">
             <select id="uni-unidad-derivar-resp" style="width:100%;">
@@ -2225,7 +2225,7 @@ async function renderDetalleUnidad(sol) {
         pdfRow.innerHTML = `\uD83D\uDCC4 ${esc(pdf.name)}`;
         pdfRow.onclick = async () => {
           try {
-            const blobUrl = await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl);
+            const blobUrl = await getAttachmentBlobUrl(pdf.downloadUrl, pdf.serverRelativeUrl, pdf.name);
             window.open(blobUrl, "_blank");
           } catch {}
         };

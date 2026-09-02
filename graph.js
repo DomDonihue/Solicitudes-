@@ -161,8 +161,8 @@ async function getListItemAttachments(listName, itemId) {
 
 // Descarga un adjunto v\u00EDa REST API SharePoint y retorna blob URL
 const _blobCache = {};
-async function getAttachmentBlobUrl(downloadUrl, serverRelativeUrl) {
-  const cacheKey = serverRelativeUrl || downloadUrl;
+async function getAttachmentBlobUrl(downloadUrl, serverRelativeUrl, filename) {
+  const cacheKey = (serverRelativeUrl || downloadUrl) + (filename ? `|${filename}` : "");
   if (_blobCache[cacheKey]) return _blobCache[cacheKey];
 
   const token = await getSharePointToken();
@@ -175,6 +175,10 @@ async function getAttachmentBlobUrl(downloadUrl, serverRelativeUrl) {
   // Solo escapar comillas simples si las hay
   const safeRelUrl = relUrl.replace(/'/g, "''");
   const apiUrl = `${SP_BASE}/web/getfilebyserverrelativeurl('${safeRelUrl}')/$value`;
+
+  // Con nombre de archivo, se envuelve el blob en un File para que el visor/descarga
+  // nativa del navegador use ese nombre en vez de un UUID generado
+  const toObjectUrl = (blob) => filename ? URL.createObjectURL(new File([blob], filename, { type: blob.type })) : URL.createObjectURL(blob);
 
   const res = await fetch(apiUrl, {
     headers: {
@@ -190,13 +194,13 @@ async function getAttachmentBlobUrl(downloadUrl, serverRelativeUrl) {
     });
     if (!res2.ok) throw new Error(`No se pudo descargar el archivo (${res.status})`);
     const blob2 = await res2.blob();
-    const blobUrl2 = URL.createObjectURL(blob2);
+    const blobUrl2 = toObjectUrl(blob2);
     _blobCache[cacheKey] = blobUrl2;
     return blobUrl2;
   }
 
   const blob = await res.blob();
-  const blobUrl = URL.createObjectURL(blob);
+  const blobUrl = toObjectUrl(blob);
   _blobCache[cacheKey] = blobUrl;
   return blobUrl;
 }
