@@ -11,6 +11,7 @@ const state = {
   filtroBuscar: "",
   filtroUnidad: "Todas",
   filtroUnidadDir: "Todas",
+  filtroUnidadReporte: "Todas",
   filtroDesde: "",
   filtroHasta: "",
   pagina: 1,
@@ -61,6 +62,19 @@ async function initApp() {
     CONFIG.firmaDirector       = await cargarFirmaDirector().catch(() => null);
     crearCamposEvidencia().catch(console.warn);
     crearCamposHistorial().catch(console.warn);
+    crearCamposUsuarios().catch(console.warn);
+    // \u00BFEste usuario es el subrogante de alg\u00FAn Director actualmente en licencia?
+    // Si es as\u00ED, se le habilita la pesta\u00F1a de Gesti\u00F3n aunque su Rol no sea Director.
+    try {
+      const miCorreo = (state.usuario.Correo || msUser.mail || msUser.userPrincipalName || "").toLowerCase().trim();
+      const directoresTodos = await getListItems(CONFIG.lists.usuarios, `Rol eq 'Director'`).catch(() => []);
+      const directorSubrogado = directoresTodos.find(d =>
+        (d.EnSubrogancia === true || d.EnSubrogancia === 1) &&
+        String(d.Subrogante || "").toLowerCase().trim() === miCorreo && miCorreo
+      );
+      state.usuario.EsSubrogante = !!directorSubrogado;
+      state.usuario.DirectorSubrogado = directorSubrogado ? (directorSubrogado.NombreCompleto || directorSubrogado.Correo) : null;
+    } catch(e) { console.warn("Subrogancia:", e.message); }
     // Indexar columnas cr\u00EDticas (idempotente \u2014 no hace nada si ya est\u00E1n indexadas)
     crearIndicesSharePoint().catch(console.warn);
     hideLoading();
@@ -126,25 +140,25 @@ function buildTabs() {
   const bar = document.getElementById("tabs-bar");
   bar.innerHTML = "";
   const rol = state.usuario.Rol;
+  const esSubrogante = !!state.usuario.EsSubrogante && rol !== CONFIG.roles.DIRECTOR;
 
-  const tabs = [];
-  if (rol === CONFIG.roles.ADMIN) {
-    tabs.push({ id: "admin",       icon: "\uD83D\uDEE1\uFE0F", label: "Administraci\u00F3n" });
-    tabs.push({ id: "solicitudes", icon: "\uD83D\uDCCB", label: "Ingreso Solicitudes" });
-    tabs.push({ id: "gestion",     icon: "\u2699\uFE0F", label: "Gesti\u00F3n" });
-    tabs.push({ id: "graficos",    icon: "\uD83D\uDCCA", label: "Reportes" });
-  }
-  if (rol === CONFIG.roles.SECRETARIA) {
-    tabs.push({ id: "solicitudes", icon: "\uD83D\uDCCB", label: "Ingreso Solicitudes" });
-  }
-  if (rol === CONFIG.roles.DIRECTOR) {
-    tabs.push({ id: "gestion", icon: "\u2699\uFE0F", label: "Gesti\u00F3n" });
-    tabs.push({ id: "graficos", icon: "\uD83D\uDCCA", label: "Reportes" });
-  }
-  if (rol === CONFIG.roles.UNIDAD) {
-    tabs.push({ id: "unidad", icon: "\uD83C\uDFE2", label: "Mis Solicitudes" });
-    tabs.push({ id: "graficos", icon: "\uD83D\uDCCA", label: "Reportes" });
-  }
+  const ids = new Set();
+  if (rol === CONFIG.roles.ADMIN)      ["admin","solicitudes","gestion","graficos"].forEach(id => ids.add(id));
+  if (rol === CONFIG.roles.SECRETARIA) ids.add("solicitudes");
+  if (rol === CONFIG.roles.DIRECTOR)   { ids.add("gestion"); ids.add("graficos"); }
+  if (rol === CONFIG.roles.UNIDAD)     { ids.add("unidad"); ids.add("graficos"); }
+  // Subrogante: cubre a un Director en licencia, gana acceso temporal a Gesti\u00F3n aunque su Rol sea otro
+  if (esSubrogante) { ids.add("gestion"); ids.add("graficos"); }
+
+  const defs = {
+    admin:       { icon: "\uD83D\uDEE1\uFE0F", label: "Administraci\u00F3n" },
+    solicitudes: { icon: "\uD83D\uDCCB", label: "Ingreso Solicitudes" },
+    gestion:     { icon: "\u2699\uFE0F", label: esSubrogante ? "Gesti\u00F3n (Subrogancia)" : "Gesti\u00F3n" },
+    unidad:      { icon: "\uD83C\uDFE2", label: "Mis Solicitudes" },
+    graficos:    { icon: "\uD83D\uDCCA", label: "Reportes" },
+  };
+  const orden = ["admin","solicitudes","gestion","unidad","graficos"];
+  const tabs = orden.filter(id => ids.has(id)).map(id => ({ id, ...defs[id] }));
 
   tabs.forEach(t => {
     const btn = document.createElement("button");
@@ -218,7 +232,7 @@ function renderFiltrosCompact() {
         <select style="padding:7px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;"
           onchange="state.filtroUnidad=this.value;state.pagina=1;renderListaSolicitudes()">
           <option>Todas</option>
-          ${CONFIG.unidades.map(u=>`<option ${state.filtroUnidad===u?'selected':''}>${u}</option>`).join("")}
+          ${CONFIG.unidades.map(u=>`<option ${state.filtroUnidad===u?'selected':''}>${esc(u)}</option>`).join("")}
         </select>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
@@ -334,7 +348,7 @@ function renderFiltros() {
         <label>Unidad</label>
         <select onchange="state.filtroUnidad=this.value;state.pagina=1;renderListaSolicitudes()">
           <option>Todas</option>
-          ${CONFIG.unidades.map(u => `<option ${state.filtroUnidad===u?'selected':''}>${u}</option>`).join("")}
+          ${CONFIG.unidades.map(u => `<option ${state.filtroUnidad===u?'selected':''}>${esc(u)}</option>`).join("")}
         </select>
       </div>
       <div class="form-group">
@@ -699,7 +713,7 @@ function renderDirSidebar() {
                background:${state.filtroUnidadDir!=='Todas'?'var(--azul-50)':'white'};">
         <option value="Todas">Todas las unidades</option>
         ${[...new Set(state.solicitudes.map(s=>(s.UnidadDerivada||"").trim()).filter(u=>u))].sort()
-          .map(u=>`<option value="${u}" ${state.filtroUnidadDir===u?'selected':''}>${u}</option>`).join("")}
+          .map(u=>`<option value="${esc(u)}" ${state.filtroUnidadDir===u?'selected':''}>${esc(u)}</option>`).join("")}
       </select>
       ${state.filtroUnidadDir!=='Todas'?`
       <div style="margin-top:4px;font-size:10px;color:var(--azul-claro);display:flex;align-items:center;justify-content:space-between;">
@@ -753,9 +767,12 @@ async function cerrarDirectoDirector(id) {
     });
     await registrarHistorial({
       NroSolicitud: sol.NroSolicitud,
-      Accion: "Cierre directo por Director \u2014 No corresponde a DOM",
+      Title: "Cierre directo por Director \u2014 No corresponde a DOM",
+      EstadoAnterior: sol.Estado,
+      EstadoNuevo: CONFIG.estados.CERRADA,
       Observaciones: obs,
-      Usuario: state.usuario.NombreCompleto || state.usuario.displayName,
+      UsuarioAccion: state.usuario.NombreCompleto || state.usuario.displayName,
+      RolUsuario: state.usuario.Rol,
       Unidad: "Director",
       FechaAccion: new Date().toISOString()
     });
@@ -1006,7 +1023,7 @@ function renderDetalleDirector(sol) {
         <label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Unidad de destino</label>
         <select id="dir-unidad-derivar">
           <option value="">\u2014 Seleccionar unidad \u2014</option>
-          ${CONFIG.unidades.map(u=>`<option ${sol.UnidadDerivada===u?'selected':''}>${u}</option>`).join("")}
+          ${CONFIG.unidades.map(u=>`<option ${sol.UnidadDerivada===u?'selected':''}>${esc(u)}</option>`).join("")}
         </select>
         <label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Instrucciones / Acciones</label>
         <textarea id="dir-accion-obs" rows="3" placeholder="Instrucciones espec\u00EDficas para la unidad..."></textarea>
@@ -1428,6 +1445,7 @@ async function derivarSolicitud(solId) {
   showLoading("Derivando solicitud...");
   try {
     const sol = state.solicitudes.find(s=>s.id===solId);
+    const estadoAnterior = sol.Estado;
     const esRederivar = sol.Estado === CONFIG.estados.DEVUELTA;
     const updateFields = { Estado:CONFIG.estados.DERIVADA, UnidadDerivada:unidad, FechaDerivacion:new Date().toISOString() };
     if (obs) updateFields.Acciones = obs;
@@ -1438,7 +1456,7 @@ async function derivarSolicitud(solId) {
     registrarHistorial({
       NroSolicitud:sol.NroSolicitud,
       Title:esRederivar ? "Re-derivada a unidad" : "Derivada a unidad",
-      EstadoAnterior:sol.Estado, EstadoNuevo:CONFIG.estados.DERIVADA,
+      EstadoAnterior:estadoAnterior, EstadoNuevo:CONFIG.estados.DERIVADA,
       UsuarioAccion:state.usuario.NombreCompleto, RolUsuario:state.usuario.Rol,
       Unidad:unidad, FechaAccion:new Date().toISOString(), Observaciones:obs
     }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
@@ -1874,19 +1892,19 @@ function imprimirSolicitudUnidad(sol) {
 ${sem ? `<div class="semaforo" style="background:${sem.bg};color:${sem.color};border-color:${sem.color}40;">${semTexto}</div>` : ""}
 <div class="section-title">Datos de la Solicitud</div>
 <table>
-  <tr><th>Nro Solicitud</th><td><strong>${sol.NroSolicitud||"-"}</strong></td><th>Estado</th><td><span class="badge">${sol.Estado||"-"}</span></td></tr>
-  <tr><th>Fecha Recepci\u00F3n</th><td>${formatFecha(sol.FechaRecepcion)}</td><th>Unidad</th><td>${sol.UnidadDerivada||"-"}</td></tr>
+  <tr><th>Nro Solicitud</th><td><strong>${esc(sol.NroSolicitud||"-")}</strong></td><th>Estado</th><td><span class="badge">${esc(sol.Estado||"-")}</span></td></tr>
+  <tr><th>Fecha Recepci\u00F3n</th><td>${formatFecha(sol.FechaRecepcion)}</td><th>Unidad</th><td>${esc(sol.UnidadDerivada||"-")}</td></tr>
 </table>
 <div class="section-title">Solicitante</div>
 <table>
-  <tr><th>Nombre</th><td>${sol.Solicitante||"-"}</td><th>RUT</th><td>${sol.Rut||"-"}</td></tr>
+  <tr><th>Nombre</th><td>${esc(sol.Solicitante||"-")}</td><th>RUT</th><td>${esc(sol.Rut||"-")}</td></tr>
   <tr><th>Direcci\u00F3n</th><td colspan="3">${esc(sol.Direccion||"-")}</td></tr>
-  ${sol.Correo?`<tr><th>Correo</th><td colspan="3">${sol.Correo}</td></tr>`:""}
-  ${sol.Telefono?`<tr><th>Tel\u00E9fono</th><td colspan="3">${sol.Telefono}</td></tr>`:""}
+  ${sol.Correo?`<tr><th>Correo</th><td colspan="3">${esc(sol.Correo)}</td></tr>`:""}
+  ${sol.Telefono?`<tr><th>Tel\u00E9fono</th><td colspan="3">${esc(sol.Telefono)}</td></tr>`:""}
 </table>
 <div class="section-title">Descripci\u00F3n</div>
-<div class="descripcion">${sol.Solicitud||"Sin descripci\u00F3n registrada"}</div>
-${sol.Acciones?`<div class="section-title">Instrucciones / Notas de Derivación</div><div class="descripcion">${sol.Acciones}</div>`:""}
+<div class="descripcion">${esc(sol.Solicitud||"Sin descripci\u00F3n registrada")}</div>
+${sol.Acciones?`<div class="section-title">Instrucciones / Notas de Derivación</div><div class="descripcion">${esc(sol.Acciones)}</div>`:""}
 <div style="margin-top:20px;border:1px solid #e2e8f0;border-radius:6px;padding:14px;">
   <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">Observaciones / Respuesta de la Unidad</div>
   <div style="height:80px;border-bottom:1px dashed #d1d5db;"></div>
@@ -1940,19 +1958,19 @@ function imprimirSolicitudDirector(sol) {
 </div>
 <div class="section-title">Datos de la Solicitud</div>
 <table>
-  <tr><th>Nro Solicitud</th><td><strong>${sol.NroSolicitud||"-"}</strong></td><th>Estado</th><td><span class="badge">${sol.Estado||"-"}</span></td></tr>
-  <tr><th>Fecha Recepci\u00F3n</th><td>${formatFecha(sol.FechaRecepcion)}</td><th>Unidad</th><td>${sol.UnidadDerivada||"-"}</td></tr>
+  <tr><th>Nro Solicitud</th><td><strong>${esc(sol.NroSolicitud||"-")}</strong></td><th>Estado</th><td><span class="badge">${esc(sol.Estado||"-")}</span></td></tr>
+  <tr><th>Fecha Recepci\u00F3n</th><td>${formatFecha(sol.FechaRecepcion)}</td><th>Unidad</th><td>${esc(sol.UnidadDerivada||"-")}</td></tr>
 </table>
 <div class="section-title">Solicitante</div>
 <table>
-  <tr><th>Nombre</th><td>${sol.Solicitante||"-"}</td><th>RUT</th><td>${sol.Rut||"-"}</td></tr>
+  <tr><th>Nombre</th><td>${esc(sol.Solicitante||"-")}</td><th>RUT</th><td>${esc(sol.Rut||"-")}</td></tr>
   <tr><th>Direcci\u00F3n</th><td colspan="3">${esc(sol.Direccion||"-")}</td></tr>
-  ${sol.Correo?`<tr><th>Correo</th><td colspan="3">${sol.Correo}</td></tr>`:""}
-  ${sol.Telefono?`<tr><th>Tel\u00E9fono</th><td colspan="3">${sol.Telefono}</td></tr>`:""}
+  ${sol.Correo?`<tr><th>Correo</th><td colspan="3">${esc(sol.Correo)}</td></tr>`:""}
+  ${sol.Telefono?`<tr><th>Tel\u00E9fono</th><td colspan="3">${esc(sol.Telefono)}</td></tr>`:""}
 </table>
 <div class="section-title">Descripci\u00F3n</div>
-<div class="descripcion">${sol.Solicitud||"Sin descripci\u00F3n registrada"}</div>
-${sol.Acciones?`<div class="section-title">Instrucciones / Notas de Derivación</div><div class="descripcion">${sol.Acciones}</div>`:""}
+<div class="descripcion">${esc(sol.Solicitud||"Sin descripci\u00F3n registrada")}</div>
+${sol.Acciones?`<div class="section-title">Instrucciones / Notas de Derivación</div><div class="descripcion">${esc(sol.Acciones)}</div>`:""}
 <div style="margin-top:32px;display:flex;justify-content:flex-end;">
   <div style="text-align:center;min-width:240px;">
     ${firma
@@ -2133,7 +2151,7 @@ async function renderDetalleUnidad(sol) {
           <div id="uni-derivar-al-responder-wrap" style="display:none;padding:0 10px 10px;">
             <select id="uni-unidad-derivar-resp" style="width:100%;">
               <option value="">\u2014 Seleccionar unidad de destino \u2014</option>
-              ${CONFIG.unidades.filter(u=>u!==state.usuario.Unidad).map(u=>`<option>${u}</option>`).join("")}
+              ${CONFIG.unidades.filter(u=>u!==state.usuario.Unidad).map(u=>`<option>${esc(u)}</option>`).join("")}
             </select>
           </div>
         </div>` : ""}
@@ -2153,7 +2171,7 @@ async function renderDetalleUnidad(sol) {
             <label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Unidad de destino</label>
             <select id="uni-unidad-derivar">
               <option value="">\u2014 Seleccionar unidad \u2014</option>
-              ${CONFIG.unidades.filter(u=>u!==state.usuario.Unidad).map(u=>`<option>${u}</option>`).join("")}
+              ${CONFIG.unidades.filter(u=>u!==state.usuario.Unidad).map(u=>`<option>${esc(u)}</option>`).join("")}
             </select>
             <label style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin:8px 0 6px;">Nota para la unidad destino (opcional)</label>
             <textarea id="uni-derivar-obs" rows="2" placeholder="Ej: Ya se realiz\u00F3 la poda, falta retiro de escombros..."></textarea>
@@ -2409,8 +2427,7 @@ async function devolverSolicitudUnidad(solId) {
       RolUsuario: state.usuario.Rol,
       Unidad: state.usuario.Unidad,
       FechaAccion: new Date().toISOString(),
-      Observaciones: obs,
-      Motivo: obs
+      Observaciones: obs
     }).catch(e => console.warn("Historial (no cr\u00EDtico):", e.message));
     notificarDirector({ ...sol, Estado: CONFIG.estados.DEVUELTA }, "Solicitud devuelta por unidad");
     showToast("info", "\u21A9\uFE0F Solicitud devuelta");
@@ -2535,7 +2552,7 @@ async function renderAdmSolicitudes() {
       <select id="adm-filtro-unidad" onchange="filtrarAdmin()"
         style="padding:6px 8px;border:1.5px solid var(--borde);border-radius:7px;font-size:12px;">
         <option value="">Todas las unidades</option>
-        ${CONFIG.unidades.map(u=>`<option value="${u}">${u}</option>`).join("")}
+        ${CONFIG.unidades.map(u=>`<option value="${esc(u)}">${esc(u)}</option>`).join("")}
       </select>
       <button onclick="renderAdmin('solicitudes')" class="btn-primary" style="padding:6px 12px;font-size:12px;">\uD83D\uDD04</button>
       <span id="adm-count" style="font-size:11px;color:#6b7280;font-weight:600;"></span>
@@ -2964,7 +2981,7 @@ function renderListaUnidades() {
         <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${activo?'#dcfce7':'#fee2e2'};color:${activo?'#15803d':'#b91c1c'};font-weight:600;">${activo?'Activa':'Inactiva'}</span>
       </div>
       <div id="adm-uni-edit-${u.id}" style="flex:1;display:none;gap:8px;">
-        <input type="text" id="adm-uni-nombre-${u.id}" value="${u.Title}"
+        <input type="text" id="adm-uni-nombre-${u.id}" value="${esc(u.Title)}"
           style="flex:1;padding:6px 10px;border:1.5px solid var(--azul);border-radius:6px;font-size:13px;">
       </div>
       <div style="display:flex;gap:6px;">
@@ -3071,7 +3088,7 @@ async function renderAdmUsuarios() {
           </tr>
         </thead>
         <tbody id="adm-usr-tbody">
-          <tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af;">Cargando...</td></tr>
+          <tr><td colspan="9" style="text-align:center;padding:40px;color:#9ca3af;">Cargando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -3102,7 +3119,20 @@ async function renderAdmUsuarios() {
               <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:3px;">UNIDAD</label>
               <select id="adm-usr-unidad" style="width:100%;padding:7px 8px;border:1.5px solid var(--borde);border-radius:7px;font-size:13px;">
                 <option value="">\u2014 Sin unidad \u2014</option>
-                ${CONFIG.unidades.map(u=>`<option value="${u}">${u}</option>`).join("")}
+                ${CONFIG.unidades.map(u=>`<option value="${esc(u)}">${esc(u)}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <!-- Subrogancia (solo visible para Rol = Director) -->
+          <div id="adm-usr-subrogancia-wrap" style="display:none;flex-direction:column;gap:8px;background:#fdf4ff;border:1.5px solid #e9d5ff;border-radius:8px;padding:12px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:#7e22ce;">
+              <input type="checkbox" id="adm-usr-subrogancia" style="width:15px;height:15px;cursor:pointer;" onchange="document.getElementById('adm-usr-subrogante-wrap').style.display=this.checked?'block':'none'">
+              \ud83c\udf34 En licencia / vacaciones (activar subrogancia)
+            </label>
+            <div id="adm-usr-subrogante-wrap" style="display:none;">
+              <label style="font-size:11px;font-weight:700;color:#6b21a8;display:block;margin-bottom:3px;">REEMPLAZANTE (SUBROGANTE) \u2014 recibir\u00e1 sus notificaciones</label>
+              <select id="adm-usr-subrogante" style="width:100%;padding:7px 8px;border:1.5px solid #d8b4fe;border-radius:7px;font-size:13px;">
+                <option value="">\u2014 Seleccionar reemplazante \u2014</option>
               </select>
             </div>
           </div>
@@ -3154,15 +3184,22 @@ function filtrarUsuarios() {
   );
   const tbody = document.getElementById("adm-usr-tbody");
   if (!tbody) return;
-  if (!filtrados.length) { tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:28px;color:#9ca3af;">Sin resultados</td></tr>`; return; }
+  if (!filtrados.length) { tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:28px;color:#9ca3af;">Sin resultados</td></tr>`; return; }
   const ROL_COLOR = { "Administrador":"#312e81","Director":"#1a3a6b","Secretaria":"#0e7490","Unidad":"#15803d" };
   tbody.innerHTML = filtrados.map(u => {
     const c = ROL_COLOR[u.Rol]||"#6b7280";
     const activo = u.Activo !== false && u.Activo !== 0;
+    const enSubrogancia = u.Rol === CONFIG.roles.DIRECTOR && (u.EnSubrogancia===true || u.EnSubrogancia===1);
+    const nombreSubrogante = enSubrogancia
+      ? (_adminUsuarios.find(x => (x.Correo||"").toLowerCase().trim() === String(u.Subrogante||"").toLowerCase().trim())?.NombreCompleto || u.Subrogante || "")
+      : "";
     return `<tr style="border-bottom:1px solid var(--borde);" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''">
       <td style="padding:8px 12px;font-weight:600;">${u.NombreCompleto||""}</td>
       <td style="padding:8px 12px;color:#6b7280;font-size:11px;">${u.Correo||""}</td>
-      <td style="padding:8px 12px;text-align:center;"><span style="background:${c}20;color:${c};padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid ${c}30;">${u.Rol||""}</span></td>
+      <td style="padding:8px 12px;text-align:center;">
+        <span style="background:${c}20;color:${c};padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid ${c}30;">${u.Rol||""}</span>
+        ${enSubrogancia?`<div style="margin-top:4px;font-size:10px;color:#7e22ce;font-weight:600;" title="Reemplazante: ${esc(nombreSubrogante)}">🌴 En licencia → ${esc(nombreSubrogante)}</div>`:""}
+      </td>
       <td style="padding:8px 12px;font-size:11px;">${u.Unidad||"\u2014"}</td>
       <td style="padding:8px 12px;text-align:center;"><span style="padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;background:${activo?'#dcfce7':'#fee2e2'};color:${activo?'#15803d':'#b91c1c'};">${activo?"S\u00ED":"No"}</span></td>
       <td style="padding:8px 12px;text-align:center;">${u.PuedeDerivar?'\u2705':'\u2014'}</td>
@@ -3179,6 +3216,8 @@ function toggleUnidadField() {
   const rol = document.getElementById("adm-usr-rol")?.value;
   const wrap = document.getElementById("adm-usr-unidad-wrap");
   if (wrap) wrap.style.opacity = (rol==="Unidad") ? "1" : "0.4";
+  const subWrap = document.getElementById("adm-usr-subrogancia-wrap");
+  if (subWrap) subWrap.style.display = (rol === CONFIG.roles.DIRECTOR) ? "flex" : "none";
 }
 
 function abrirModalUsuario(id) {
@@ -3195,6 +3234,19 @@ function abrirModalUsuario(id) {
   document.getElementById("adm-usr-derivar").checked = u ? (u.PuedeDerivar===true||u.PuedeDerivar===1) : false;
   document.getElementById("adm-usr-cerrar").checked  = u ? (u.PuedeCerrar===true||u.PuedeCerrar===1) : false;
   document.getElementById("adm-usr-esadmin").checked = u ? (u.EsAdministrador===true||u.EsAdministrador===1) : false;
+  // Subrogancia: lista de posibles reemplazantes (cualquier otro usuario)
+  const subSelect = document.getElementById("adm-usr-subrogante");
+  if (subSelect) {
+    subSelect.innerHTML = `<option value="">— Seleccionar reemplazante —</option>` +
+      _adminUsuarios.filter(x => x.id !== (u?.id||"")).map(x =>
+        `<option value="${esc(x.Correo||"")}">${esc(x.NombreCompleto||x.Correo||"")}${x.Rol?` (${esc(x.Rol)})`:''}</option>`
+      ).join("");
+    subSelect.value = u?.Subrogante || "";
+  }
+  const subCheck = document.getElementById("adm-usr-subrogancia");
+  if (subCheck) subCheck.checked = u ? (u.EnSubrogancia===true||u.EnSubrogancia===1) : false;
+  const subWrap2 = document.getElementById("adm-usr-subrogante-wrap");
+  if (subWrap2) subWrap2.style.display = subCheck?.checked ? "block" : "none";
   toggleUnidadField();
 }
 
@@ -3213,11 +3265,16 @@ async function guardarUsuarioAdmin() {
   const derivar  = document.getElementById("adm-usr-derivar")?.checked;
   const cerrar   = document.getElementById("adm-usr-cerrar")?.checked;
   const esAdmin  = document.getElementById("adm-usr-esadmin")?.checked;
+  const esDirector = rol === CONFIG.roles.DIRECTOR;
+  const enSubrogancia = esDirector && (document.getElementById("adm-usr-subrogancia")?.checked || false);
+  const subrogante    = esDirector ? (document.getElementById("adm-usr-subrogante")?.value || "").trim() : "";
   if (!nombre||!correo||!rol) { showToast("error","Nombre, correo y rol son obligatorios"); return; }
+  if (enSubrogancia && !subrogante) { showToast("error","Selecciona el reemplazante (subrogante)"); return; }
   showLoading("Guardando usuario...");
   try {
     const fields = { NombreCompleto:nombre, Correo:correo, Rol:rol, Unidad:unidad||"",
-                     Activo:activo, PuedeDerivar:derivar, PuedeCerrar:cerrar, EsAdministrador:esAdmin };
+                     Activo:activo, PuedeDerivar:derivar, PuedeCerrar:cerrar, EsAdministrador:esAdmin,
+                     EnSubrogancia:enSubrogancia, Subrogante:subrogante };
     if (id) {
       await actualizarUsuario(id, fields);
       const u = _adminUsuarios.find(x=>x.id===id);
@@ -3454,8 +3511,11 @@ async function eliminarFirmaAdmin() {
 
 // ===== REPORTES =====
 async function renderGraficos() {
-  const esUnidad = state.usuario.Rol === CONFIG.roles.UNIDAD;
-  const miUnidad = (state.usuario.Unidad || "").trim();
+  const esUnidadRol = state.usuario.Rol === CONFIG.roles.UNIDAD;
+  const puedeElegirUnidad = !esUnidadRol; // Director/Admin pueden además ver el reporte de una unidad específica
+  const unidadSeleccionada = puedeElegirUnidad ? (state.filtroUnidadReporte || "Todas") : "Todas";
+  const esUnidad = esUnidadRol || unidadSeleccionada !== "Todas"; // true = mostrar reporte de UNA unidad
+  const miUnidad = esUnidadRol ? (state.usuario.Unidad || "").trim() : unidadSeleccionada;
   const cont = document.getElementById("view-graficos");
   const hoy    = new Date().toISOString().split('T')[0];
   const hace3m = new Date(new Date().setMonth(new Date().getMonth()-3)).toISOString().split('T')[0];
@@ -3496,6 +3556,10 @@ async function renderGraficos() {
       cursor:pointer; font-size:11px; font-weight:600; transition:background .15s; }
     .dash-per-btn:hover { background:rgba(255,255,255,.22); }
     .dash-per-btn.active { background:rgba(255,255,255,.25); border-color:rgba(255,255,255,.5); }
+    .dash-uni-btn { padding:5px 13px; border:1.5px solid #dbe4f0; border-radius:20px;
+      background:white; color:#475569; cursor:pointer; font-size:11px; font-weight:600; transition:all .15s; }
+    .dash-uni-btn:hover { background:#eff6ff; border-color:#93c5fd; }
+    .dash-uni-btn.active { background:#1a3a6b; color:white; border-color:#1a3a6b; }
   </style>
 
   <div style="display:flex;flex-direction:column;height:calc(100vh - 62px);overflow:hidden;">
@@ -3504,10 +3568,10 @@ async function renderGraficos() {
     <div style="background:linear-gradient(135deg,#0b1d3a 0%,#0f2547 55%,#1a3a6b 100%);padding:14px 22px;flex-shrink:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
       <div style="margin-right:14px;">
         <div style="font-size:15px;font-weight:800;color:white;letter-spacing:-.2px;">
-          ${esUnidad ? `\uD83D\uDCCA ${miUnidad}` : "Dashboard DOM"}
+          ${esUnidad ? `\uD83D\uDCCA ${esc(miUnidad)}` : "Dashboard DOM"}
         </div>
         <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:1px;">
-          ${esUnidad ? `Mis solicitudes \u00B7 Direcci\u00F3n de Obras Do\u00F1ihue` : "Direcci\u00F3n de Obras \u00B7 Municipalidad de Do\u00F1ihue"}
+          ${esUnidadRol ? `Mis solicitudes \u00B7 Direcci\u00F3n de Obras Do\u00F1ihue` : esUnidad ? `Reporte de unidad \u00B7 Direcci\u00F3n de Obras Do\u00F1ihue` : "Direcci\u00F3n de Obras \u00B7 Municipalidad de Do\u00F1ihue"}
         </div>
       </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;" id="periodo-btns">
@@ -3528,6 +3592,14 @@ async function renderGraficos() {
         <button onclick="exportarExcel()" style="padding:5px 14px;background:#C9A84C;color:#0b1d3a;border:none;border-radius:7px;cursor:pointer;font-size:11px;font-weight:800;">\u2B07 CSV</button>
       </div>
     </div>
+
+    <!-- Selector de unidad (solo Director/Admin) -->
+    ${puedeElegirUnidad ? `
+    <div style="background:white;border-bottom:1px solid #e8eef6;padding:9px 22px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex-shrink:0;">
+      <span style="font-size:11px;font-weight:700;color:#64748b;margin-right:2px;">\uD83C\uDFE2 Ver reporte de:</span>
+      <button class="dash-uni-btn ${unidadSeleccionada==='Todas'?'active':''}" onclick="setReporteUnidad('Todas')">\uD83D\uDCCA General</button>
+      ${CONFIG.unidades.map(u => `<button class="dash-uni-btn ${unidadSeleccionada===u?'active':''}" data-unidad="${esc(u)}" onclick="setReporteUnidad(this.dataset.unidad)">${esc(u)}</button>`).join("")}
+    </div>` : ""}
 
     <!-- Body -->
     <div style="flex:1;overflow-y:auto;padding:16px 18px;background:#eef1f6;display:flex;flex-direction:column;gap:14px;">
@@ -3575,7 +3647,7 @@ async function renderGraficos() {
       <div style="display:grid;grid-template-columns:1fr 280px;gap:14px;">
         <div class="dash-chart da da5">
           <div class="dc-title" id="chart3-title">
-            ${esUnidad ? "\uD83D\uDCCA Distribuci\u00F3n por estado (mi unidad)" : "\uD83C\uDFE2 Solicitudes por unidad"}
+            ${esUnidadRol ? "\uD83D\uDCCA Distribuci\u00F3n por estado (mi unidad)" : esUnidad ? `\uD83D\uDCCA Distribuci\u00F3n por estado \u2014 ${esc(miUnidad)}` : "\uD83C\uDFE2 Solicitudes por unidad"}
           </div>
           <canvas id="chart-unidad" height="${esUnidad ? 100 : 120}"></canvas>
         </div>
@@ -3589,7 +3661,7 @@ async function renderGraficos() {
       <div class="dash-chart da da7" style="padding:0;overflow:hidden;">
         <div style="padding:12px 18px;border-bottom:1px solid #e8eef6;display:flex;justify-content:space-between;align-items:center;">
           <span style="font-size:13px;font-weight:700;color:#0f2547;">
-            ${esUnidad ? `\uD83D\uDCCB Actividad mensual \u00B7 ${miUnidad}` : "\uD83C\uDFE2 Rendimiento por unidad"}
+            ${esUnidad ? `\uD83D\uDCCB Actividad mensual \u00B7 ${esc(miUnidad)}` : "\uD83C\uDFE2 Rendimiento por unidad"}
           </span>
           <span id="tabla-periodo" style="font-size:11px;color:#898781;"></span>
         </div>
@@ -3620,6 +3692,13 @@ function setPeriodo(meses) {
   actualizarGraficos();
 }
 
+// Director/Admin: alternar entre el reporte general y el reporte de una unidad específica
+function setReporteUnidad(unidad) {
+  if (state.usuario.Rol === CONFIG.roles.UNIDAD) return; // las unidades no eligen, ya ven la suya
+  state.filtroUnidadReporte = unidad || "Todas";
+  renderGraficos();
+}
+
 function _countUp(id, target, suffix = "", dur = 900) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -3632,8 +3711,10 @@ function _countUp(id, target, suffix = "", dur = 900) {
 }
 
 async function actualizarGraficos() {
-  const esUnidad = state.usuario.Rol === CONFIG.roles.UNIDAD;
-  const miUnidad = (state.usuario.Unidad || "").trim();
+  const esUnidadRol = state.usuario.Rol === CONFIG.roles.UNIDAD;
+  const unidadSeleccionada = esUnidadRol ? "Todas" : (state.filtroUnidadReporte || "Todas");
+  const esUnidad = esUnidadRol || unidadSeleccionada !== "Todas";
+  const miUnidad = esUnidadRol ? (state.usuario.Unidad || "").trim() : unidadSeleccionada;
   showLoading("Cargando datos...");
   try {
     const desde = document.getElementById("graf-desde")?.value;
@@ -3896,7 +3977,7 @@ async function actualizarGraficos() {
             const ec   = efe>=80?"#008300":efe>=50?"#b45309":"#b91c1c";
             return `<tr style="border-bottom:1px solid #f1f5f9;${ri%2?"background:#fafbfc":""}"
               onmouseenter="this.style.background='#eff6ff'" onmouseleave="this.style.background='${ri%2?"#fafbfc":""}'">
-              <td style="padding:10px 16px;font-weight:700;color:#0f2547;">${u}</td>
+              <td style="padding:10px 16px;font-weight:700;color:#0f2547;">${esc(u)}</td>
               <td style="padding:8px 10px;text-align:center;">${CHIP(der,"#dbeafe","#1d4ed8")}</td>
               <td style="padding:8px 10px;text-align:center;">${CHIP(resp,"#dcfce7","#15803d")}</td>
               <td style="padding:8px 10px;text-align:center;">${CHIP(cerr,"#f1f5f9","#475569")}</td>
@@ -3959,7 +4040,7 @@ async function exportarExcel() {
   const hasta = document.getElementById("graf-hasta")?.value;
   const filtradas = all.filter(s => {
     const f = new Date(s.FechaRecepcion);
-    return (!desde || f >= new Date(desde)) && (!hasta || f <= new Date(hasta));
+    return (!desde || f >= new Date(desde)) && (!hasta || f <= new Date(hasta + "T23:59:59"));
   });
   const csv = ["NroSolicitud,FechaRecepcion,Solicitante,Direccion,Estado,UnidadDerivada,Solicitud"]
     .concat(filtradas.map(s =>
@@ -4288,17 +4369,17 @@ function cargarSolicitudEnFormulario(sol) {
           ${i<hist.length-1?`<div style="width:2px;flex:1;background:#f0f0f0;margin-top:2px;"></div>`:''}
         </div>
         <div style="flex:1;padding-bottom:4px;">
-          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">${accion}</div>
+          <div style="font-size:13px;font-weight:700;color:#1a1a1a;">${esc(accion)}</div>
           <div style="font-size:11px;color:#888;margin-top:1px;">
             \uD83D\uDCC5 ${formatFechaHora(fecha)}
-            ${usuario?`\u00B7 \uD83D\uDC64 ${usuario}`:''}
-            ${unidad?`\u00B7 \uD83C\uDFE2 ${unidad}`:''}
+            ${usuario?`\u00B7 \uD83D\uDC64 ${esc(usuario)}`:''}
+            ${unidad?`\u00B7 \uD83C\uDFE2 ${esc(unidad)}`:''}
           </div>
           ${estAnt?`<div style="font-size:11px;color:#aaa;margin-top:2px;">
-            <span class="estado-badge estado-${estAnt}" style="font-size:10px;">${estAnt}</span>
-            \u2192 <span class="estado-badge estado-${estNuevo}" style="font-size:10px;">${estNuevo}</span>
+            <span class="estado-badge estado-${esc(estAnt)}" style="font-size:10px;">${esc(estAnt)}</span>
+            \u2192 <span class="estado-badge estado-${esc(estNuevo)}" style="font-size:10px;">${esc(estNuevo)}</span>
           </div>`:''}
-          ${obs?`<div style="font-size:12px;color:#4b5563;margin-top:4px;padding:6px 8px;background:#f9fafb;border-left:3px solid ${dotColor(accion)};border-radius:0 4px 4px 0;">"${obs}"</div>`:''}
+          ${obs?`<div style="font-size:12px;color:#4b5563;margin-top:4px;padding:6px 8px;background:#f9fafb;border-left:3px solid ${dotColor(accion)};border-radius:0 4px 4px 0;">"${esc(obs)}"</div>`:''}
         </div>
       </div>`;}).join('');
   }).catch(() => {

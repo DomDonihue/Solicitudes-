@@ -392,6 +392,13 @@ async function crearCamposHistorial() {
 }
 
 
+async function crearCamposUsuarios() {
+  await _crearCamposLista(CONFIG.lists.usuarios, [
+    { Title: "EnSubrogancia", FieldTypeKind: 8, __metadata: { type: "SP.Field" } },      // Boolean
+    { Title: "Subrogante",    FieldTypeKind: 2, __metadata: { type: "SP.FieldText" } },  // Correo del reemplazante
+  ]);
+}
+
 async function getConfiguracionDOM() {
   const items = await getListItems(CONFIG.lists.configuracion);
   const cfg = {};
@@ -654,9 +661,18 @@ function notificarDirector(solicitud, accion) {
   setTimeout(async () => {
     try {
       const directores = await getDirectores().catch(() => []);
-      await Promise.all(directores.map(dir =>
+      // Si un Director est\u00e1 en subrogancia (licencia/vacaciones), su notificaci\u00f3n
+      // se redirige al correo del subrogante en vez de a \u00e9l. Se deduplica por correo
+      // para no enviar dos veces al mismo destinatario.
+      const destinatarios = new Set();
+      directores.forEach(dir => {
+        const enSubrogancia = dir.EnSubrogancia === true || dir.EnSubrogancia === 1;
+        const correo = enSubrogancia ? (dir.Subrogante || "").trim() : (dir.Correo || "").trim();
+        if (correo) destinatarios.add(correo.toLowerCase());
+      });
+      await Promise.all([...destinatarios].map(correo =>
         sendEmail(
-          dir.Correo,
+          correo,
           `[SistemaDOM] Solicitud ${solicitud.NroSolicitud} \u2014 ${accion}`,
           emailTemplate(solicitud, accion)
         ).catch(e => console.warn("Email director:", e.message))
