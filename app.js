@@ -30,6 +30,22 @@ function _openAdj(el, isPdf) {
   abrirAdjuntoUnidad(el.dataset.durl, el.dataset.rel, el.dataset.name, isPdf);
 }
 
+// ===== Comparación robusta de nombres de unidad =====
+// Evita que una unidad "desaparezca" de conteos/reportes por diferencias de
+// mayúsculas, espacios extra, o tildes guardadas con distinta codificación Unicode
+// (ej. "Inspección" tecleado en dos lugares puede no ser === bit a bit aunque se vea igual).
+function _normTxt(s) {
+  return String(s ?? "").trim().toLowerCase().normalize("NFC");
+}
+function mismaUnidad(a, b) {
+  const na = _normTxt(a), nb = _normTxt(b);
+  return na !== "" && na === nb;
+}
+
+// Unidades operativas que Director/Admin pueden revisar por separado en Reportes
+// (además del reporte General). Editar esta lista si cambian las unidades de terreno.
+const UNIDADES_REPORTE = ["Inspección", "Operaciones", "Aseo y Ornato"];
+
 // ===== INIT =====
 async function initApp() {
   showLoading("Iniciando sesi\u00F3n...");
@@ -1590,7 +1606,7 @@ async function renderUnidad() {
   showLoading("Cargando...");
   try {
     const all = await getSolicitudes();
-    state.solicitudes = all.filter(s => (s.UnidadDerivada||"").trim() === (state.usuario.Unidad||"").trim());
+    state.solicitudes = all.filter(s => mismaUnidad(s.UnidadDerivada, state.usuario.Unidad));
     // Orden: Devuelta > Derivada > En Proceso > Respondida > Cerrada
     state.solicitudes = ordenarSolicitudes(state.solicitudes);
     renderSidebarUnidad();
@@ -3513,6 +3529,11 @@ async function eliminarFirmaAdmin() {
 async function renderGraficos() {
   const esUnidadRol = state.usuario.Rol === CONFIG.roles.UNIDAD;
   const puedeElegirUnidad = !esUnidadRol; // Director/Admin pueden además ver el reporte de una unidad específica
+  // Si el filtro guardado ya no es una de las unidades disponibles en el selector, volver a General
+  if (puedeElegirUnidad && state.filtroUnidadReporte !== "Todas" &&
+      !UNIDADES_REPORTE.some(u => mismaUnidad(u, state.filtroUnidadReporte))) {
+    state.filtroUnidadReporte = "Todas";
+  }
   const unidadSeleccionada = puedeElegirUnidad ? (state.filtroUnidadReporte || "Todas") : "Todas";
   const esUnidad = esUnidadRol || unidadSeleccionada !== "Todas"; // true = mostrar reporte de UNA unidad
   const miUnidad = esUnidadRol ? (state.usuario.Unidad || "").trim() : unidadSeleccionada;
@@ -3598,7 +3619,7 @@ async function renderGraficos() {
     <div style="background:white;border-bottom:1px solid #e8eef6;padding:9px 22px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex-shrink:0;">
       <span style="font-size:11px;font-weight:700;color:#64748b;margin-right:2px;">\uD83C\uDFE2 Ver reporte de:</span>
       <button class="dash-uni-btn ${unidadSeleccionada==='Todas'?'active':''}" onclick="setReporteUnidad('Todas')">\uD83D\uDCCA General</button>
-      ${CONFIG.unidades.map(u => `<button class="dash-uni-btn ${unidadSeleccionada===u?'active':''}" data-unidad="${esc(u)}" onclick="setReporteUnidad(this.dataset.unidad)">${esc(u)}</button>`).join("")}
+      ${UNIDADES_REPORTE.map(u => `<button class="dash-uni-btn ${mismaUnidad(unidadSeleccionada,u)?'active':''}" data-unidad="${esc(u)}" onclick="setReporteUnidad(this.dataset.unidad)">${esc(u)}</button>`).join("")}
     </div>` : ""}
 
     <!-- Body -->
@@ -3729,7 +3750,7 @@ async function actualizarGraficos() {
 
     // Datos filtrados por unidad si corresponde
     const dataDash = esUnidad
-      ? filtradas.filter(s => (s.UnidadDerivada||"").trim() === miUnidad)
+      ? filtradas.filter(s => mismaUnidad(s.UnidadDerivada, miUnidad))
       : filtradas;
 
     // Paleta validada (CVD-safe, slots fijos)
@@ -3877,7 +3898,7 @@ async function actualizarGraficos() {
       s.Estado===CONFIG.estados.DERIVADA || s.Estado===CONFIG.estados.EN_PROCESO ||
       (s.Estado===CONFIG.estados.PENDIENTE_CIERRE && !!s.FechaCierre);
     const activasSem = esUnidad
-      ? all.filter(s => (s.UnidadDerivada||"").trim()===miUnidad && _esSemaforable(s))
+      ? all.filter(s => mismaUnidad(s.UnidadDerivada, miUnidad) && _esSemaforable(s))
       : all.filter(_esSemaforable);
     const semVerde    = activasSem.filter(s => { const r=calcularSemaforo(s); return r&&r.dias>3; }).length;
     const semAmarillo = activasSem.filter(s => { const r=calcularSemaforo(s); return r&&r.dias>0&&r.dias<=3; }).length;
