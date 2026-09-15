@@ -12,6 +12,7 @@ const state = {
   filtroUnidad: "Todas",
   filtroUnidadDir: "Todas",
   filtroUnidadReporte: "Todas",
+  periodoReporte: "anio", // Reportes: período activo por defecto = año en curso
   filtroDesde: "",
   filtroHasta: "",
   pagina: 1,
@@ -3538,8 +3539,8 @@ async function renderGraficos() {
   const esUnidad = esUnidadRol || unidadSeleccionada !== "Todas"; // true = mostrar reporte de UNA unidad
   const miUnidad = esUnidadRol ? (state.usuario.Unidad || "").trim() : unidadSeleccionada;
   const cont = document.getElementById("view-graficos");
-  const hoy    = new Date().toISOString().split('T')[0];
-  const hace3m = new Date(new Date().setMonth(new Date().getMonth()-3)).toISOString().split('T')[0];
+  const periodoActivo = state.periodoReporte || "anio";
+  const { desde: rangoDesde, hasta: rangoHasta } = _calcRangoPeriodo(periodoActivo);
 
   cont.innerHTML = `
   <style>
@@ -3596,17 +3597,17 @@ async function renderGraficos() {
         </div>
       </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;" id="periodo-btns">
-        ${[["Este mes",1],["3 meses",3],["6 meses",6],["1 a\u00F1o",12],["Todo",0]].map(([l,m])=>
-          `<button class="dash-per-btn" onclick="setPeriodo(${m})">${l}</button>`).join("")}
+        ${[["A\u00F1o actual","anio"],["Este mes","1"],["3 meses","3"],["6 meses","6"],["1 a\u00F1o","12"],["Todo","0"]].map(([l,m])=>
+          `<button class="dash-per-btn ${periodoActivo===m?'active':''}" data-periodo="${m}" onclick="setPeriodo(this.dataset.periodo)">${l}</button>`).join("")}
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-left:4px;">
-        <input type="date" id="graf-desde" value="${hace3m}"
+        <input type="date" id="graf-desde" value="${rangoDesde}"
           style="padding:5px 9px;border:1.5px solid rgba(255,255,255,.2);border-radius:7px;font-size:12px;background:rgba(255,255,255,.08);color:white;cursor:pointer;"
-          onchange="actualizarGraficos()">
+          onchange="_marcarPeriodoManual();actualizarGraficos()">
         <span style="color:rgba(255,255,255,.35);font-size:13px;">\u2192</span>
-        <input type="date" id="graf-hasta" value="${hoy}"
+        <input type="date" id="graf-hasta" value="${rangoHasta}"
           style="padding:5px 9px;border:1.5px solid rgba(255,255,255,.2);border-radius:7px;font-size:12px;background:rgba(255,255,255,.08);color:white;cursor:pointer;"
-          onchange="actualizarGraficos()">
+          onchange="_marcarPeriodoManual();actualizarGraficos()">
       </div>
       <div style="margin-left:auto;display:flex;gap:6px;">
         <button onclick="actualizarGraficos()" class="dash-per-btn">\u27F3 Actualizar</button>
@@ -3695,22 +3696,43 @@ async function renderGraficos() {
   await actualizarGraficos();
 }
 
-function setPeriodo(meses) {
+// Calcula el rango [desde, hasta] para un período del dashboard.
+// "anio" = 1 de enero del año en curso hasta hoy; 0 = todo; 1/3/6/12 = meses atrás.
+function _calcRangoPeriodo(periodo) {
   const hoy = new Date();
   const hasta = hoy.toISOString().split('T')[0];
   let desde;
-  if (meses === 0) {
-    desde = "2000-01-01";
-  } else if (meses === 1) {
-    desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+  if (periodo === "anio") {
+    desde = new Date(hoy.getFullYear(), 0, 1).toISOString().split('T')[0];
   } else {
-    desde = new Date(new Date().setMonth(hoy.getMonth() - meses)).toISOString().split('T')[0];
+    const meses = parseInt(periodo, 10);
+    if (meses === 0) {
+      desde = "2000-01-01";
+    } else if (meses === 1) {
+      desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+    } else {
+      desde = new Date(new Date().setMonth(hoy.getMonth() - meses)).toISOString().split('T')[0];
+    }
   }
+  return { desde, hasta };
+}
+
+function setPeriodo(periodo) {
+  state.periodoReporte = periodo;
+  const { desde, hasta } = _calcRangoPeriodo(periodo);
   const d = document.getElementById("graf-desde");
   const h = document.getElementById("graf-hasta");
   if (d) d.value = desde;
   if (h) h.value = hasta;
+  document.querySelectorAll("#periodo-btns .dash-per-btn").forEach(b =>
+    b.classList.toggle("active", b.dataset.periodo === String(periodo)));
   actualizarGraficos();
+}
+
+// El usuario tocó las fechas a mano: ya no corresponde a ningún botón de período predefinido
+function _marcarPeriodoManual() {
+  state.periodoReporte = null;
+  document.querySelectorAll("#periodo-btns .dash-per-btn").forEach(b => b.classList.remove("active"));
 }
 
 // Director/Admin: alternar entre el reporte general y el reporte de una unidad específica
