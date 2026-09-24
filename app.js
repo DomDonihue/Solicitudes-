@@ -3627,7 +3627,7 @@ async function renderGraficos() {
     <div style="flex:1;overflow-y:auto;padding:16px 18px;background:#eef1f6;display:flex;flex-direction:column;gap:14px;">
 
       <!-- KPIs -->
-      <div id="graf-kpis" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;"></div>
+      <div id="graf-kpis" style="display:grid;grid-template-columns:repeat(${esUnidad?5:6},1fr);gap:10px;"></div>
 
       <!-- Fila 1: donut + l\u00EDnea -->
       <div style="display:grid;grid-template-columns:300px 1fr;gap:14px;">
@@ -3794,6 +3794,11 @@ async function actualizarGraficos() {
     const pendCierre = dataDash.filter(s => s.Estado === "Pendiente de Cierre").length;
     const enProceso  = dataDash.filter(s => s.Estado === "En Proceso").length;
     const tasa       = total > 0 ? Math.round(((cerradas + respondidas + pendCierre) / total) * 100) : 0;
+    // No corresponde a Obras (DOM): cierres directos "No corresponde a DOM" + derivadas a Administraci\u00F3n
+    // (Administraci\u00F3n dej\u00F3 de ser parte de la Direcci\u00F3n de Obras). Solo tiene sentido en el reporte General.
+    const noCorrespondeDOM = filtradas.filter(s =>
+      /no corresponde a dom/i.test(s.MotivoDevolucion || "") || mismaUnidad(s.UnidadDerivada, "Administraci\u00F3n")
+    ).length;
 
     const kpisConf = [
       { id:"kv-total", label:"Total per\u00EDodo",  val:total,       suf:"",  color:"#2a78d6", icon:"\uD83D\uDCCB", del:1 },
@@ -3802,6 +3807,9 @@ async function actualizarGraficos() {
       { id:"kv-cerr",  label:"Cerradas",        val:cerradas,    suf:"",  color:"#898781", icon:"\uD83D\uDD12", del:4 },
       { id:"kv-tasa",  label:"Tasa resoluci\u00F3n", val:tasa,        suf:"%", color:"#4a3aa7", icon:"\uD83D\uDCC8", del:5 },
     ];
+    if (!esUnidad) {
+      kpisConf.push({ id:"kv-nodom", label:"No corresponde a Obras", val:noCorrespondeDOM, suf:"", color:"#b45309", icon:"\uD83D\uDEAB", del:6 });
+    }
     const kpisCont = document.getElementById("graf-kpis");
     if (kpisCont) {
       kpisCont.innerHTML = kpisConf.map(k => `
