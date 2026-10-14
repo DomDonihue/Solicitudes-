@@ -3627,7 +3627,7 @@ async function renderGraficos() {
     <div style="flex:1;overflow-y:auto;padding:16px 18px;background:#eef1f6;display:flex;flex-direction:column;gap:14px;">
 
       <!-- KPIs -->
-      <div id="graf-kpis" style="display:grid;grid-template-columns:repeat(${esUnidad?5:6},1fr);gap:10px;"></div>
+      <div id="graf-kpis" style="display:grid;grid-template-columns:repeat(${esUnidad?6:7},1fr);gap:10px;"></div>
 
       <!-- Fila 1: donut + l\u00EDnea -->
       <div style="display:grid;grid-template-columns:300px 1fr;gap:14px;">
@@ -3793,6 +3793,7 @@ async function actualizarGraficos() {
     const respondidas= dataDash.filter(s => s.Estado === "Respondida").length;
     const pendCierre = dataDash.filter(s => s.Estado === "Pendiente de Cierre").length;
     const enProceso  = dataDash.filter(s => s.Estado === "En Proceso").length;
+    const derivadas  = dataDash.filter(s => s.Estado === "Derivada").length;
     const tasa       = total > 0 ? Math.round(((cerradas + respondidas + pendCierre) / total) * 100) : 0;
     // No corresponde a Obras (DOM): cierres directos "No corresponde a DOM" + derivadas a Administraci\u00F3n
     // (Administraci\u00F3n dej\u00F3 de ser parte de la Direcci\u00F3n de Obras). Solo tiene sentido en el reporte General.
@@ -3802,6 +3803,7 @@ async function actualizarGraficos() {
 
     const kpisConf = [
       { id:"kv-total", label:"Total per\u00EDodo",  val:total,       suf:"",  color:"#2a78d6", icon:"\uD83D\uDCCB", del:1 },
+      { id:"kv-der",   label:"Derivadas",       val:derivadas,   suf:"",  color:"#eda100", icon:"\uD83D\uDCE4", del:2 },
       { id:"kv-proc",  label:"En proceso",      val:enProceso,   suf:"",  color:"#1baf7a", icon:"\u2699\uFE0F", del:2 },
       { id:"kv-resp",  label:"Respondidas",     val:respondidas, suf:"",  color:"#008300", icon:"\u2705", del:3 },
       { id:"kv-cerr",  label:"Cerradas",        val:cerradas,    suf:"",  color:"#898781", icon:"\uD83D\uDD12", del:4 },
@@ -3971,14 +3973,16 @@ async function actualizarGraficos() {
           <thead><tr style="background:#f8fafc;">
             <th style="padding:9px 16px;text-align:left;font-weight:700;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e8eef6;">Mes</th>
             <th style="padding:9px 10px;text-align:center;color:#2a78d6;font-size:11px;border-bottom:1px solid #e8eef6;">Recibidas</th>
+            <th style="padding:9px 10px;text-align:center;color:#eda100;font-size:11px;border-bottom:1px solid #e8eef6;">Derivadas</th>
             <th style="padding:9px 10px;text-align:center;color:#1baf7a;font-size:11px;border-bottom:1px solid #e8eef6;">En Proceso</th>
             <th style="padding:9px 10px;text-align:center;color:#008300;font-size:11px;border-bottom:1px solid #e8eef6;">Respondidas</th>
             <th style="padding:9px 10px;text-align:center;color:#898781;font-size:11px;border-bottom:1px solid #e8eef6;">Cerradas</th>
-            <th style="padding:9px 16px;text-align:left;font-size:11px;border-bottom:1px solid #e8eef6;min-width:140px;">Tasa resoluci\u00F3n</th>
+            <th style="padding:9px 16px;text-align:left;font-size:11px;border-bottom:1px solid #e8eef6;min-width:140px;">% Resoluci\u00F3n</th>
           </tr></thead>
           <tbody>${mesesTabla.map((m,ri) => {
             const mes = dataDash.filter(s=>s.FechaRecepcion?.substring(0,7)===m);
             const rec  = mes.length;
+            const der  = mes.filter(s=>s.Estado==="Derivada").length;
             const proc = mes.filter(s=>s.Estado==="En Proceso").length;
             const resp = mes.filter(s=>s.Estado==="Respondida").length;
             const cerr = mes.filter(s=>s.Estado==="Cerrada").length;
@@ -3990,6 +3994,7 @@ async function actualizarGraficos() {
               onmouseenter="this.style.background='#eff6ff'" onmouseleave="this.style.background='${ri%2?"#fafbfc":""}'">
               <td style="padding:10px 16px;font-weight:700;color:#0f2547;">${MESES_ES[+mo-1]} ${y}</td>
               <td style="padding:8px 10px;text-align:center;">${CHIP(rec,"#dbeafe","#1d4ed8")}</td>
+              <td style="padding:8px 10px;text-align:center;">${CHIP(der,"#fef3c7","#b45309")}</td>
               <td style="padding:8px 10px;text-align:center;">${CHIP(proc,"#d1fae5","#065f46")}</td>
               <td style="padding:8px 10px;text-align:center;">${CHIP(resp,"#dcfce7","#15803d")}</td>
               <td style="padding:8px 10px;text-align:center;">${CHIP(cerr,"#f1f5f9","#475569")}</td>
@@ -4002,7 +4007,7 @@ async function actualizarGraficos() {
                 </div>
               </td>
             </tr>`;
-          }).join("") || `<tr><td colspan="6" style="padding:28px;text-align:center;color:#898781;">Sin datos</td></tr>`}</tbody>
+          }).join("") || `<tr><td colspan="7" style="padding:28px;text-align:center;color:#898781;">Sin datos</td></tr>`}</tbody>
         </table>`;
       } else {
         // Tabla comparativa entre unidades
@@ -4015,7 +4020,8 @@ async function actualizarGraficos() {
             <th style="padding:9px 10px;text-align:center;color:#898781;font-size:11px;border-bottom:1px solid #e8eef6;">Cerradas</th>
             <th style="padding:9px 10px;text-align:center;color:#4a3aa7;font-size:11px;border-bottom:1px solid #e8eef6;">Pend.</th>
             <th style="padding:9px 10px;text-align:center;color:#1baf7a;font-size:11px;border-bottom:1px solid #e8eef6;">En Proc.</th>
-            <th style="padding:9px 16px;text-align:left;font-size:11px;border-bottom:1px solid #e8eef6;min-width:150px;">Efectividad</th>
+            <th style="padding:9px 10px;text-align:center;color:#eda100;font-size:11px;border-bottom:1px solid #e8eef6;">Derivadas</th>
+            <th style="padding:9px 16px;text-align:left;font-size:11px;border-bottom:1px solid #e8eef6;min-width:150px;">% Resoluci\u00F3n</th>
           </tr></thead>
           <tbody>${unidades.map((u,ri) => {
             const sols = filtradas.filter(s=>(s.UnidadDerivada||"").trim()===u);
@@ -4024,6 +4030,7 @@ async function actualizarGraficos() {
             const cerr = sols.filter(s=>s.Estado==="Cerrada").length;
             const penc = sols.filter(s=>s.Estado==="Pendiente de Cierre").length;
             const proc = sols.filter(s=>s.Estado==="En Proceso").length;
+            const deriv = sols.filter(s=>s.Estado==="Derivada").length;
             const efe  = der>0?Math.round(((resp+cerr+penc)/der)*100):0;
             const ec   = efe>=80?"#008300":efe>=50?"#b45309":"#b91c1c";
             return `<tr style="border-bottom:1px solid #f1f5f9;${ri%2?"background:#fafbfc":""}"
@@ -4034,6 +4041,7 @@ async function actualizarGraficos() {
               <td style="padding:8px 10px;text-align:center;">${CHIP(cerr,"#f1f5f9","#475569")}</td>
               <td style="padding:8px 10px;text-align:center;">${CHIP(penc,"#ede9fe","#4a3aa7")}</td>
               <td style="padding:8px 10px;text-align:center;">${CHIP(proc,"#d1fae5","#065f46")}</td>
+              <td style="padding:8px 10px;text-align:center;">${CHIP(deriv,"#fef3c7","#b45309")}</td>
               <td style="padding:10px 16px;min-width:150px;">
                 <div style="display:flex;align-items:center;gap:8px;">
                   <div style="flex:1;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
@@ -4043,7 +4051,7 @@ async function actualizarGraficos() {
                 </div>
               </td>
             </tr>`;
-          }).join("")||`<tr><td colspan="7" style="padding:28px;text-align:center;color:#898781;">Sin datos para el per\u00EDodo</td></tr>`}</tbody>
+          }).join("")||`<tr><td colspan="8" style="padding:28px;text-align:center;color:#898781;">Sin datos para el per\u00EDodo</td></tr>`}</tbody>
         </table>`;
       }
     }
