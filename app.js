@@ -3690,6 +3690,15 @@ async function renderGraficos() {
         <div style="overflow-x:auto;" id="tabla-wrap"></div>
       </div>
 
+      <!-- Detalle de cerradas -->
+      <div class="dash-chart da da7" id="cerradas-card" style="padding:0;overflow:hidden;">
+        <div style="padding:12px 18px;border-bottom:1px solid #e8eef6;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;font-weight:700;color:#0f2547;">&#128274; Solicitudes cerradas &middot; motivo del cierre</span>
+          <span id="cerradas-count" style="font-size:11px;color:#898781;"></span>
+        </div>
+        <div style="overflow-x:auto;max-height:420px;overflow-y:auto;" id="cerradas-wrap"></div>
+      </div>
+
     </div>
   </div>`;
 
@@ -3806,7 +3815,7 @@ async function actualizarGraficos() {
       { id:"kv-der",   label:"Derivadas",       val:derivadas,   suf:"",  color:"#eda100", icon:"\uD83D\uDCE4", del:2 },
       { id:"kv-proc",  label:"En proceso",      val:enProceso,   suf:"",  color:"#1baf7a", icon:"\u2699\uFE0F", del:2 },
       { id:"kv-resp",  label:"Respondidas",     val:respondidas, suf:"",  color:"#008300", icon:"\u2705", del:3 },
-      { id:"kv-cerr",  label:"Cerradas",        val:cerradas,    suf:"",  color:"#898781", icon:"\uD83D\uDD12", del:4 },
+      { id:"kv-cerr",  label:"Cerradas",        val:cerradas,    suf:"",  color:"#898781", icon:"\uD83D\uDD12", del:4, go:"cerradas-card" },
       { id:"kv-tasa",  label:"Tasa resoluci\u00F3n", val:tasa,        suf:"%", color:"#4a3aa7", icon:"\uD83D\uDCC8", del:5 },
     ];
     if (!esUnidad) {
@@ -3815,7 +3824,7 @@ async function actualizarGraficos() {
     const kpisCont = document.getElementById("graf-kpis");
     if (kpisCont) {
       kpisCont.innerHTML = kpisConf.map(k => `
-        <div class="dash-kpi da da${k.del}" style="border-top-color:${k.color};">
+        <div class="dash-kpi da da${k.del}" style="border-top-color:${k.color};${k.go?"cursor:pointer;":""}" ${k.go?`onclick="document.getElementById('${k.go}')?.scrollIntoView({behavior:'smooth',block:'start'})" title="Ver detalle"`:""}>
           <span class="ki">${k.icon}</span>
           <div class="kv" id="${k.id}" style="color:${k.color};">0${k.suf}</div>
           <div class="kl">${k.label}</div>
@@ -4054,6 +4063,53 @@ async function actualizarGraficos() {
           }).join("")||`<tr><td colspan="8" style="padding:28px;text-align:center;color:#898781;">Sin datos para el per\u00EDodo</td></tr>`}</tbody>
         </table>`;
       }
+    }
+
+    // -- Detalle de solicitudes cerradas y motivo del cierre --
+    const cerrWrap = document.getElementById("cerradas-wrap");
+    if (cerrWrap) {
+      const listaCerr = dataDash.filter(s => s.Estado === "Cerrada");
+      const cnt = document.getElementById("cerradas-count");
+      if (cnt) cnt.textContent = listaCerr.length + (listaCerr.length === 1 ? " cerrada" : " cerradas");
+      let histCerr = [];
+      try { histCerr = await getListItems(CONFIG.lists.historial, "EstadoNuevo eq 'Cerrada'"); }
+      catch (e) { console.warn("Historial de cierres (no critico):", e.message); }
+      const cierrePor = {};
+      histCerr.forEach(h => {
+        const k = (h.NroSolicitud || "").trim();
+        if (!k) return;
+        if (!cierrePor[k] || new Date(h.FechaAccion || 0) > new Date(cierrePor[k].FechaAccion || 0)) cierrePor[k] = h;
+      });
+      const filas = listaCerr.map(s => {
+        const h = cierrePor[(s.NroSolicitud || "").trim()] || {};
+        const directo = /no corresponde a dom/i.test(s.MotivoDevolucion || "");
+        const motivo = (h.Observaciones || "").trim()
+          || (directo ? (s.MotivoDevolucion || "").replace(/^no corresponde a dom:\s*/i, "").trim() : "")
+          || "Sin motivo registrado";
+        const tipo = directo ? "No corresponde a DOM" : (h.Title || h.Accion || "Cierre");
+        const fecha = h.FechaAccion ? new Date(h.FechaAccion) : null;
+        return { s, h, directo, motivo, tipo, fecha };
+      }).sort((a, b) => (b.fecha?.getTime() || 0) - (a.fecha?.getTime() || 0));
+      cerrWrap.innerHTML = filas.length ? `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="background:#f8fafc;">
+          <th style="padding:9px 10px;text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;border-bottom:1px solid #e8eef6;">N&deg; Solicitud</th>
+          <th style="padding:9px 10px;text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;border-bottom:1px solid #e8eef6;">Fecha cierre</th>
+          <th style="padding:9px 10px;text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;border-bottom:1px solid #e8eef6;">Solicitante</th>
+          <th style="padding:9px 10px;text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;border-bottom:1px solid #e8eef6;">Unidad</th>
+          <th style="padding:9px 10px;text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;border-bottom:1px solid #e8eef6;">Tipo de cierre</th>
+          <th style="padding:9px 10px;text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;border-bottom:1px solid #e8eef6;">Cerrada por</th>
+          <th style="padding:9px 10px;text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;border-bottom:1px solid #e8eef6; min-width:260px;">Motivo / detalle</th>
+        </tr></thead>
+        <tbody>${filas.map((f, ri) => `<tr style="border-bottom:1px solid #f1f5f9;vertical-align:top;${ri%2?"background:#fafbfc":""}">
+          <td style="padding:9px 14px;font-weight:700;color:#0f2547;white-space:nowrap;">${esc(f.s.NroSolicitud || "")}</td>
+          <td style="padding:9px 10px;white-space:nowrap;">${f.fecha ? f.fecha.toLocaleDateString("es-CL") : "-"}</td>
+          <td style="padding:9px 10px;">${esc(f.s.Solicitante || "")}</td>
+          <td style="padding:9px 10px;">${esc((f.s.UnidadDerivada || "-").trim())}</td>
+          <td style="padding:9px 10px;">${CHIP(esc(f.tipo), f.directo ? "#fef3c7" : "#f1f5f9", f.directo ? "#b45309" : "#475569")}</td>
+          <td style="padding:9px 10px;">${esc(f.h.UsuarioAccion || "-")}</td>
+          <td style="padding:9px 14px;color:#334155;white-space:pre-wrap;">${esc(f.motivo)}</td>
+        </tr>`).join("")}</tbody>
+      </table>` : `<div style="padding:28px;text-align:center;color:#898781;font-size:13px;">Sin solicitudes cerradas en el per&iacute;odo</div>`;
     }
 
   } catch (e) {
