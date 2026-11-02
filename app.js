@@ -1070,6 +1070,15 @@ function renderDetalleDirector(sol) {
             \u23F3 Marcar Pendiente de Cierre
           </button>
         </div>
+        <div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:10px;padding:12px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:#b45309;margin-bottom:6px;">&#128260; Devolver a la Unidad</div>
+          <p style="font-size:11px;color:#92400e;margin:0 0 8px;">Si la respuesta tiene un error, la solicitud vuelve a la unidad en estado En Proceso para que la corrija.</p>
+          <textarea id="dir-devolver-obs" rows="2" placeholder="Indica qu&eacute; debe corregir la unidad (obligatorio)..." style="width:100%;padding:7px 9px;border:1.5px solid #fcd34d;border-radius:7px;font-size:12px;resize:vertical;box-sizing:border-box;margin-bottom:8px;"></textarea>
+          <button onclick="devolverAUnidad('${sol.id}')"
+            style="width:100%;padding:9px;background:#b45309;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">
+            &#128260; Devolver a la Unidad &mdash; Respuesta incorrecta
+          </button>
+        </div>
         <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;">
           <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">\uD83D\uDD12 Cierre Directo</div>
           <p style="font-size:11px;color:#166534;margin:0 0 8px;">Cierra formalmente sin pasar por pendiente.</p>
@@ -1547,6 +1556,9 @@ async function cerrarPorSolucion(solId) {
 }
 
 async function devolverAUnidad(solId) {
+  const motivoEl = document.getElementById("dir-devolver-obs");
+  const motivo = motivoEl ? motivoEl.value.trim() : "";
+  if (motivoEl && !motivo) { showToast("error", "Indica qu\u00E9 debe corregir la unidad."); return; }
   if (!confirm("\u00BFDevolver la solicitud a la unidad para que completen la respuesta?")) return;
   showLoading("Devolviendo a la unidad...");
   try {
@@ -1558,7 +1570,9 @@ async function devolverAUnidad(solId) {
       EstadoAnterior: sol.Estado, EstadoNuevo: CONFIG.estados.EN_PROCESO,
       UsuarioAccion: state.usuario.NombreCompleto, RolUsuario: state.usuario.Rol,
       Unidad: state.usuario.Unidad, FechaAccion: new Date().toISOString(),
-      Observaciones: "Director no conforme con la respuesta. Solicitud devuelta para nueva gesti\u00F3n."
+      Observaciones: motivo
+        ? "Director no conforme con la respuesta: " + motivo
+        : "Director no conforme con la respuesta. Solicitud devuelta para nueva gesti\u00F3n."
     });
     showToast("success", `\uD83D\uDD04 Solicitud ${sol.NroSolicitud} devuelta a la unidad`);
     await renderDirector();
