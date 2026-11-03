@@ -207,6 +207,8 @@ async function renderSecretaria() {
   try {
     state.solicitudes = await getSolicitudes();
     state.solicitudes.sort((a, b) => new Date(b.FechaRecepcion) - new Date(a.FechaRecepcion));
+    const buscar = document.getElementById("sec-buscar");
+    if (buscar) buscar.value = state.filtroBuscar || "";
     renderListaSolicitudes();
     renderFiltrosCompact();
     renderStatsCompact();
@@ -237,13 +239,10 @@ function renderFiltrosCompact() {
   if (!cont) return;
   cont.innerHTML = `
     <div style="padding:10px;display:flex;flex-direction:column;gap:8px;">
-      <input type="text" placeholder="\uD83D\uDD0D Buscar..." value="${state.filtroBuscar}"
-        style="padding:8px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;"
-        oninput="state.filtroBuscar=this.value;state.pagina=1;renderListaSolicitudes();renderStatsCompact()">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
         <select style="padding:7px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;"
           onchange="state.filtroEstado=this.value;state.pagina=1;renderListaSolicitudes();renderStatsCompact()">
-          ${["Todos","Ingresada","Derivada","En Proceso","Respondida","Devuelta","Cerrada"]
+          ${["Todos","Ingresada","Derivada","En Proceso","Respondida","Devuelta","Pendiente de Cierre","Cerrada"]
             .map(e=>`<option ${state.filtroEstado===e?'selected':''}>${e}</option>`).join("")}
         </select>
         <select style="padding:7px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;"
@@ -294,11 +293,15 @@ function getSolicitudesFiltradas() {
     if (state.filtroEstado !== "Todos" && s.Estado !== state.filtroEstado) return false;
     if (state.filtroUnidad !== "Todas" && (s.UnidadDerivada||"").trim() !== state.filtroUnidad) return false;
     if (state.filtroBuscar) {
-      const q = state.filtroBuscar.toLowerCase();
-      if (!s.NroSolicitud?.toLowerCase().includes(q) &&
-          !s.Solicitante?.toLowerCase().includes(q) &&
-          !s.Direccion?.toLowerCase().includes(q) &&
-          !s.Solicitud?.toLowerCase().includes(q)) return false;
+      const norm = t => String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+      const q = norm(state.filtroBuscar.trim());
+      const qRut = q.replace(/[.\-\s]/g,"");
+      const rutNorm = norm(s.Rut).replace(/[.\-\s]/g,"");
+      if (!norm(s.NroSolicitud).includes(q) &&
+          !norm(s.Solicitante).includes(q) &&
+          !norm(s.Direccion).includes(q) &&
+          !norm(s.Solicitud).includes(q) &&
+          !(qRut && rutNorm.includes(qRut))) return false;
     }
     if (state.filtroDesde && new Date(s.FechaRecepcion) < new Date(state.filtroDesde)) return false;
     if (state.filtroHasta && new Date(s.FechaRecepcion) > new Date(state.filtroHasta + "T23:59:59")) return false;

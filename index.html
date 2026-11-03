@@ -166,6 +166,11 @@
           <!-- Lista solicitudes -->
           <div class="panel" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
             <div class="panel-header">📋 Solicitudes <span id="sec-lista-count" style="font-size:12px;font-weight:400;color:#888;"></span></div>
+            <div style="padding:8px 8px 0;flex-shrink:0;">
+              <input type="text" id="sec-buscar" placeholder="🔍 Buscar por N° solicitud, nombre, RUT o dirección..."
+                style="width:100%;padding:9px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;box-sizing:border-box;"
+                oninput="state.filtroBuscar=this.value;state.pagina=1;renderListaSolicitudes();renderStatsCompact()">
+            </div>
             <div style="flex:1;overflow-y:auto;padding:8px;" id="lista-solicitudes"></div>
             <div id="paginacion-solicitudes" class="paginacion"></div>
           </div>
