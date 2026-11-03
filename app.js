@@ -246,8 +246,8 @@ function renderFiltrosCompact() {
             .map(e=>`<option ${state.filtroEstado===e?'selected':''}>${e}</option>`).join("")}
         </select>
         <select style="padding:7px;border:1.5px solid var(--borde);border-radius:8px;font-size:13px;"
-          onchange="state.filtroUnidad=this.value;state.pagina=1;renderListaSolicitudes()">
-          <option>Todas</option>
+          onchange="state.filtroUnidad=this.value;state.pagina=1;renderListaSolicitudes();renderStatsCompact()">
+          <option value="Todas" ${state.filtroUnidad==="Todas"?'selected':''}>Todas las unidades</option>
           ${CONFIG.unidades.map(u=>`<option ${state.filtroUnidad===u?'selected':''}>${esc(u)}</option>`).join("")}
         </select>
       </div>
